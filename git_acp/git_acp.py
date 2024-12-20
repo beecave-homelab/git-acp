@@ -11,10 +11,11 @@ Last Modified: 20/12/2024
 
 import subprocess
 import sys
-from typing import Optional, List, Tuple
+from typing import Optional, List, Tuple, Set
 from dataclasses import dataclass
 from enum import Enum
 import click
+import questionary
 from rich.console import Console
 from rich.panel import Panel
 from rich.prompt import Confirm
@@ -225,8 +226,107 @@ def git_push(branch: str) -> None:
         run_git_command(["git", "push", "origin", branch])
     rprint("[green]✓[/green] Changes pushed successfully")
 
+def get_changed_files() -> Set[str]:
+    """Get list of changed files from git status."""
+    # Get all changes in porcelain format
+    stdout, _ = run_git_command(["git", "status", "--porcelain", "-uall"])
+    
+    files = set()
+    exclude_patterns = ['__pycache__', '.pyc', '.pyo', '.pyd']
+    
+    def process_status_line(line: str) -> Optional[str]:
+        """Process a single status line and return the filename if valid."""
+        if not line.strip():
+            return None
+            
+        # The format is: XY FILENAME
+        # where X is the status of the index and Y is the status of the working tree
+        status = line[:2]
+        # Skip untracked files (marked with ??)
+        if status == "??":
+            return None
+            
+        # Split the line into status and path parts
+        parts = line.split(maxsplit=1)
+        if len(parts) < 2:
+            return None
+            
+        # Get the complete path
+        path = parts[1].strip()
+        
+        # Handle renamed files (format: "old -> new")
+        if " -> " in path:
+            _, new_path = path.split(" -> ")
+            path = new_path
+            
+        # Clean up the path (remove quotes if present)
+        path = path.strip().strip('"')
+        
+        # Skip excluded patterns
+        if any(pat in path for pat in exclude_patterns):
+            return None
+            
+        # Debug output
+        rprint(f"[yellow]Debug: Processing line: '{line}'[/yellow]")
+        rprint(f"[yellow]Debug: Extracted path: '{path}'[/yellow]")
+        
+        return path
+    
+    # Process all status lines
+    for line in stdout.split('\n'):
+        if path := process_status_line(line):
+            files.add(path)
+    
+    # Debug output
+    rprint(f"[yellow]Debug: Found files: {files}[/yellow]")
+    
+    return files
+
+def select_files(files: Set[str]) -> str:
+    """
+    Present an interactive selection menu for changed files.
+    
+    Args:
+        files: Set of changed files
+        
+    Returns:
+        str: Space-separated list of selected files
+    """
+    if not files:
+        raise GitError("No changed files found to commit.")
+    
+    if len(files) == 1:
+        return next(iter(files))
+    
+    # Sort files and ensure paths are properly displayed
+    choices = sorted(list(files))
+    
+    # Add "All files" as the last option
+    choices.append("All files")
+    
+    # Use a wider display for the checkbox prompt
+    selected = questionary.checkbox(
+        "Select files to commit (space to select, enter to confirm):",
+        choices=choices,
+        style=questionary.Style([
+            ('qmark', 'fg:yellow bold'),
+            ('question', 'bold'),
+            ('pointer', 'fg:yellow bold'),
+            ('highlighted', 'fg:yellow bold'),
+            ('selected', 'fg:green'),
+        ])
+    ).ask()
+    
+    if not selected:
+        raise GitError("No files selected.")
+    
+    if "All files" in selected:
+        return "."
+        
+    return " ".join(f'"{f}"' if ' ' in f else f for f in selected)
+
 @click.command()
-@click.option('-a', '--add', default=".", help="Add specified file(s). Defaults to all changed files.")
+@click.option('-a', '--add', help="Add specified file(s). If not specified, shows interactive file selection.")
 @click.option('-m', '--message', help="Commit message. Defaults to 'Automated commit'.")
 @click.option('-b', '--branch', help="Specify the branch to push to. Defaults to the current active branch.")
 @click.option('-o', '--ollama', is_flag=True, help="Use Ollama AI to generate the commit message.")
@@ -235,12 +335,19 @@ def git_push(branch: str) -> None:
               type=click.Choice(['feat', 'fix', 'docs', 'style', 'refactor', 'test', 'chore', 'revert'],
                               case_sensitive=False),
               help="Override automatic commit type classification.")
-def main(add: str, message: Optional[str], branch: Optional[str], 
+def main(add: Optional[str], message: Optional[str], branch: Optional[str], 
          ollama: bool, no_confirm: bool, commit_type: Optional[str]) -> None:
     """
     Automate git add, commit, and push operations with optional AI-generated commit messages.
     """
     try:
+        # If no files specified, show interactive selection
+        if add is None:
+            changed_files = get_changed_files()
+            if not changed_files:
+                raise GitError("No changes detected in the repository.")
+            add = select_files(changed_files)
+            
         config = GitConfig(
             files=add,
             message=message or "Automated commit",
