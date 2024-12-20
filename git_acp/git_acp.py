@@ -54,6 +54,7 @@ class GitConfig:
     branch: Optional[str] = None
     use_ollama: bool = False
     skip_confirmation: bool = False
+    verbose: bool = False
 
 class GitError(Exception):
     """Custom exception for git-related errors."""
@@ -91,24 +92,29 @@ def get_current_branch() -> str:
     stdout, _ = run_git_command(["git", "rev-parse", "--abbrev-ref", "HEAD"])
     return stdout
 
-def get_git_diff() -> str:
+def debug_print(config: GitConfig, message: str) -> None:
+    """Print debug message if verbose mode is enabled."""
+    if config.verbose:
+        rprint(f"[yellow]Debug: {message}[/yellow]")
+
+def get_git_diff(config: GitConfig) -> str:
     """Get the git diff, checking both staged and unstaged changes."""
     # First try to get staged changes
     stdout, _ = run_git_command(["git", "diff", "--staged"])
     if stdout.strip():
-        rprint("[yellow]Debug: Using staged changes diff[/yellow]")
+        debug_print(config, "Using staged changes diff")
         return stdout
     # If no staged changes, get unstaged changes
-    rprint("[yellow]Debug: No staged changes, using unstaged diff[/yellow]")
+    debug_print(config, "No staged changes, using unstaged diff")
     stdout, _ = run_git_command(["git", "diff"])
     return stdout
 
-def generate_commit_message_with_ollama() -> str:
+def generate_commit_message_with_ollama(config: GitConfig) -> str:
     """Generate a commit message using Ollama AI."""
     try:
         with console.status("[bold green]Generating commit message with Ollama..."):
             # Add files first so we can get the diff
-            diff = get_git_diff()
+            diff = get_git_diff(config)
             if not diff:
                 raise GitError("No changes detected to generate commit message from.")
             
@@ -126,70 +132,70 @@ def generate_commit_message_with_ollama() -> str:
     except (subprocess.SubprocessError, GitError) as e:
         raise GitError(f"Failed to generate commit message: {e}")
 
-def classify_commit_type(diff: str) -> CommitType:
+def classify_commit_type(config: GitConfig, diff: str) -> CommitType:
     """
     Classify the commit type based on the git diff content.
     
     Args:
+        config: GitConfig instance
         diff: The git diff output
         
     Returns:
         CommitType: The classified commit type
     """
-    # Debug: Print the first few lines of the diff
-    rprint("[yellow]Debug: First 100 characters of diff:[/yellow]")
-    rprint(diff[:100])
+    if config.verbose:
+        debug_print(config, f"First 100 characters of diff:")
+        rprint(diff[:100])
     
-    # Debug: Print which patterns are matching
     def check_pattern(keywords: List[str], diff_text: str) -> bool:
         matches = [k for k in keywords if k in diff_text.lower()]
-        if matches:
-            rprint(f"[yellow]Debug: Matched keywords: {matches}[/yellow]")
+        if matches and config.verbose:
+            debug_print(config, f"Matched keywords: {matches}")
         return bool(matches)
 
     # First check for documentation changes
     doc_keywords = ["docs/", ".md", "readme", "documentation", "license"]
     if check_pattern(doc_keywords, diff):
-        rprint("[yellow]Debug: Classified as DOCS[/yellow]")
+        debug_print(config, "Classified as DOCS")
         return CommitType.DOCS
 
     # Then check for test changes
-    test_keywords = ["test", ".test.", "spec", "_test", "test_"]
+    test_keywords = ["test", ".test.", "_test", "test_"]
     if check_pattern(test_keywords, diff):
-        rprint("[yellow]Debug: Classified as TEST[/yellow]")
+        debug_print(config, "Classified as TEST")
         return CommitType.TEST
 
     # Check for style changes
     style_keywords = ["style", "format", "whitespace", "lint", "prettier", "eslint"]
     if check_pattern(style_keywords, diff):
-        rprint("[yellow]Debug: Classified as STYLE[/yellow]")
+        debug_print(config, "Classified as STYLE")
         return CommitType.STYLE
 
     # Check for refactor
     refactor_keywords = ["refactor", "restructure", "cleanup", "clean up", "reorganize"]
     if check_pattern(refactor_keywords, diff):
-        rprint("[yellow]Debug: Classified as REFACTOR[/yellow]")
+        debug_print(config, "Classified as REFACTOR")
         return CommitType.REFACTOR
 
     # Check for bug fixes
     fix_keywords = ["fix", "bug", "patch", "issue", "error", "crash", "problem", "resolve"]
     if check_pattern(fix_keywords, diff):
-        rprint("[yellow]Debug: Classified as FIX[/yellow]")
+        debug_print(config, "Classified as FIX")
         return CommitType.FIX
 
     # Check for reverts
     if "revert" in diff.lower():
-        rprint("[yellow]Debug: Classified as REVERT[/yellow]")
+        debug_print(config, "Classified as REVERT")
         return CommitType.REVERT
 
     # Check for features
     feature_keywords = ["add", "new", "feature", "update", "introduce", 
                        "implement", "enhance", "create", "improve", "support"]
     if check_pattern(feature_keywords, diff):
-        rprint("[yellow]Debug: Classified as FEAT[/yellow]")
+        debug_print(config, "Classified as FEAT")
         return CommitType.FEAT
 
-    rprint("[yellow]Debug: Defaulting to CHORE[/yellow]")
+    debug_print(config, "Defaulting to CHORE")
     return CommitType.CHORE
 
 def format_commit_message(commit_type: CommitType, message: str) -> str:
@@ -226,7 +232,7 @@ def git_push(branch: str) -> None:
         run_git_command(["git", "push", "origin", branch])
     rprint("[green]✓[/green] Changes pushed successfully")
 
-def get_changed_files() -> Set[str]:
+def get_changed_files(config: GitConfig) -> Set[str]:
     """Get list of changed files from git status."""
     # Get all changes in porcelain format
     stdout, _ = run_git_command(["git", "status", "--porcelain", "-uall"])
@@ -266,9 +272,9 @@ def get_changed_files() -> Set[str]:
         if any(pat in path for pat in exclude_patterns):
             return None
             
-        # Debug output
-        rprint(f"[yellow]Debug: Processing line: '{line}'[/yellow]")
-        rprint(f"[yellow]Debug: Extracted path: '{path}'[/yellow]")
+        if config.verbose:
+            debug_print(config, f"Processing line: '{line}'")
+            debug_print(config, f"Extracted path: '{path}'")
         
         return path
     
@@ -277,8 +283,8 @@ def get_changed_files() -> Set[str]:
         if path := process_status_line(line):
             files.add(path)
     
-    # Debug output
-    rprint(f"[yellow]Debug: Found files: {files}[/yellow]")
+    if config.verbose:
+        debug_print(config, f"Found files: {files}")
     
     return files
 
@@ -335,26 +341,28 @@ def select_files(files: Set[str]) -> str:
               type=click.Choice(['feat', 'fix', 'docs', 'style', 'refactor', 'test', 'chore', 'revert'],
                               case_sensitive=False),
               help="Override automatic commit type classification.")
+@click.option('-v', '--verbose', is_flag=True, help="Show debug information.")
 def main(add: Optional[str], message: Optional[str], branch: Optional[str], 
-         ollama: bool, no_confirm: bool, commit_type: Optional[str]) -> None:
+         ollama: bool, no_confirm: bool, commit_type: Optional[str], verbose: bool) -> None:
     """
     Automate git add, commit, and push operations with optional AI-generated commit messages.
     """
     try:
         # If no files specified, show interactive selection
-        if add is None:
-            changed_files = get_changed_files()
-            if not changed_files:
-                raise GitError("No changes detected in the repository.")
-            add = select_files(changed_files)
-            
         config = GitConfig(
-            files=add,
+            files=add or ".",
             message=message or "Automated commit",
             branch=branch,
             use_ollama=ollama,
-            skip_confirmation=no_confirm
+            skip_confirmation=no_confirm,
+            verbose=verbose
         )
+
+        if add is None:
+            changed_files = get_changed_files(config)
+            if not changed_files:
+                raise GitError("No changes detected in the repository.")
+            config.files = select_files(changed_files)
 
         if not config.branch:
             config.branch = get_current_branch()
@@ -363,14 +371,14 @@ def main(add: Optional[str], message: Optional[str], branch: Optional[str],
         git_add(config.files)
 
         if config.use_ollama:
-            config.message = generate_commit_message_with_ollama()
+            config.message = generate_commit_message_with_ollama(config)
 
         if not config.message:
             raise GitError("No commit message provided.")
 
         # Use provided commit type or classify automatically
         commit_type_enum = (CommitType.from_str(commit_type) if commit_type 
-                          else classify_commit_type(get_git_diff()))
+                          else classify_commit_type(config, get_git_diff(config)))
         formatted_message = format_commit_message(commit_type_enum, config.message)
 
         if not config.skip_confirmation:
