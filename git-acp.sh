@@ -2,13 +2,23 @@
 
 # Script Description: This script automates Git add, commit, and push actions with optional AI-generated commit messages using Ollama.
 # Author: elvee
-# Version: 0.4.0
+# Version: 0.5.0
 # License: MIT
-# Creation Date: 20-12-2024
-# Last Modified: 20-12-2024
+# Creation Date: 20/12/2024
+# Last Modified: 20/12/2024
 
 # Constants
 set -euo pipefail
+
+# Commit type mappings as full strings
+FEAT="feat ✨"
+FIX="fix 🐛"
+DOCS="docs 📝"
+STYLE="style 💎"
+REFACTOR="refactor ♻️"
+TEST="test 🧪"
+CHORE="chore 📦"
+REVERT="revert ⏪"
 
 # Function to display help
 show_help() {
@@ -17,28 +27,15 @@ show_help() {
   echo "  -a, --add <file>       Add specified file(s). Defaults to all changed files."
   echo "  -m, --message <msg>    Commit message. Defaults to 'Automated commit'."
   echo "  -b, --branch <branch>  Specify the branch to push to. Defaults to the current active branch."
-  echo "  -o, --ollama           Use Ollama AI to generate the commit message. This requires Ollama to be installed"
-  echo "                         and the 'mevatron/diffsense:1.5b' model to be available locally."
+  echo "  -o, --ollama           Use Ollama AI to generate the commit message."
   echo "  -nc, --no-confirm      Skip confirmation prompts for all actions, including the Ollama-generated commit message."
   echo "  -h, --help             Show this help message."
-  echo
-  echo "Example:"
-  echo "  $(basename "$0") -a \"file1 file2\" -m \"Initial commit\" -b \"develop\""
-  echo "  This will add 'file1' and 'file2' to the staging area, commit with the message 'Initial commit',"
-  echo "  and push the changes to the 'develop' branch."
-  echo
-  echo "  $(basename "$0") -a \"file1 file2\" -o"
-  echo "  This will add 'file1' and 'file2' to the staging area, generate the commit message using"
-  echo "  Ollama (via the command 'git diff | ollama run mevatron/diffsense:1.5b'), and push the changes to the current branch."
-  echo
-  echo "  $(basename "$0") -a \"file1 file2\" -o -nc"
-  echo "  This will add 'file1' and 'file2', generate the commit message using Ollama, and commit and push without asking for confirmation."
 }
 
 # Function to add files
 git_add() {
-  local files="$1"
-  if ! git add ${files:-.}; then
+  local files="${1:-.}"
+  if ! git add "$files"; then
     echo "Error: Failed to add files."
     exit 1
   fi
@@ -47,7 +44,7 @@ git_add() {
 # Function to commit changes
 git_commit() {
   local message="$1"
-  if ! git commit -m "${message:-Automated commit}"; then
+  if ! git commit -m "${message}"; then
     echo "Error: Failed to commit changes."
     exit 1
   fi
@@ -82,30 +79,60 @@ generate_commit_message_with_ollama() {
   echo "$commit_message"
 }
 
-# Function to confirm before pushing
-confirm_and_push() {
-  local files="$1"
-  local message="$2"
-  local branch="$3"
-  local skip_confirmation="$4"
+# Function to classify the commit type based on git diff
+classify_commit_type() {
+  local diff
+  diff=$(git diff)
 
-  if [[ "$skip_confirmation" != true ]]; then
-    echo "Files to be added: ${files:-All changed files}"
-    echo "Commit message: ${message:-Automated commit}"
-    echo "Branch to push to: $branch"
-    read -p "Do you want to proceed? (y/n): " confirmation
-    if [[ "$confirmation" != "y" ]]; then
-      echo "Operation cancelled."
-      exit 0
-    fi
+  # Prioritize "feat" detection
+  if [[ "$diff" == *"add"* || "$diff" == *"new"* || "$diff" == *"feature"* || \
+        "$diff" == *"update"* || "$diff" == *"introduce"* || "$diff" == *"implement"* || \
+        "$diff" == *"enhance"* || "$diff" == *"create"* || "$diff" == *"improve"* || \
+        "$diff" == *"support"* ]]; then
+    echo "$FEAT"
+
+  # Check for "fix" keywords
+  elif [[ "$diff" == *"fix"* || "$diff" == *"bug"* || "$diff" == *"patch"* || "$diff" == *"issue"* ]]; then
+    echo "$FIX"
+
+  # Check for "docs" related changes
+  elif [[ "$diff" == *"docs/"* || "$diff" == *".md"* || "$diff" == *"README"* ]]; then
+    echo "$DOCS"
+
+  # Check for "refactor" keywords
+  elif [[ "$diff" == *"refactor"* || "$diff" == *"restructure"* || "$diff" == *"cleanup"* ]]; then
+    echo "$REFACTOR"
+
+  # Check for "test" changes
+  elif [[ "$diff" == *"test"* || "$diff" == *".test."* || "$diff" == *"spec"* ]]; then
+    echo "$TEST"
+
+  # Check for "style" changes
+  elif [[ "$diff" == *"style"* || "$diff" == *"format"* || "$diff" == *"whitespace"* || "$diff" == *"lint"* ]]; then
+    echo "$STYLE"
+
+  # Check for "revert" changes
+  elif [[ "$diff" == *"revert"* ]]; then
+    echo "$REVERT"
+
+  # Default to "chore"
+  else
+    echo "$CHORE"
   fi
+}
 
-  # Add files
-  git_add "$files"
-  # Commit changes
-  git_commit "$message"
-  # Push changes
-  git_push "$branch"
+# Function to format the commit message according to user preferences
+format_commit_message() {
+  local commit_type="${1:-$CHORE}"
+  local message="${2:-Automated commit}"
+
+  local title
+  title=$(echo "$message" | head -n 1)
+  local description
+  description=$(echo "$message" | tail -n +2)
+
+  local formatted_message="${commit_type}: ${title}\n\n${description}"
+  echo -e "$formatted_message"
 }
 
 # Main function
@@ -116,7 +143,6 @@ main() {
   local use_ollama=false
   local skip_confirmation=false
 
-  # Parse command-line arguments
   while [[ "$#" -gt 0 ]]; do
     case $1 in
       -a|--add)
@@ -151,26 +177,33 @@ main() {
     esac
   done
 
-  # Get the current branch if not specified
-  branch=${branch:-$(get_current_branch)}
+  branch="${branch:-$(get_current_branch)}"
 
-  # Generate commit message using Ollama if the option is enabled
   if [[ "$use_ollama" == true ]]; then
     commit_message=$(generate_commit_message_with_ollama)
-    echo "Generated commit message using Ollama: $commit_message"
+  fi
 
-    if [[ "$skip_confirmation" != true ]]; then
-      read -p "Do you want to use this commit message? (y/n): " confirmation
-      if [[ "$confirmation" != "y" ]]; then
-        echo "Operation cancelled."
-        exit 0
-      fi
+  if [[ -z "$commit_message" ]]; then
+    echo "Error: No commit message provided."
+    exit 1
+  fi
+
+  local commit_type
+  commit_type=$(classify_commit_type)
+  commit_message=$(format_commit_message "$commit_type" "$commit_message")
+
+  if [[ "$skip_confirmation" != true ]]; then
+    echo "Commit message: $commit_message"
+    read -p "Do you want to proceed? (y/n): " confirmation
+    if [[ "$confirmation" != "y" ]]; then
+      echo "Operation cancelled."
+      exit 0
     fi
   fi
 
-  # Confirm before pushing
-  confirm_and_push "$add_files" "$commit_message" "$branch" "$skip_confirmation"
+  git_add "$add_files"
+  git_commit "$commit_message"
+  git_push "$branch"
 }
 
-# Execute main function
 main "$@"
