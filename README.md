@@ -4,7 +4,7 @@ A Python tool to automate Git add, commit, and push actions with optional AI-gen
 
 ## Versions
 
-**Current version**: 0.6.0
+**Current version**: 0.6.1
 
 ## Table of Contents
 
