@@ -3,10 +3,10 @@
 """
 Script Description: This script automates Git add, commit, and push actions with optional AI-generated commit messages using Ollama.
 Author: elvee
-Version: 0.5.0
+Version: 0.6.0
 License: MIT
-Creation Date: 20/12/2024
-Last Modified: 20/12/2024
+Creation Date: 20-12-2024
+Last Modified: 21-12-2024
 """
 
 import subprocess
