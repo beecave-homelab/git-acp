@@ -331,6 +331,47 @@ def select_files(files: Set[str]) -> str:
         
     return " ".join(f'"{f}"' if ' ' in f else f for f in selected)
 
+def select_commit_type(config: GitConfig, suggested_type: CommitType) -> CommitType:
+    """
+    Present an interactive selection menu for commit types.
+    
+    Args:
+        config: GitConfig instance
+        suggested_type: The automatically suggested commit type
+        
+    Returns:
+        CommitType: The selected commit type
+    """
+    # Prepare choices with the suggested type first
+    choices = []
+    for commit_type in CommitType:
+        choice = {
+            'name': f"{commit_type.value}",
+            'value': commit_type,
+            'checked': commit_type == suggested_type
+        }
+        if commit_type == suggested_type:
+            choices.insert(0, choice)
+        else:
+            choices.append(choice)
+    
+    if config.verbose:
+        debug_print(config, f"Suggested commit type: {suggested_type.value}")
+    
+    selected = questionary.select(
+        "Select commit type (↑↓ to move, enter to select):",
+        choices=choices,
+        style=questionary.Style([
+            ('qmark', 'fg:yellow bold'),
+            ('question', 'bold'),
+            ('pointer', 'fg:yellow bold'),
+            ('highlighted', 'fg:yellow bold'),
+            ('selected', 'fg:green'),
+        ])
+    ).ask()
+    
+    return selected
+
 @click.command()
 @click.option('-a', '--add', help="Add specified file(s). If not specified, shows interactive file selection.")
 @click.option('-m', '--message', help="Commit message. Defaults to 'Automated commit'.")
@@ -340,7 +381,7 @@ def select_files(files: Set[str]) -> str:
 @click.option('-t', '--type', 'commit_type',
               type=click.Choice(['feat', 'fix', 'docs', 'style', 'refactor', 'test', 'chore', 'revert'],
                               case_sensitive=False),
-              help="Override automatic commit type classification.")
+              help="Override automatic commit type suggestion.")
 @click.option('-v', '--verbose', is_flag=True, help="Show debug information.")
 def main(add: Optional[str], message: Optional[str], branch: Optional[str], 
          ollama: bool, no_confirm: bool, commit_type: Optional[str], verbose: bool) -> None:
@@ -376,10 +417,13 @@ def main(add: Optional[str], message: Optional[str], branch: Optional[str],
         if not config.message:
             raise GitError("No commit message provided.")
 
-        # Use provided commit type or classify automatically
-        commit_type_enum = (CommitType.from_str(commit_type) if commit_type 
-                          else classify_commit_type(config, get_git_diff(config)))
-        formatted_message = format_commit_message(commit_type_enum, config.message)
+        # Get suggested commit type
+        suggested_type = (CommitType.from_str(commit_type) if commit_type 
+                        else classify_commit_type(config, get_git_diff(config)))
+        
+        # Let user select commit type
+        selected_type = select_commit_type(config, suggested_type)
+        formatted_message = format_commit_message(selected_type, config.message)
 
         if not config.skip_confirmation:
             rprint(Panel.fit(
