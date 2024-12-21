@@ -59,24 +59,24 @@ A Python tool to automate Git add, commit, and push actions with optional AI-gen
     python3 -m pipx ensurepath
     ```
 
-2. Install `git_acp`:
+2. Install git-acp:
 
     ```bash
     pipx install git+https://github.com/beecave-homelab/git-acp.git
     ```
 
-The command `git_acp` will now be available globally in your system.
+The command `git-acp` will now be available globally in your system.
 
 To upgrade to the latest version:
 
 ```bash
-pipx upgrade git_acp
+pipx upgrade git-acp
 ```
 
 To uninstall:
 
 ```bash
-pipx uninstall git_acp
+pipx uninstall git-acp
 ```
 
 ### Option 2: Install in a Virtual Environment
@@ -117,10 +117,10 @@ pip install git+https://github.com/beecave-homelab/git-acp.git
 
 ## Usage
 
-After installation, you can use the `git_acp` command from anywhere in your terminal:
+After installation, you can use the `git-acp` command from anywhere in your terminal:
 
 ```bash
-git_acp [OPTIONS]
+git-acp [OPTIONS]
 ```
 
 ### Options
@@ -139,37 +139,37 @@ git_acp [OPTIONS]
 1. Basic usage with interactive file and commit type selection:
 
     ```bash
-    git_acp
+    git-acp
     ```
 
 2. Specify files to add and commit message:
 
     ```bash
-    git_acp -a "file1.py file2.py" -m "Add new features"
+    git-acp -a "file1.py file2.py" -m "Add new features"
     ```
 
 3. Use AI-generated commit message:
 
     ```bash
-    git_acp -o
+    git-acp -o
     ```
 
 4. Push to a specific branch:
 
     ```bash
-    git_acp -b main -m "Update documentation"
+    git-acp -b main -m "Update documentation"
     ```
 
 5. Skip confirmation prompts:
 
     ```bash
-    git_acp -nc -m "Quick fix"
+    git-acp -nc -m "Quick fix"
     ```
 
 6. Override commit type suggestion:
 
     ```bash
-    git_acp -t docs
+    git-acp -t docs
     ```
 
 ## Commit Types
