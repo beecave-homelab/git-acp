@@ -302,7 +302,9 @@ def select_files(files: Set[str]) -> str:
         raise GitError("No changed files found to commit.")
     
     if len(files) == 1:
-        return next(iter(files))
+        file = next(iter(files))
+        rprint(f"[yellow]Adding file:[/yellow] {file}")
+        return file
     
     # Sort files and ensure paths are properly displayed
     choices = sorted(list(files))
@@ -327,6 +329,7 @@ def select_files(files: Set[str]) -> str:
         raise GitError("No files selected.")
     
     if "All files" in selected:
+        rprint("[yellow]Adding all files[/yellow]")
         return "."
         
     return " ".join(f'"{f}"' if ' ' in f else f for f in selected)
