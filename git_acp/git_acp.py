@@ -355,10 +355,10 @@ def select_commit_type(config: GitConfig, suggested_type: CommitType) -> CommitT
         choice = {
             'name': name,
             'value': commit_type,
-            'checked': commit_type == suggested_type
+            'checked': False  # Don't pre-select any option
         }
         if commit_type == suggested_type:
-            choices.insert(0, choice)
+            choices.insert(0, choice)  # Put suggested type at the top
         else:
             choices.append(choice)
     
@@ -466,9 +466,11 @@ def main(add: Optional[str], message: Optional[str], branch: Optional[str],
     except GitError as e:
         rprint(f"[bold red]Error:[/bold red] {e}")
         sys.exit(1)
-    except KeyboardInterrupt:
-        rprint("\n[yellow]Operation cancelled by user.[/yellow]")
-        sys.exit(1)
+    except (KeyboardInterrupt, EOFError):
+        # Handle both CTRL+C and CTRL+D gracefully
+        print()  # Add a newline for cleaner output
+        rprint("[yellow]Operation cancelled by user.[/yellow]")
+        sys.exit(0)  # Exit with success code since this is a user-initiated cancellation
 
 if __name__ == "__main__":
     main() 
