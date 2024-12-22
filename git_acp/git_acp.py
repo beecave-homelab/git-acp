@@ -3,7 +3,7 @@
 """
 Script Description: This script automates Git add, commit, and push actions with optional AI-generated commit messages using Ollama.
 Author: elvee
-Version: 0.6.1
+Version: 0.7.0
 License: MIT
 Creation Date: 20-12-2024
 Last Modified: 21-12-2024
@@ -348,32 +348,52 @@ def select_commit_type(config: GitConfig, suggested_type: CommitType) -> CommitT
     # Prepare choices with the suggested type first
     choices = []
     for commit_type in CommitType:
+        # Add (suggested) tag for the suggested type
+        name = (f"{commit_type.value} (suggested)" 
+               if commit_type == suggested_type 
+               else commit_type.value)
         choice = {
-            'name': f"{commit_type.value}",
+            'name': name,
             'value': commit_type,
-            'checked': commit_type == suggested_type
+            'checked': False  # Don't pre-select any option
         }
         if commit_type == suggested_type:
-            choices.insert(0, choice)
+            choices.insert(0, choice)  # Put suggested type at the top
         else:
             choices.append(choice)
     
     if config.verbose:
         debug_print(config, f"Suggested commit type: {suggested_type.value}")
     
-    selected = questionary.select(
-        "Select commit type (↑↓ to move, enter to select):",
+    style = questionary.Style([
+        ('qmark', 'fg:yellow bold'),
+        ('question', 'bold'),
+        ('pointer', 'fg:yellow bold'),
+        ('highlighted', 'fg:yellow bold'),
+        ('selected', 'fg:green bold'),
+        ('answer', 'fg:green bold'),
+        ('instruction', 'fg:yellow'),
+        ('checkbox-selected', 'fg:green bold'),
+    ])
+
+    def validate_single_selection(selection):
+        """Validate that exactly one item is selected."""
+        if len(selection) != 1:
+            return "Please select exactly one commit type"
+        return True
+
+    selected = questionary.checkbox(
+        "Select commit type (space to select, enter to confirm):",
         choices=choices,
-        style=questionary.Style([
-            ('qmark', 'fg:yellow bold'),
-            ('question', 'bold'),
-            ('pointer', 'fg:yellow bold'),
-            ('highlighted', 'fg:yellow bold'),
-            ('selected', 'fg:green'),
-        ])
+        style=style,
+        instruction=" (suggested type in green)",
+        validate=validate_single_selection
     ).ask()
     
-    return selected
+    if not selected or len(selected) != 1:
+        raise GitError("No commit type selected.")
+    
+    return selected[0]
 
 @click.command()
 @click.option('-a', '--add', help="Add specified file(s). If not specified, shows interactive file selection.")
@@ -446,9 +466,11 @@ def main(add: Optional[str], message: Optional[str], branch: Optional[str],
     except GitError as e:
         rprint(f"[bold red]Error:[/bold red] {e}")
         sys.exit(1)
-    except KeyboardInterrupt:
-        rprint("\n[yellow]Operation cancelled by user.[/yellow]")
-        sys.exit(1)
+    except (KeyboardInterrupt, EOFError):
+        # Handle both CTRL+C and CTRL+D gracefully
+        print()  # Add a newline for cleaner output
+        rprint("[yellow]Operation cancelled by user.[/yellow]")
+        sys.exit(0)  # Exit with success code since this is a user-initiated cancellation
 
 if __name__ == "__main__":
     main() 

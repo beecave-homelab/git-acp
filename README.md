@@ -4,7 +4,7 @@ A Python tool to automate Git add, commit, and push actions with optional AI-gen
 
 ## Versions
 
-**Current version**: 0.6.1
+**Current version**: 0.7.0
 
 ## Table of Contents
 
@@ -20,7 +20,7 @@ A Python tool to automate Git add, commit, and push actions with optional AI-gen
 ## Badges
 
 ![Python](https://img.shields.io/badge/python-3.6%2B-blue)
-![Version](https://img.shields.io/badge/version-0.6.0-brightgreen)
+![Version](https://img.shields.io/badge/version-0.7.0-brightgreen)
 ![License](https://img.shields.io/badge/license-MIT-green)
 
 ## Features
@@ -62,7 +62,11 @@ A Python tool to automate Git add, commit, and push actions with optional AI-gen
 2. Install git-acp:
 
     ```bash
-    pipx install git+https://github.com/beecave-homelab/git-acp.git
+    # Install from GitHub
+    pipx install "git+https://github.com/beecave-homelab/git-acp.git"
+
+    # Or install from local directory (if you've cloned the repo)
+    pipx install .
     ```
 
 The command `git-acp` will now be available globally in your system.
