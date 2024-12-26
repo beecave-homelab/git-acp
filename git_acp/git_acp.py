@@ -1,7 +1,15 @@
 #!/usr/bin/env python3
 
 """
-Script Description: This script automates Git add, commit, and push actions with optional AI-generated commit messages using Ollama.
+Git Add-Commit-Push (git-acp) automation tool.
+
+This module provides a command-line interface for automating Git operations with enhanced features:
+- Interactive file selection for staging
+- AI-powered commit message generation using Ollama
+- Smart commit type classification
+- Conventional commits format support
+- Rich terminal output with progress indicators
+
 Author: elvee
 Version: 0.8.0
 License: MIT
@@ -11,7 +19,7 @@ Last Modified: 21-12-2024
 
 import subprocess
 import sys
-from typing import Optional, List, Tuple, Set
+from typing import Optional, List, Tuple, Set, Dict, Any, Union
 from dataclasses import dataclass
 from enum import Enum
 import click
@@ -48,7 +56,17 @@ class CommitType(Enum):
 
 @dataclass
 class GitConfig:
-    """Configuration class for git operations."""
+    """
+    Configuration class for git operations.
+    
+    Attributes:
+        files: Files to be added to git staging. Defaults to "." for all files.
+        message: Commit message to use. Defaults to "Automated commit".
+        branch: Target branch for push operation. If None, uses current branch.
+        use_ollama: Whether to use Ollama AI for commit message generation.
+        skip_confirmation: Whether to skip confirmation prompts.
+        verbose: Whether to show debug information.
+    """
     files: str = "."
     message: str = "Automated commit"
     branch: Optional[str] = None
@@ -88,12 +106,26 @@ def run_git_command(command: List[str]) -> Tuple[str, str]:
         raise GitError(f"Failed to execute git command: {e}")
 
 def get_current_branch() -> str:
-    """Get the name of the current git branch."""
+    """
+    Get the name of the current git branch.
+    
+    Returns:
+        str: Name of the current branch
+        
+    Raises:
+        GitError: If unable to determine current branch
+    """
     stdout, _ = run_git_command(["git", "rev-parse", "--abbrev-ref", "HEAD"])
     return stdout
 
 def debug_print(config: GitConfig, message: str) -> None:
-    """Print debug message if verbose mode is enabled."""
+    """
+    Print debug message if verbose mode is enabled.
+    
+    Args:
+        config: GitConfig instance containing configuration options
+        message: Debug message to print
+    """
     if config.verbose:
         rprint(f"[yellow]Debug: {message}[/yellow]")
 
@@ -215,25 +247,63 @@ def format_commit_message(commit_type: CommitType, message: str) -> str:
     return f"{commit_type.value}: {title}\n\n{description}".strip()
 
 def git_add(files: str) -> None:
-    """Add files to git staging."""
+    """
+    Add files to git staging area.
+    
+    Args:
+        files: Space-separated list of files to add or "." for all files
+        
+    Raises:
+        GitError: If the git add operation fails
+    """
     with console.status("[bold yellow]Adding files..."):
         run_git_command(["git", "add", files])
     rprint("[green]✓[/green] Files added successfully")
 
 def git_commit(message: str) -> None:
-    """Commit staged changes."""
+    """
+    Commit staged changes to the repository.
+    
+    Args:
+        message: The commit message to use, formatted according to conventional commits
+        
+    Raises:
+        GitError: If the git commit operation fails
+    """
     with console.status("[bold yellow]Committing changes..."):
         run_git_command(["git", "commit", "-m", message])
     rprint("[green]✓[/green] Changes committed successfully")
 
 def git_push(branch: str) -> None:
-    """Push changes to remote repository."""
+    """
+    Push committed changes to the remote repository.
+    
+    Args:
+        branch: The name of the branch to push to
+        
+    Raises:
+        GitError: If the git push operation fails or remote is not accessible
+    """
     with console.status(f"[bold yellow]Pushing to {branch}..."):
         run_git_command(["git", "push", "origin", branch])
     rprint("[green]✓[/green] Changes pushed successfully")
 
 def get_changed_files(config: GitConfig) -> Set[str]:
-    """Get list of changed files from git status."""
+    """
+    Get list of changed files from git status.
+    
+    This function retrieves both staged and unstaged changes, excluding certain
+    patterns like __pycache__ and compiled Python files.
+    
+    Args:
+        config: GitConfig instance containing configuration options
+        
+    Returns:
+        Set[str]: Set of file paths that have been modified
+        
+    Raises:
+        GitError: If unable to get git status
+    """
     # Get both staged and unstaged changes in porcelain format
     stdout_staged, _ = run_git_command(["git", "status", "--porcelain", "-uall"])
     
@@ -241,35 +311,38 @@ def get_changed_files(config: GitConfig) -> Set[str]:
     exclude_patterns = ['__pycache__', '.pyc', '.pyo', '.pyd']
     
     def process_status_line(line: str) -> Optional[str]:
-        """Process a single status line and return the filename if valid."""
+        """
+        Process a single git status line and extract the filename.
+        
+        Args:
+            line: A line from git status --porcelain output
+            
+        Returns:
+            Optional[str]: The processed filename if valid, None otherwise
+            
+        Notes:
+            The format of each line is: XY FILENAME
+            where X is the status of the index and Y is the status of the working tree
+        """
         if not line.strip():
             return None
             
-        # The format is: XY FILENAME
-        # where X is the status of the index and Y is the status of the working tree
         status = line[:2]
-        # Include both staged and unstaged changes
-        # Skip only completely untracked files (marked with ??)
         if status == "??":
             return None
             
-        # Split the line into status and path parts
         parts = line.split(maxsplit=1)
         if len(parts) < 2:
             return None
             
-        # Get the complete path
         path = parts[1].strip()
         
-        # Handle renamed files (format: "old -> new")
         if " -> " in path:
             _, new_path = path.split(" -> ")
             path = new_path
             
-        # Clean up the path (remove quotes if present)
         path = path.strip().strip('"')
         
-        # Skip excluded patterns
         if any(pat in path for pat in exclude_patterns):
             return None
             
@@ -291,7 +364,15 @@ def get_changed_files(config: GitConfig) -> Set[str]:
     return files
 
 def unstage_files() -> None:
-    """Unstage all staged changes."""
+    """
+    Unstage all staged changes.
+    
+    This function is typically called when an operation is cancelled or fails,
+    to restore the git staging area to its previous state.
+    
+    Raises:
+        GitError: If unable to unstage files
+    """
     try:
         run_git_command(["git", "reset", "HEAD"])
         rprint("[yellow]Staged changes have been reset.[/yellow]")
@@ -386,8 +467,16 @@ def select_commit_type(config: GitConfig, suggested_type: CommitType) -> CommitT
         ('checkbox-selected', 'fg:green bold'),
     ])
 
-    def validate_single_selection(selection):
-        """Validate that exactly one item is selected."""
+    def validate_single_selection(selection: List[Any]) -> Union[bool, str]:
+        """
+        Validate that exactly one item is selected from a list.
+        
+        Args:
+            selection: List of selected items
+            
+        Returns:
+            Union[bool, str]: True if valid, error message string if invalid
+        """
         if len(selection) != 1:
             return "Please select exactly one commit type"
         return True
