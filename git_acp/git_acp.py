@@ -234,8 +234,8 @@ def git_push(branch: str) -> None:
 
 def get_changed_files(config: GitConfig) -> Set[str]:
     """Get list of changed files from git status."""
-    # Get all changes in porcelain format
-    stdout, _ = run_git_command(["git", "status", "--porcelain", "-uall"])
+    # Get both staged and unstaged changes in porcelain format
+    stdout_staged, _ = run_git_command(["git", "status", "--porcelain", "-uall"])
     
     files = set()
     exclude_patterns = ['__pycache__', '.pyc', '.pyo', '.pyd']
@@ -248,7 +248,8 @@ def get_changed_files(config: GitConfig) -> Set[str]:
         # The format is: XY FILENAME
         # where X is the status of the index and Y is the status of the working tree
         status = line[:2]
-        # Skip untracked files (marked with ??)
+        # Include both staged and unstaged changes
+        # Skip only completely untracked files (marked with ??)
         if status == "??":
             return None
             
@@ -275,11 +276,12 @@ def get_changed_files(config: GitConfig) -> Set[str]:
         if config.verbose:
             debug_print(config, f"Processing line: '{line}'")
             debug_print(config, f"Extracted path: '{path}'")
+            debug_print(config, f"Status: '{status}'")
         
         return path
     
     # Process all status lines
-    for line in stdout.split('\n'):
+    for line in stdout_staged.split('\n'):
         if path := process_status_line(line):
             files.add(path)
     
@@ -287,6 +289,14 @@ def get_changed_files(config: GitConfig) -> Set[str]:
         debug_print(config, f"Found files: {files}")
     
     return files
+
+def unstage_files() -> None:
+    """Unstage all staged changes."""
+    try:
+        run_git_command(["git", "reset", "HEAD"])
+        rprint("[yellow]Staged changes have been reset.[/yellow]")
+    except GitError as e:
+        rprint(f"[yellow]Warning: Failed to unstage changes: {e}[/yellow]")
 
 def select_files(files: Set[str]) -> str:
     """
@@ -434,43 +444,50 @@ def main(add: Optional[str], message: Optional[str], branch: Optional[str],
         # Add files first
         git_add(config.files)
 
-        if config.use_ollama:
-            config.message = generate_commit_message_with_ollama(config)
+        try:
+            if config.use_ollama:
+                config.message = generate_commit_message_with_ollama(config)
 
-        if not config.message:
-            raise GitError("No commit message provided.")
+            if not config.message:
+                raise GitError("No commit message provided.")
 
-        # Get suggested commit type
-        suggested_type = (CommitType.from_str(commit_type) if commit_type 
-                        else classify_commit_type(config, get_git_diff(config)))
-        
-        # Let user select commit type
-        selected_type = select_commit_type(config, suggested_type)
-        formatted_message = format_commit_message(selected_type, config.message)
+            # Get suggested commit type
+            suggested_type = (CommitType.from_str(commit_type) if commit_type 
+                            else classify_commit_type(config, get_git_diff(config)))
+            
+            # Let user select commit type
+            selected_type = select_commit_type(config, suggested_type)
+            formatted_message = format_commit_message(selected_type, config.message)
 
-        if not config.skip_confirmation:
-            rprint(Panel.fit(
-                formatted_message,
-                title="[bold yellow]Commit Message[/bold yellow]",
-                border_style="yellow"
-            ))
-            if not Confirm.ask("Do you want to proceed?"):
-                rprint("[yellow]Operation cancelled.[/yellow]")
-                return
+            if not config.skip_confirmation:
+                rprint(Panel.fit(
+                    formatted_message,
+                    title="[bold yellow]Commit Message[/bold yellow]",
+                    border_style="yellow"
+                ))
+                if not Confirm.ask("Do you want to proceed?"):
+                    unstage_files()
+                    rprint("[yellow]Operation cancelled.[/yellow]")
+                    return
 
-        git_commit(formatted_message)
-        git_push(config.branch)
+            git_commit(formatted_message)
+            git_push(config.branch)
 
-        rprint("\n[bold green]🎉 All operations completed successfully![/bold green]")
+            rprint("\n[bold green]🎉 All operations completed successfully![/bold green]")
+
+        except (KeyboardInterrupt, EOFError, GitError) as e:
+            # Unstage files before exiting
+            unstage_files()
+            if isinstance(e, GitError):
+                raise
+            # Handle both CTRL+C and CTRL+D gracefully
+            print()  # Add a newline for cleaner output
+            rprint("[yellow]Operation cancelled by user.[/yellow]")
+            sys.exit(0)  # Exit with success code since this is a user-initiated cancellation
 
     except GitError as e:
         rprint(f"[bold red]Error:[/bold red] {e}")
         sys.exit(1)
-    except (KeyboardInterrupt, EOFError):
-        # Handle both CTRL+C and CTRL+D gracefully
-        print()  # Add a newline for cleaner output
-        rprint("[yellow]Operation cancelled by user.[/yellow]")
-        sys.exit(0)  # Exit with success code since this is a user-initiated cancellation
 
 if __name__ == "__main__":
-    main() 
+    main(add=None, message=None, branch=None, ollama=False, no_confirm=False, commit_type=None, verbose=False) 
