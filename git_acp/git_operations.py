@@ -132,10 +132,6 @@ def get_changed_files(config) -> Set[str]:
         if not line.strip():
             return None
             
-        status = line[:2]
-        if status == "??":
-            return None
-            
         parts = line.split(maxsplit=1)
         if len(parts) < 2:
             return None
@@ -154,7 +150,7 @@ def get_changed_files(config) -> Set[str]:
         if config.verbose:
             rprint(f"[yellow]Debug: Processing line: '{line}'[/yellow]")
             rprint(f"[yellow]Debug: Extracted path: '{path}'[/yellow]")
-            rprint(f"[yellow]Debug: Status: '{status}'[/yellow]")
+            rprint(f"[yellow]Debug: Status: '{line[:2]}'[/yellow]")
         
         return path
     
