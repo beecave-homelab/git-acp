@@ -1,7 +1,11 @@
 """AI utilities module for git-acp package."""
 
 import subprocess
-from git_acp.git_operations import GitError, run_git_command
+import json
+from git_acp.git_operations import (
+    GitError, run_git_command, get_recent_commits,
+    analyze_commit_patterns, find_related_commits
+)
 from rich.console import Console
 
 console = Console()
@@ -29,6 +33,45 @@ def generate_commit_message_with_ollama(config) -> str:
             if not stdout:
                 raise GitError("No changes detected to generate commit message from.")
             
+            # Get commit history context
+            recent_commits = get_recent_commits(5)  # Get 5 most recent commits
+            patterns = analyze_commit_patterns()
+            related_commits = find_related_commits(stdout, 3)  # Find 3 most relevant commits
+            
+            # Prepare context for the model
+            context = {
+                "diff": stdout,
+                "recent_commits": recent_commits,
+                "commit_patterns": {
+                    "types": dict(patterns['commit_types']),
+                    "typical_length": dict(patterns['message_length']),
+                },
+                "related_commits": related_commits
+            }
+            
+            # Create a prompt that includes the context
+            prompt = f"""Based on the following context, generate a concise and descriptive commit message:
+
+1. Changes made (git diff):
+{context['diff']}
+
+2. Recent commit messages for context:
+{json.dumps([c['message'] for c in context['recent_commits']], indent=2)}
+
+3. Common commit patterns in this repository:
+- Most used commit types: {json.dumps(dict(list(context['commit_patterns']['types'].items())[:3]), indent=2)}
+- Typical message length: {list(context['commit_patterns']['typical_length'].keys())[0]} characters
+
+4. Related commits to these changes:
+{json.dumps([c['message'] for c in context['related_commits']], indent=2)}
+
+Generate a commit message that:
+1. Follows the existing commit message style
+2. Is consistent with the repository's patterns
+3. References related work if relevant
+4. Is concise but descriptive
+"""
+            
             process = subprocess.Popen(
                 ["ollama", "run", "mevatron/diffsense:1.5b"],
                 stdin=subprocess.PIPE,
@@ -36,7 +79,7 @@ def generate_commit_message_with_ollama(config) -> str:
                 stderr=subprocess.PIPE,
                 text=True
             )
-            stdout, stderr = process.communicate(input=stdout)
+            stdout, stderr = process.communicate(input=prompt)
             if process.returncode != 0:
                 raise GitError(f"Ollama failed: {stderr}")
             return stdout.strip()
