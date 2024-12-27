@@ -1,9 +1,10 @@
 """Git operations module for git-acp package."""
 
 import subprocess
-from typing import Set, Tuple
+from typing import Set, Tuple, List, Dict
 from rich import print as rprint
 from rich.console import Console
+from collections import Counter
 
 console = Console()
 
@@ -178,3 +179,147 @@ def unstage_files() -> None:
         run_git_command(["git", "reset", "HEAD"])
     except GitError as e:
         rprint(f"[yellow]Warning: Failed to unstage changes: {e}[/yellow]") 
+
+def get_recent_commits(num_commits: int = 10) -> List[Dict[str, str]]:
+    """
+    Get recent commit messages and metadata.
+    
+    Args:
+        num_commits: Number of recent commits to retrieve
+        
+    Returns:
+        List[Dict[str, str]]: List of commit dictionaries with 'hash', 'message', 
+                             'author', and 'date' keys
+        
+    Raises:
+        GitError: If unable to get commit history
+    """
+    try:
+        format_str = "--pretty=format:%H%n%s%n%an%n%ad%n---%n"
+        stdout, _ = run_git_command(["git", "log", "-n", str(num_commits), format_str])
+        
+        commits = []
+        current_commit = {}
+        
+        for line in stdout.split('\n'):
+            if line == "---":
+                if current_commit:
+                    commits.append(current_commit)
+                    current_commit = {}
+                continue
+                
+            if not current_commit:
+                current_commit['hash'] = line
+            elif 'message' not in current_commit:
+                current_commit['message'] = line
+            elif 'author' not in current_commit:
+                current_commit['author'] = line
+            elif 'date' not in current_commit:
+                current_commit['date'] = line
+        
+        if current_commit:
+            commits.append(current_commit)
+            
+        return commits
+    except GitError as e:
+        raise GitError(f"Failed to get commit history: {e}")
+
+def analyze_commit_patterns() -> Dict[str, Counter]:
+    """
+    Analyze patterns in recent commits.
+    
+    Returns:
+        Dict[str, Counter]: Dictionary containing frequency analysis of:
+            - commit_types: Types of commits (feat, fix, etc.)
+            - message_length: Typical message lengths
+            - authors: Commit authors
+            
+    Raises:
+        GitError: If unable to analyze commits
+    """
+    try:
+        commits = get_recent_commits(50)  # Analyze last 50 commits
+        
+        patterns = {
+            'commit_types': Counter(),
+            'message_length': Counter(),
+            'authors': Counter()
+        }
+        
+        for commit in commits:
+            # Analyze commit type
+            message = commit['message']
+            if ': ' in message:
+                commit_type = message.split(': ')[0]
+                patterns['commit_types'][commit_type] += 1
+            
+            # Analyze message length
+            length_category = len(message) // 10 * 10  # Group by tens
+            patterns['message_length'][length_category] += 1
+            
+            # Count author contributions
+            patterns['authors'][commit['author']] += 1
+        
+        return patterns
+    except GitError as e:
+        raise GitError(f"Failed to analyze commit patterns: {e}")
+
+def find_related_commits(diff_content: str, num_commits: int = 5) -> List[Dict[str, str]]:
+    """
+    Find commits related to the current changes.
+    
+    Args:
+        diff_content: Content of the current diff
+        num_commits: Maximum number of related commits to return
+        
+    Returns:
+        List[Dict[str, str]]: List of related commit dictionaries
+        
+    Raises:
+        GitError: If unable to find related commits
+    """
+    try:
+        # Get file paths from the diff
+        files = set()
+        for line in diff_content.split('\n'):
+            if line.startswith('+++ b/') or line.startswith('--- a/'):
+                file_path = line[6:]
+                if file_path != '/dev/null':
+                    files.add(file_path)
+        
+        if not files:
+            return []
+        
+        # Find commits that modified these files
+        related_commits = []
+        for file_path in files:
+            format_str = "--pretty=format:%H%n%s%n%an%n%ad%n---%n"
+            stdout, _ = run_git_command([
+                "git", "log", "-n", str(num_commits),
+                "--follow", format_str, "--", file_path
+            ])
+            
+            current_commit = {}
+            for line in stdout.split('\n'):
+                if line == "---":
+                    if current_commit:
+                        if current_commit not in related_commits:
+                            related_commits.append(current_commit)
+                        current_commit = {}
+                    continue
+                    
+                if not current_commit:
+                    current_commit['hash'] = line
+                elif 'message' not in current_commit:
+                    current_commit['message'] = line
+                elif 'author' not in current_commit:
+                    current_commit['author'] = line
+                elif 'date' not in current_commit:
+                    current_commit['date'] = line
+            
+            if current_commit and current_commit not in related_commits:
+                related_commits.append(current_commit)
+        
+        return related_commits[:num_commits]
+    except GitError as e:
+        raise GitError(f"Failed to find related commits: {e}") 
