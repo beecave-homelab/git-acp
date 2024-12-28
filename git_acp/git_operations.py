@@ -2,12 +2,12 @@
 
 import subprocess
 from typing import Set, Tuple, List, Dict
-from rich import print as rprint
-from rich.console import Console
 from collections import Counter
 import json
-
-console = Console()
+from git_acp.formatting import (
+    debug_header, debug_item, debug_json, debug_preview,
+    status, success, warning
+)
 
 class GitError(Exception):
     """Custom exception for git-related errors."""
@@ -29,7 +29,7 @@ def run_git_command(command: list[str], config = None) -> Tuple[str, str]:
     """
     try:
         if config and config.verbose:
-            rprint(f"[yellow]Debug - Running git command: {' '.join(command)}[/yellow]")
+            debug_item("Running git command", ' '.join(command))
         process = subprocess.Popen(
             command,
             stdout=subprocess.PIPE,
@@ -40,7 +40,7 @@ def run_git_command(command: list[str], config = None) -> Tuple[str, str]:
         if process.returncode != 0:
             raise GitError(f"Command failed: {stderr}")
         if config and config.verbose and stdout.strip():
-            rprint(f"[yellow]Debug - Command output: {stdout.strip()}[/yellow]")
+            debug_item("Command output", stdout.strip())
         return stdout.strip(), stderr.strip()
     except Exception as e:
         raise GitError(f"Failed to execute git command: {e}")
@@ -60,7 +60,7 @@ def get_current_branch(config = None) -> str:
     """
     stdout, _ = run_git_command(["git", "rev-parse", "--abbrev-ref", "HEAD"], config)
     if config and config.verbose:
-        rprint(f"[yellow]Debug - Current branch: {stdout}[/yellow]")
+        debug_item("Current branch", stdout)
     return stdout
 
 def git_add(files: str, config = None) -> None:
@@ -75,10 +75,10 @@ def git_add(files: str, config = None) -> None:
         GitError: If the git add operation fails
     """
     if config and config.verbose:
-        rprint(f"[yellow]Debug - Adding files to staging area: {files}[/yellow]")
-    with console.status("[bold yellow]Adding files..."):
+        debug_item("Adding files to staging area", files)
+    with status("Adding files..."):
         run_git_command(["git", "add", files], config)
-    rprint("[green]✓[/green] Files added successfully")
+    success("Files added successfully")
 
 def git_commit(message: str, config = None) -> None:
     """
@@ -92,10 +92,10 @@ def git_commit(message: str, config = None) -> None:
         GitError: If the git commit operation fails
     """
     if config and config.verbose:
-        rprint(f"[yellow]Debug - Committing with message: {message}[/yellow]")
-    with console.status("[bold yellow]Committing changes..."):
+        debug_item("Committing with message", message)
+    with status("Committing changes..."):
         run_git_command(["git", "commit", "-m", message], config)
-    rprint("[green]✓[/green] Changes committed successfully")
+    success("Changes committed successfully")
 
 def git_push(branch: str, config = None) -> None:
     """
@@ -109,10 +109,10 @@ def git_push(branch: str, config = None) -> None:
         GitError: If the git push operation fails or remote is not accessible
     """
     if config and config.verbose:
-        rprint(f"[yellow]Debug - Pushing to branch: {branch}[/yellow]")
-    with console.status(f"[bold yellow]Pushing to {branch}..."):
+        debug_item("Pushing to branch", branch)
+    with status(f"Pushing to {branch}..."):
         run_git_command(["git", "push", "origin", branch], config)
-    rprint("[green]✓[/green] Changes pushed successfully")
+    success("Changes pushed successfully")
 
 def get_changed_files(config) -> Set[str]:
     """
@@ -130,8 +130,11 @@ def get_changed_files(config) -> Set[str]:
     Raises:
         GitError: If unable to get git status
     """
+    if config.verbose:
+        debug_header("Getting changed files")
+    
     # Get both staged and unstaged changes in porcelain format
-    stdout_staged, _ = run_git_command(["git", "status", "--porcelain", "-uall"])
+    stdout_staged, _ = run_git_command(["git", "status", "--porcelain", "-uall"], config)
     
     files = set()
     exclude_patterns = ['__pycache__', '.pyc', '.pyo', '.pyd']
@@ -169,9 +172,9 @@ def get_changed_files(config) -> Set[str]:
             return None
             
         if config.verbose:
-            rprint(f"[yellow]Debug: Processing line: '{line}'[/yellow]")
-            rprint(f"[yellow]Debug: Extracted path: '{path}'[/yellow]")
-            rprint(f"[yellow]Debug: Status: '{line[:2]}'[/yellow]")
+            debug_item("Processing line", line)
+            debug_item("Extracted path", path)
+            debug_item("Status", line[:2])
         
         return path
     
@@ -181,7 +184,7 @@ def get_changed_files(config) -> Set[str]:
             files.add(path)
     
     if config.verbose:
-        rprint(f"[yellow]Debug: Found files: {files}[/yellow]")
+        debug_item("Found files", str(files))
     
     return files
 
@@ -200,10 +203,10 @@ def unstage_files(config = None) -> None:
     """
     try:
         if config and config.verbose:
-            rprint("[yellow]Debug - Unstaging all files[/yellow]")
+            debug_header("Unstaging all files")
         run_git_command(["git", "reset", "HEAD"], config)
     except GitError as e:
-        rprint(f"[yellow]Warning: Failed to unstage changes: {e}[/yellow]")
+        warning(f"Failed to unstage changes: {e}")
 
 def get_recent_commits(num_commits: int = 10, config = None) -> List[Dict[str, str]]:
     """
@@ -222,7 +225,7 @@ def get_recent_commits(num_commits: int = 10, config = None) -> List[Dict[str, s
     """
     try:
         if config and config.verbose:
-            rprint(f"[yellow]Debug - Retrieving {num_commits} recent commits[/yellow]")
+            debug_item("Retrieving recent commits", str(num_commits))
         format_str = "--pretty=format:%H%n%s%n%an%n%ad%n---%n"
         stdout, _ = run_git_command(["git", "log", "-n", str(num_commits), format_str], config)
         
@@ -234,7 +237,7 @@ def get_recent_commits(num_commits: int = 10, config = None) -> List[Dict[str, s
                 if current_commit:
                     commits.append(current_commit)
                     if config and config.verbose:
-                        rprint(f"[yellow]Debug - Found commit: {json.dumps(current_commit)}[/yellow]")
+                        debug_item("Found commit", json.dumps(current_commit))
                     current_commit = {}
                 continue
                 
@@ -250,7 +253,7 @@ def get_recent_commits(num_commits: int = 10, config = None) -> List[Dict[str, s
         if current_commit:
             commits.append(current_commit)
             if config and config.verbose:
-                rprint(f"[yellow]Debug - Found commit: {json.dumps(current_commit)}[/yellow]")
+                debug_item("Found commit", json.dumps(current_commit))
             
         return commits
     except GitError as e:
@@ -274,8 +277,8 @@ def analyze_commit_patterns(config = None) -> Dict[str, Counter]:
     """
     try:
         if config and config.verbose:
-            rprint("[yellow]Debug - Analyzing commit patterns[/yellow]")
-        commits = get_recent_commits(50, config)  # Analyze last 50 commits
+            debug_header("Analyzing commit patterns")
+        commits = get_recent_commits(5, config)  # Analyze last 5 commits
         
         patterns = {
             'commit_types': Counter(),
@@ -290,7 +293,7 @@ def analyze_commit_patterns(config = None) -> Dict[str, Counter]:
                 commit_type = message.split(': ')[0]
                 patterns['commit_types'][commit_type] += 1
                 if config and config.verbose:
-                    rprint(f"[yellow]Debug - Found commit type: {commit_type}[/yellow]")
+                    debug_item("Found commit type", commit_type)
             
             # Analyze message length
             length_category = len(message) // 10 * 10  # Group by tens
@@ -300,7 +303,8 @@ def analyze_commit_patterns(config = None) -> Dict[str, Counter]:
             patterns['authors'][commit['author']] += 1
         
         if config and config.verbose:
-            rprint(f"[yellow]Debug - Commit patterns: {json.dumps(dict(patterns), indent=2)}[/yellow]")
+            debug_header("Commit patterns:")
+            debug_json(dict(patterns))
         
         return patterns
     except GitError as e:
@@ -365,8 +369,9 @@ def find_related_commits(diff_content: str, num_commits: int = 5, config = None)
                 related_commits.append(current_commit.copy())
         
         # Only print debug info in verbose mode
-        if config.verbose:
-            rprint(f"[yellow]Debug - Related commits found: {json.dumps(related_commits, indent=2)}[/yellow]")
+        if config and config.verbose:
+            debug_header("Related commits found:")
+            debug_json(related_commits)
         
         return related_commits[:num_commits]
     except GitError as e:
