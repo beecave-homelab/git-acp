@@ -1,7 +1,7 @@
 """AI utilities module for git-acp package."""
 
-import subprocess
 import json
+from ollama import chat, ChatResponse
 from git_acp.git_operations import (
     GitError, run_git_command, get_recent_commits,
     analyze_commit_patterns, find_related_commits
@@ -72,16 +72,14 @@ Generate a commit message that:
 4. Is concise but descriptive
 """
             
-            process = subprocess.Popen(
-                ["ollama", "run", "mevatron/diffsense:1.5b"],
-                stdin=subprocess.PIPE,
-                stdout=subprocess.PIPE,
-                stderr=subprocess.PIPE,
-                text=True
-            )
-            stdout, stderr = process.communicate(input=prompt)
-            if process.returncode != 0:
-                raise GitError(f"Ollama failed: {stderr}")
-            return stdout.strip()
-    except (subprocess.SubprocessError, GitError) as e:
+            try:
+                response: ChatResponse = chat(
+                    model='mevatron/diffsense:1.5b',
+                    messages=[{'role': 'user', 'content': prompt}]
+                )
+                return response.message.content.strip()
+            except Exception as e:
+                raise GitError(f"Ollama failed: {str(e)}")
+            
+    except GitError as e:
         raise GitError(f"Failed to generate commit message: {e}") 
