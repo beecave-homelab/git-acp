@@ -5,6 +5,7 @@ from typing import Set, Tuple, List, Dict
 from rich import print as rprint
 from rich.console import Console
 from collections import Counter
+import json
 
 console = Console()
 
@@ -264,13 +265,14 @@ def analyze_commit_patterns() -> Dict[str, Counter]:
     except GitError as e:
         raise GitError(f"Failed to analyze commit patterns: {e}")
 
-def find_related_commits(diff_content: str, num_commits: int = 5) -> List[Dict[str, str]]:
+def find_related_commits(diff_content: str, num_commits: int = 5, config = None) -> List[Dict[str, str]]:
     """
     Find commits related to the current changes.
     
     Args:
         diff_content: Content of the current diff
         num_commits: Maximum number of related commits to return
+        config: Configuration object with verbose flag
         
     Returns:
         List[Dict[str, str]]: List of related commit dictionaries
@@ -302,10 +304,10 @@ def find_related_commits(diff_content: str, num_commits: int = 5) -> List[Dict[s
             current_commit = {}
             for line in stdout.split('\n'):
                 if line == "---":
-                    if current_commit:
+                    if current_commit and len(current_commit) == 4:  # Make sure we have all fields
                         if current_commit not in related_commits:
-                            related_commits.append(current_commit)
-                        current_commit = {}
+                            related_commits.append(current_commit.copy())  # Use copy to avoid reference issues
+                    current_commit = {}
                     continue
                     
                 if not current_commit:
@@ -317,8 +319,13 @@ def find_related_commits(diff_content: str, num_commits: int = 5) -> List[Dict[s
                 elif 'date' not in current_commit:
                     current_commit['date'] = line
             
-            if current_commit and current_commit not in related_commits:
-                related_commits.append(current_commit)
+            # Handle the last commit if it wasn't followed by a separator
+            if current_commit and len(current_commit) == 4 and current_commit not in related_commits:
+                related_commits.append(current_commit.copy())
+        
+        # Only print debug info in verbose mode
+        if config.verbose:
+            rprint(f"[yellow]Debug - Related commits found: {json.dumps(related_commits, indent=2)}[/yellow]")
         
         return related_commits[:num_commits]
     except GitError as e:
