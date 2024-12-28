@@ -29,7 +29,7 @@ setup(
     python_requires=">=3.6",
     entry_points={
         "console_scripts": [
-            "git-acp=git_acp.git_acp:main",
+            "git-acp=git_acp.cli:main",
         ],
     },
     install_requires=[
@@ -38,4 +38,4 @@ setup(
         "questionary>=1.10.0",
         "typing;python_version<'3.7'",
     ],
-) 
+)
