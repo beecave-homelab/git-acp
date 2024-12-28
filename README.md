@@ -4,7 +4,7 @@ A Python tool to automate Git add, commit, and push actions with optional AI-gen
 
 ## Versions
 
-**Current version**: 0.9.1
+**Current version**: 0.9.2
 
 ## Table of Contents
 
@@ -20,7 +20,7 @@ A Python tool to automate Git add, commit, and push actions with optional AI-gen
 ## Badges
 
 ![Python](https://img.shields.io/badge/python-3.6%2B-blue)
-![Version](https://img.shields.io/badge/version-0.9.1-brightgreen)
+![Version](https://img.shields.io/badge/version-0.9.2-brightgreen)
 ![License](https://img.shields.io/badge/license-MIT-green)
 
 ## Features

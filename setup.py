@@ -5,7 +5,7 @@ with open("README.md", "r", encoding="utf-8") as fh:
 
 setup(
     name="git-acp",
-    version="0.9.1",
+    version="0.9.2",
     author="elvee",
     author_email="",
     description="A tool to automate Git add, commit, and push with AI-powered commit messages",
@@ -29,7 +29,7 @@ setup(
     python_requires=">=3.6",
     entry_points={
         "console_scripts": [
-            "git-acp=git_acp.git_acp:main",
+            "git-acp=git_acp.cli:main",
         ],
     },
     install_requires=[
@@ -38,4 +38,4 @@ setup(
         "questionary>=1.10.0",
         "typing;python_version<'3.7'",
     ],
-) 
+)
