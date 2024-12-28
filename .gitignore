@@ -12,6 +12,9 @@
 !git_acp/
 !git_acp/*.py
 !git_acp/__init__.py
+!tests/
+!tests/*.py
+!tests/__init__.py
 
 # Still ignore Python-specific files even in allowed directories
 **/__pycache__/
