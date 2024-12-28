@@ -36,7 +36,11 @@ def generate_commit_message_with_ollama(config) -> str:
             # Get commit history context
             recent_commits = get_recent_commits(5)  # Get 5 most recent commits
             patterns = analyze_commit_patterns()
-            related_commits = find_related_commits(stdout, 3)  # Find 3 most relevant commits
+            related_commits = find_related_commits(stdout, 3, config)  # Find 3 most relevant commits
+            
+            # Filter out any commits that don't have all required fields
+            recent_commits = [c for c in recent_commits if all(k in c for k in ['hash', 'message', 'author', 'date'])]
+            related_commits = [c for c in related_commits if all(k in c for k in ['hash', 'message', 'author', 'date'])]
             
             # Prepare context for the model
             context = {
@@ -63,7 +67,7 @@ def generate_commit_message_with_ollama(config) -> str:
 - Typical message length: {list(context['commit_patterns']['typical_length'].keys())[0]} characters
 
 4. Related commits to these changes:
-{json.dumps([c['message'] for c in context['related_commits']], indent=2)}
+{json.dumps([c['message'] for c in context['related_commits']], indent=2) if context['related_commits'] else '[]'}
 
 Generate a commit message that:
 1. Follows the existing commit message style
