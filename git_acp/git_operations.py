@@ -36,7 +36,7 @@ def run_git_command(command: list[str]) -> Tuple[str, str]:
         if process.returncode != 0:
             raise GitError(f"Command failed: {stderr}")
         return stdout.strip(), stderr.strip()
-    except subprocess.SubprocessError as e:
+    except Exception as e:
         raise GitError(f"Failed to execute git command: {e}")
 
 def get_current_branch() -> str:
