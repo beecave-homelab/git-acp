@@ -26,16 +26,16 @@ def generate_commit_message_with_ollama(config) -> str:
     try:
         with console.status("[bold green]Generating commit message with Ollama..."):
             # Get the diff for context
-            stdout, _ = run_git_command(["git", "diff", "--staged"])
+            stdout, _ = run_git_command(["git", "diff", "--staged"], config)
             if not stdout.strip():
-                stdout, _ = run_git_command(["git", "diff"])
+                stdout, _ = run_git_command(["git", "diff"], config)
             
             if not stdout:
                 raise GitError("No changes detected to generate commit message from.")
             
             # Get commit history context
-            recent_commits = get_recent_commits(5)  # Get 5 most recent commits
-            patterns = analyze_commit_patterns()
+            recent_commits = get_recent_commits(5, config)  # Get 5 most recent commits
+            patterns = analyze_commit_patterns(config)
             related_commits = find_related_commits(stdout, 3, config)  # Find 3 most relevant commits
             
             # Filter out any commits that don't have all required fields
