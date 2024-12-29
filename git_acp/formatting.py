@@ -1,5 +1,6 @@
 """Formatting utilities for git-acp package."""
 
+import json
 from rich import print as rprint
 from rich.console import Console
 
@@ -43,7 +44,4 @@ def warning(message: str) -> None:
 
 def status(message: str) -> Console.status:
     """Create a status context with the given message."""
-    return console.status(f"[{STATUS_COLOR}]{message}")
-
-# Import json here to avoid circular imports since it's only used in debug_json
-import json 
+    return console.status(f"[{STATUS_COLOR}]{message}") 

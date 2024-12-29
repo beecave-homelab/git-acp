@@ -1,6 +1,7 @@
 """AI utilities module for git-acp package."""
 
 import json
+from typing import Dict, List, Optional, Any
 from ollama import chat, ChatResponse
 from git_acp.git_operations import (
     GitError, run_git_command, get_recent_commits,
@@ -12,7 +13,7 @@ from git_acp.formatting import (
     status, success, warning
 )
 
-def create_commit_message_prompt(context: dict, config = None) -> str:
+def create_commit_message_prompt(context: Dict[str, Any], config: Optional[Any] = None) -> str:
     """
     Create a prompt for the AI model to generate a commit message.
     
@@ -68,7 +69,7 @@ Requirements:
     
     return prompt
 
-def get_commit_context(config) -> dict:
+def get_commit_context(config: Any) -> Dict[str, Any]:
     """
     Gather git context information for commit message generation.
     
@@ -151,7 +152,7 @@ def get_commit_context(config) -> dict:
     
     return context
 
-def generate_commit_message_with_ollama(config) -> str:
+def generate_commit_message_with_ollama(config: Any) -> str:
     """
     Generate a commit message using Ollama AI.
     
