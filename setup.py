@@ -33,9 +33,11 @@ setup(
         ],
     },
     install_requires=[
+        "typing;python_version<'3.7'",
         "click>=8.0.0",
         "rich>=10.0.0",
         "questionary>=1.10.0",
-        "typing;python_version<'3.7'",
+        "ollama",
+        "tqdm",
     ],
 )
