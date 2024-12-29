@@ -1,7 +1,7 @@
 """Git operations module for git-acp package."""
 
 import subprocess
-from typing import Set, Tuple, List, Dict
+from typing import Set, Tuple, List, Dict, Optional, Any
 from collections import Counter
 import json
 from git_acp.formatting import (
@@ -13,7 +13,7 @@ class GitError(Exception):
     """Custom exception for git-related errors."""
     pass
 
-def run_git_command(command: list[str], config = None) -> Tuple[str, str]:
+def run_git_command(command: list[str], config: Optional[Any] = None) -> Tuple[str, str]:
     """
     Run a git command and return its output.
     
@@ -45,7 +45,7 @@ def run_git_command(command: list[str], config = None) -> Tuple[str, str]:
     except Exception as e:
         raise GitError(f"Failed to execute git command: {e}")
 
-def get_current_branch(config = None) -> str:
+def get_current_branch(config: Optional[Any] = None) -> str:
     """
     Get the name of the current git branch.
     
@@ -63,7 +63,7 @@ def get_current_branch(config = None) -> str:
         debug_item("Current branch", stdout)
     return stdout
 
-def git_add(files: str, config = None) -> None:
+def git_add(files: str, config: Optional[Any] = None) -> None:
     """
     Add files to git staging area.
     
@@ -80,7 +80,7 @@ def git_add(files: str, config = None) -> None:
         run_git_command(["git", "add", files], config)
     success("Files added successfully")
 
-def git_commit(message: str, config = None) -> None:
+def git_commit(message: str, config: Optional[Any] = None) -> None:
     """
     Commit staged changes to the repository.
     
@@ -97,7 +97,7 @@ def git_commit(message: str, config = None) -> None:
         run_git_command(["git", "commit", "-m", message], config)
     success("Changes committed successfully")
 
-def git_push(branch: str, config = None) -> None:
+def git_push(branch: str, config: Optional[Any] = None) -> None:
     """
     Push committed changes to the remote repository.
     
@@ -114,7 +114,7 @@ def git_push(branch: str, config = None) -> None:
         run_git_command(["git", "push", "origin", branch], config)
     success("Changes pushed successfully")
 
-def get_changed_files(config) -> Set[str]:
+def get_changed_files(config: Any) -> Set[str]:
     """
     Get list of changed files from git status.
     
