@@ -8,4 +8,4 @@ Provides a command-line tool for automating Git operations with enhanced feature
 - Conventional commits support
 """
 
-__version__ = "0.10.0" 
+__version__ = "0.10.0"
