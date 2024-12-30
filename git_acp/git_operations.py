@@ -5,8 +5,7 @@ from typing import Set, Tuple, List, Dict, Optional, Any
 from collections import Counter
 import json
 from git_acp.formatting import (
-    debug_header, debug_item, debug_json, debug_preview,
-    status, success, warning
+    debug_header, debug_item, debug_json, status, success, warning
 )
 
 class GitError(Exception):
@@ -43,7 +42,7 @@ def run_git_command(command: list[str], config: Optional[Any] = None) -> Tuple[s
             debug_item("Command output", stdout.strip())
         return stdout.strip(), stderr.strip()
     except Exception as e:
-        raise GitError(f"Failed to execute git command: {e}")
+        raise GitError(f"Failed to execute git command: {e}") from e
 
 def get_current_branch(config: Optional[Any] = None) -> str:
     """
@@ -132,13 +131,13 @@ def get_changed_files(config: Any) -> Set[str]:
     """
     if config.verbose:
         debug_header("Getting changed files")
-    
+
     # Get both staged and unstaged changes in porcelain format
     stdout_staged, _ = run_git_command(["git", "status", "--porcelain", "-uall"], config)
-    
+
     files = set()
     exclude_patterns = ['__pycache__', '.pyc', '.pyo', '.pyd']
-    
+
     def process_status_line(line: str) -> str | None:
         """
         Process a single git status line and extract the filename.
@@ -155,37 +154,37 @@ def get_changed_files(config: Any) -> Set[str]:
         """
         if not line.strip():
             return None
-            
+
         parts = line.split(maxsplit=1)
         if len(parts) < 2:
             return None
-            
+
         path = parts[1].strip()
-        
+
         if " -> " in path:
             _, new_path = path.split(" -> ")
             path = new_path
-            
+
         path = path.strip().strip('"')
-        
+
         if any(pat in path for pat in exclude_patterns):
             return None
-            
+
         if config.verbose:
             debug_item("Processing line", line)
             debug_item("Extracted path", path)
             debug_item("Status", line[:2])
-        
+
         return path
-    
+
     # Process all status lines
     for line in stdout_staged.split('\n'):
         if path := process_status_line(line):
             files.add(path)
-    
+
     if config.verbose:
         debug_item("Found files", str(files))
-    
+
     return files
 
 def unstage_files(config = None) -> None:
@@ -228,10 +227,10 @@ def get_recent_commits(num_commits: int = 10, config = None) -> List[Dict[str, s
             debug_item("Retrieving recent commits", str(num_commits))
         format_str = "--pretty=format:%H%n%s%n%an%n%ad%n---%n"
         stdout, _ = run_git_command(["git", "log", "-n", str(num_commits), format_str], config)
-        
+
         commits = []
         current_commit = {}
-        
+
         for line in stdout.split('\n'):
             if line == "---":
                 if current_commit:
@@ -240,7 +239,7 @@ def get_recent_commits(num_commits: int = 10, config = None) -> List[Dict[str, s
                         debug_item("Found commit", json.dumps(current_commit))
                     current_commit = {}
                 continue
-                
+
             if not current_commit:
                 current_commit['hash'] = line
             elif 'message' not in current_commit:
@@ -249,15 +248,15 @@ def get_recent_commits(num_commits: int = 10, config = None) -> List[Dict[str, s
                 current_commit['author'] = line
             elif 'date' not in current_commit:
                 current_commit['date'] = line
-        
+
         if current_commit:
             commits.append(current_commit)
             if config and config.verbose:
                 debug_item("Found commit", json.dumps(current_commit))
-            
+
         return commits
     except GitError as e:
-        raise GitError(f"Failed to get commit history: {e}")
+        raise GitError(f"Failed to get commit history: {e}") from e
 
 def analyze_commit_patterns(config = None) -> Dict[str, Counter]:
     """
@@ -279,13 +278,13 @@ def analyze_commit_patterns(config = None) -> Dict[str, Counter]:
         if config and config.verbose:
             debug_header("Analyzing commit patterns")
         commits = get_recent_commits(5, config)  # Analyze last 5 commits
-        
+
         patterns = {
             'commit_types': Counter(),
             'message_length': Counter(),
             'authors': Counter()
         }
-        
+
         for commit in commits:
             # Analyze commit type
             message = commit['message']
@@ -294,21 +293,21 @@ def analyze_commit_patterns(config = None) -> Dict[str, Counter]:
                 patterns['commit_types'][commit_type] += 1
                 if config and config.verbose:
                     debug_item("Found commit type", commit_type)
-            
+
             # Analyze message length
             length_category = len(message) // 10 * 10  # Group by tens
             patterns['message_length'][length_category] += 1
-            
+
             # Count author contributions
             patterns['authors'][commit['author']] += 1
-        
+
         if config and config.verbose:
             debug_header("Commit patterns:")
             debug_json(dict(patterns))
-        
+
         return patterns
     except GitError as e:
-        raise GitError(f"Failed to analyze commit patterns: {e}")
+        raise GitError(f"Failed to analyze commit patterns: {e}") from e
 
 def find_related_commits(diff_content: str, num_commits: int = 5, config = None) -> List[Dict[str, str]]:
     """
@@ -333,10 +332,10 @@ def find_related_commits(diff_content: str, num_commits: int = 5, config = None)
                 file_path = line[6:]
                 if file_path != '/dev/null':
                     files.add(file_path)
-        
+
         if not files:
             return []
-        
+
         # Find commits that modified these files
         related_commits = []
         for file_path in files:
@@ -345,16 +344,16 @@ def find_related_commits(diff_content: str, num_commits: int = 5, config = None)
                 "git", "log", "-n", str(num_commits),
                 "--follow", format_str, "--", file_path
             ])
-            
+
             current_commit = {}
             for line in stdout.split('\n'):
                 if line == "---":
-                    if current_commit and len(current_commit) == 4:  # Make sure we have all fields
+                    if current_commit and len(current_commit) == 4:
+                        # Make sure we have all fields
                         if current_commit not in related_commits:
-                            related_commits.append(current_commit.copy())  # Use copy to avoid reference issues
-                    current_commit = {}
+                            related_commits.append(current_commit.copy())
                     continue
-                    
+
                 if not current_commit:
                     current_commit['hash'] = line
                 elif 'message' not in current_commit:
@@ -363,16 +362,16 @@ def find_related_commits(diff_content: str, num_commits: int = 5, config = None)
                     current_commit['author'] = line
                 elif 'date' not in current_commit:
                     current_commit['date'] = line
-            
+
             # Handle the last commit if it wasn't followed by a separator
             if current_commit and len(current_commit) == 4 and current_commit not in related_commits:
                 related_commits.append(current_commit.copy())
-        
+
         # Only print debug info in verbose mode
         if config and config.verbose:
             debug_header("Related commits found:")
             debug_json(related_commits)
-        
+
         return related_commits[:num_commits]
     except GitError as e:
-        raise GitError(f"Failed to find related commits: {e}") 
+        raise GitError(f"Failed to find related commits: {e}") from e
