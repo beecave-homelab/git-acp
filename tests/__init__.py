@@ -1,1 +1,1 @@
-"""Tests package for git-acp.""" 
+"""Tests package for git-acp."""
