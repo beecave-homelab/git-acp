@@ -7,6 +7,11 @@ import json
 from git_acp.formatting import (
     debug_header, debug_item, debug_json, status, success, warning
 )
+from git_acp.constants import (
+    EXCLUDED_PATTERNS,
+    DEFAULT_REMOTE,
+    DEFAULT_NUM_RECENT_COMMITS
+)
 
 class GitError(Exception):
     """Custom exception for git-related errors."""
@@ -110,7 +115,7 @@ def git_push(branch: str, config: Optional[Any] = None) -> None:
     if config and config.verbose:
         debug_item("Pushing to branch", branch)
     with status(f"Pushing to {branch}..."):
-        run_git_command(["git", "push", "origin", branch], config)
+        run_git_command(["git", "push", DEFAULT_REMOTE, branch], config)
     success("Changes pushed successfully")
 
 def get_changed_files(config: Any) -> Set[str]:
@@ -136,7 +141,7 @@ def get_changed_files(config: Any) -> Set[str]:
     stdout_staged, _ = run_git_command(["git", "status", "--porcelain", "-uall"], config)
 
     files = set()
-    exclude_patterns = ['__pycache__', '.pyc', '.pyo', '.pyd']
+    exclude_patterns = EXCLUDED_PATTERNS
 
     def process_status_line(line: str) -> str | None:
         """

@@ -4,7 +4,7 @@ import json
 from collections import Counter
 from typing import Dict, Optional, Any, TypeVar, cast
 
-from ollama import chat, pull, ChatResponse
+from openai import OpenAI
 from rich.prompt import Confirm
 from tqdm import tqdm
 
@@ -16,8 +16,52 @@ from git_acp.formatting import (
     debug_header, debug_item, debug_json, debug_preview,
     status, success
 )
+from git_acp.constants import (
+    DEFAULT_AI_MODEL,
+    DEFAULT_TEMPERATURE,
+    DEFAULT_NUM_RECENT_COMMITS,
+    DEFAULT_NUM_RELATED_COMMITS,
+    DEFAULT_BASE_URL,
+    DEFAULT_API_KEY
+)
 
 GitConfig = TypeVar('GitConfig')
+
+class AIClient:
+    """Client for interacting with AI models via OpenAI package."""
+    
+    def __init__(self, config: Optional[GitConfig] = None):
+        """Initialize the AI client with configuration."""
+        self.config = config
+        self.client = OpenAI(
+            base_url=DEFAULT_BASE_URL,
+            api_key=DEFAULT_API_KEY
+        )
+
+    def chat_completion(self, messages: list, **kwargs) -> str:
+        """
+        Create a chat completion request.
+        
+        Args:
+            messages: List of message dictionaries with 'role' and 'content'.
+            kwargs: Additional configuration arguments.
+            
+        Returns:
+            str: The generated response content.
+        """
+        try:
+            response = self.client.chat.completions.create(
+                model=DEFAULT_AI_MODEL,
+                messages=messages,
+                temperature=DEFAULT_TEMPERATURE,
+                **kwargs
+            )
+            return response.choices[0].message.content
+        except Exception as e:
+            if self.config and self.config.verbose:
+                debug_header("Error in chat completion")
+                debug_item("Error", str(e))
+            raise GitError(f"AI request failed: {str(e)}") from e
 
 def create_commit_message_prompt(context: Dict[str, Any], config: Optional[GitConfig] = None) -> str:
     """
@@ -93,8 +137,8 @@ def get_commit_context(config: 'GitConfig') -> Dict[str, Any]:
         debug_header("Fetching commit history")
 
     # Get commit history context - fetch once and reuse
-    recent_commit_history = get_recent_commits(5, config)  # Get 5 most recent commits
-    related_commit_history = find_related_commits(staged_diff, 3, config)  # Find 3 most relevant commits
+    recent_commit_history = get_recent_commits(DEFAULT_NUM_RECENT_COMMITS, config)
+    related_commit_history = find_related_commits(staged_diff, DEFAULT_NUM_RELATED_COMMITS, config)
 
     if config.verbose:
         debug_header("Validating commit data")
@@ -152,58 +196,9 @@ def get_commit_context(config: 'GitConfig') -> Dict[str, Any]:
 
     return commit_context
 
-def pull_ollama_model(model_name: str, config: Optional[GitConfig] = None) -> bool:
+def generate_commit_message_with_ai(config: Any) -> str:
     """
-    Pull an Ollama model after user confirmation.
-    
-    Args:
-        model_name: Name of the model to pull
-        config: GitConfig instance containing configuration options
-        
-    Returns:
-        bool: True if model was pulled successfully, False otherwise
-    """
-    try:
-        if config and config.verbose:
-            debug_header("Model not found, asking for confirmation to pull")
-        
-        if not Confirm.ask(f"Model '{model_name}' not found. Would you like to pull it now?"):
-            return False
-            
-        with status(f"Pulling model {model_name}..."):
-            current_digest, bars = '', {}
-            for progress in pull(model_name, stream=True):
-                digest = progress.get('digest', '')
-                if digest != current_digest and current_digest in bars:
-                    bars[current_digest].close()
-
-                if not digest:
-                    if status_msg := progress.get('status'):
-                        if config and config.verbose:
-                            debug_item("Status", status_msg)
-                    continue
-
-                if digest not in bars and (total := progress.get('total')):
-                    bars[digest] = tqdm(total=total, desc=f'Pulling {digest[7:19]}', unit='B', unit_scale=True)
-
-                if completed := progress.get('completed'):
-                    bars[digest].update(completed - bars[digest].n)
-
-                current_digest = digest
-
-            # Close any remaining progress bars
-            for bar in bars.values():
-                bar.close()
-
-            success(f"Model {model_name} pulled successfully")
-            return True
-            
-    except Exception as e:
-        raise GitError(f"Failed to pull model: {str(e)}") from e
-
-def generate_commit_message_with_ollama(config: Any) -> str:
-    """
-    Generate a commit message using Ollama AI.
+    Generate a commit message using AI.
     
     Args:
         config: GitConfig instance containing configuration options
@@ -214,8 +209,6 @@ def generate_commit_message_with_ollama(config: Any) -> str:
     Raises:
         GitError: If unable to generate commit message
     """
-    MODEL_NAME = 'mevatron/diffsense:1.5b'
-    
     try:
         if config.verbose:
             debug_header("\nStarting commit message generation")
@@ -227,39 +220,21 @@ def generate_commit_message_with_ollama(config: Any) -> str:
         prompt = create_commit_message_prompt(context, config)
 
         if config.verbose:
-            debug_header("Sending request to Ollama")
-            debug_item("Model", MODEL_NAME)
+            debug_header("Sending request to AI service")
+            debug_item("Model", DEFAULT_AI_MODEL)
 
-        try:
-            response: ChatResponse = chat(
-                model=MODEL_NAME,
+        ai_client = AIClient(config)
+        with status("Generating commit message..."):
+            message = ai_client.chat_completion(
                 messages=[{'role': 'user', 'content': prompt}]
             )
-            with status("Generating commit message with Ollama..."):
-                message = response.message.content.strip()
 
-                if config.verbose:
-                    debug_header("Received response from Ollama")
-                    debug_item("Generated message")
-                    debug_preview(message)
+            if config.verbose:
+                debug_header("Received response from AI service")
+                debug_item("Generated message")
+                debug_preview(message)
 
-                return message
-        except Exception as e:
-            error_msg = str(e).lower()
-            if "model not found" in error_msg or "try pulling it first" in error_msg:
-                # Try to pull the model if not found
-                if pull_ollama_model(MODEL_NAME, config):
-                    # Retry the request after pulling the model
-                    response: ChatResponse = chat(
-                        model=MODEL_NAME,
-                        messages=[{'role': 'user', 'content': prompt}]
-                    )
-                    with status("Generating commit message with Ollama..."):
-                        message = response.message.content.strip()
-                        return message
-                else:
-                    raise GitError("Model not available and user declined to pull it")
-            raise GitError(f"Ollama failed: {str(e)}") from e
+            return message.strip()
 
     except GitError as e:
         raise GitError(f"Failed to generate commit message: {e}") from e

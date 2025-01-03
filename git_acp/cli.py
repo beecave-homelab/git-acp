@@ -28,7 +28,7 @@ from git_acp.git_operations import (
     git_commit, git_push, get_changed_files, unstage_files
 )
 from git_acp.classification import CommitType, classify_commit_type
-from git_acp.ai_utils import generate_commit_message_with_ollama
+from git_acp.ai_utils import generate_commit_message_with_ai
 
 console = Console()
 
@@ -227,7 +227,7 @@ def main(add: Optional[str], message: Optional[str], branch: Optional[str],
 
         try:
             if config.use_ollama:
-                config.message = generate_commit_message_with_ollama(config)
+                config.message = generate_commit_message_with_ai(config)
 
             if not config.message:
                 raise GitError("No commit message provided.")
