@@ -1,50 +1,111 @@
-"""Constants module for git-acp package configuration."""
+"""Constants module for git-acp package configuration.
 
-from typing import Dict, List
+This module contains all configuration constants used throughout the git-acp package.
+Constants are organized by their functional category for better maintainability.
+
+Categories:
+    - AI Configuration: Settings for AI-powered commit message generation
+    - Git Configuration: Basic git operation settings
+    - File Patterns: Patterns for file exclusion in git operations
+    - Commit Types: Pattern matching for automatic commit type classification
+    - Formatting: Terminal output formatting settings
+    - Terminal: Terminal-specific configurations
+"""
+
+from typing import Dict, List, Final
 
 # AI Configuration
-DEFAULT_AI_MODEL = "mevatron/diffsense:1.5b"
-DEFAULT_TEMPERATURE = 0.7
-DEFAULT_BASE_URL = "http://localhost:11434/v1"  # Default Ollama API endpoint
-DEFAULT_API_KEY = "ollama"  # Default API key for Ollama
+# Settings for OpenAI-compatible API interaction
+DEFAULT_AI_MODEL: Final[str] = "mevatron/diffsense:1.5b"
+DEFAULT_TEMPERATURE: Final[float] = 0.7
+DEFAULT_BASE_URL: Final[str] = "http://192.168.2.108:11434/v1"  # Ollama API endpoint
+DEFAULT_API_KEY: Final[str] = "ollama"  # Default API key for Ollama
 
 # Git Configuration
-DEFAULT_BRANCH = "main"
-DEFAULT_REMOTE = "origin"
-DEFAULT_NUM_RECENT_COMMITS = 5
-DEFAULT_NUM_RELATED_COMMITS = 3
-MAX_DIFF_PREVIEW_LINES = 10
+# Basic settings for git operations
+DEFAULT_BRANCH: Final[str] = "main"
+DEFAULT_REMOTE: Final[str] = "origin"
+DEFAULT_NUM_RECENT_COMMITS: Final[int] = 3
+DEFAULT_NUM_RELATED_COMMITS: Final[int] = 3
+MAX_DIFF_PREVIEW_LINES: Final[int] = 10
 
 # File patterns to exclude from git operations
-EXCLUDED_PATTERNS = [
-    '__pycache__',
-    '.pyc',
-    '.pyo',
-    '.pyd',
-    '.env',
-    '.venv',
-    'node_modules'
+# These patterns match common build artifacts and environment-specific files
+EXCLUDED_PATTERNS: Final[List[str]] = [
+    '__pycache__',  # Python bytecode cache
+    '.pyc',         # Compiled Python files
+    '.pyo',         # Optimized Python files
+    '.pyd',         # Python DLL files
+    '.env',         # Environment variables file
+    '.venv',        # Virtual environment directory
+    'node_modules'  # Node.js dependencies
 ]
 
 # Commit Type Configuration
-COMMIT_TYPE_PATTERNS: Dict[str, List[str]] = {
-    'docs': ['docs/', '.md', 'readme', 'documentation', 'license'],
-    'test': ['test', '.test.', '_test', 'test_'],
-    'style': ['style', 'format', 'whitespace', 'lint', 'prettier', 'eslint'],
-    'refactor': ['refactor', 'restructure', 'cleanup', 'clean up', 'reorganize'],
-    'fix': ['fix', 'bug', 'patch', 'issue', 'error', 'crash', 'problem', 'resolve'],
-    'feat': ['add', 'new', 'feature', 'update', 'introduce', 'implement', 'enhance', 'create', 'improve', 'support']
+# Patterns for classifying commits based on file changes and commit messages
+COMMIT_TYPE_PATTERNS: Final[Dict[str, List[str]]] = {
+    'docs': [
+        'docs/',
+        '.md',
+        'readme',
+        'documentation',
+        'license'
+    ],
+    'test': [
+        'test',
+        '.test.',
+        '_test',
+        'test_'
+    ],
+    'style': [
+        'style',
+        'format',
+        'whitespace',
+        'lint',
+        'prettier',
+        'eslint'
+    ],
+    'refactor': [
+        'refactor',
+        'restructure',
+        'cleanup',
+        'clean up',
+        'reorganize'
+    ],
+    'fix': [
+        'fix',
+        'bug',
+        'patch',
+        'issue',
+        'error',
+        'crash',
+        'problem',
+        'resolve'
+    ],
+    'feat': [
+        'add',
+        'new',
+        'feature',
+        'update',
+        'introduce',
+        'implement',
+        'enhance',
+        'create',
+        'improve',
+        'support'
+    ]
 }
 
 # Formatting Configuration
-COLORS = {
-    'debug_header': 'blue',
-    'debug_value': 'cyan',
-    'success': 'green',
-    'warning': 'yellow',
-    'status': 'bold green',
-    'error': 'bold red'
+# Color settings for terminal output using rich library
+COLORS: Final[Dict[str, str]] = {
+    'debug_header': 'blue',    # Debug section headers
+    'debug_value': 'cyan',     # Debug values
+    'success': 'green',        # Success messages
+    'warning': 'yellow',       # Warning messages
+    'status': 'bold green',    # Status updates
+    'error': 'bold red'        # Error messages
 }
 
 # Terminal Configuration
-TERMINAL_WIDTH = 100 
+TERMINAL_WIDTH: Final[int] = 100  # Maximum width for formatted output 
