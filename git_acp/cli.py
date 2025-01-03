@@ -142,21 +142,25 @@ def select_commit_type(config: GitConfig, suggested_type: CommitType) -> CommitT
     # Create choices list with suggested type highlighted
     commit_type_choices = []
     for commit_type in CommitType:
-        choice_text = commit_type.value
         if commit_type == suggested_type:
-            choice_text = f"[green]{choice_text}[/green]"
-        commit_type_choices.append(questionary.Choice(
-            title=choice_text,
-            value=commit_type
-        ))
+            # For suggested type, add a highlighted suffix
+            commit_type_choices.append(questionary.Choice(
+                title=f"{commit_type.value} [suggested]",
+                value=commit_type
+            ))
+        else:
+            commit_type_choices.append(questionary.Choice(
+                title=commit_type.value,
+                value=commit_type
+            ))
     
-    # Define questionary style
+    # Define questionary style with proper color highlighting
     selection_style = questionary.Style([
         ('qmark', 'fg:yellow bold'),
         ('question', 'bold'),
         ('pointer', 'fg:yellow bold'),
         ('highlighted', 'fg:yellow bold'),
-        ('selected', 'fg:green'),
+        ('selected', 'fg:green')
     ])
 
     def validate_single_selection(selected_types: List[CommitType]) -> Union[bool, str]:
@@ -177,7 +181,7 @@ def select_commit_type(config: GitConfig, suggested_type: CommitType) -> CommitT
         "Select commit type (space to select, enter to confirm):",
         choices=commit_type_choices,
         style=selection_style,
-        instruction=" (suggested type in green)",
+        instruction=" (suggested type marked)",
         validate=validate_single_selection
     ).ask()
     
