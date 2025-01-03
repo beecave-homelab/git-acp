@@ -12,7 +12,7 @@ Categories:
     - Terminal: Terminal-specific configurations
 """
 
-from typing import Dict, List, Final
+from typing import Dict, List, Final, Tuple
 
 # AI Configuration
 # Settings for OpenAI-compatible API interaction
@@ -105,6 +105,15 @@ COLORS: Final[Dict[str, str]] = {
     'status': 'bold green',    # Status updates
     'error': 'bold red'        # Error messages
 }
+
+# Questionary style configuration
+QUESTIONARY_STYLE: Final[List[Tuple[str, str]]] = [
+    ('qmark', 'fg:yellow bold'),
+    ('question', 'bold'),
+    ('pointer', 'fg:yellow bold'),
+    ('highlighted', 'fg:yellow bold'),
+    ('selected', 'fg:green')
+]
 
 # Terminal Configuration
 TERMINAL_WIDTH: Final[int] = 100  # Maximum width for formatted output 

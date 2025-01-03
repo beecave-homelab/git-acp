@@ -29,6 +29,7 @@ from git_acp.git_operations import (
 )
 from git_acp.classification import CommitType, classify_commit_type
 from git_acp.ai_utils import generate_commit_message_with_ai
+from git_acp.constants import COLORS, QUESTIONARY_STYLE
 
 console = Console()
 
@@ -107,13 +108,7 @@ def select_files(changed_files: Set[str]) -> str:
     selected_files = questionary.checkbox(
         "Select files to commit (space to select, enter to confirm):",
         choices=file_choices,
-        style=questionary.Style([
-            ('qmark', 'fg:yellow bold'),
-            ('question', 'bold'),
-            ('pointer', 'fg:yellow bold'),
-            ('highlighted', 'fg:yellow bold'),
-            ('selected', 'fg:green'),
-        ])
+        style=questionary.Style(QUESTIONARY_STYLE)
     ).ask()
     
     if not selected_files:
@@ -142,26 +137,22 @@ def select_commit_type(config: GitConfig, suggested_type: CommitType) -> CommitT
     # Create choices list with suggested type highlighted
     commit_type_choices = []
     for commit_type in CommitType:
+        # Add (suggested) tag for the suggested type
+        name = (f"{commit_type.value} (suggested)" 
+               if commit_type == suggested_type 
+               else commit_type.value)
+        choice = {
+            'name': name,
+            'value': commit_type,
+            'checked': False  # Don't pre-select any option
+        }
         if commit_type == suggested_type:
-            # For suggested type, add a highlighted suffix
-            commit_type_choices.append(questionary.Choice(
-                title=f"{commit_type.value} [suggested]",
-                value=commit_type
-            ))
+            commit_type_choices.insert(0, choice)  # Put suggested type at the top
         else:
-            commit_type_choices.append(questionary.Choice(
-                title=commit_type.value,
-                value=commit_type
-            ))
+            commit_type_choices.append(choice)
     
-    # Define questionary style with proper color highlighting
-    selection_style = questionary.Style([
-        ('qmark', 'fg:yellow bold'),
-        ('question', 'bold'),
-        ('pointer', 'fg:yellow bold'),
-        ('highlighted', 'fg:yellow bold'),
-        ('selected', 'fg:green')
-    ])
+    if config.verbose:
+        debug_print(config, f"Suggested commit type: {suggested_type.value}")
 
     def validate_single_selection(selected_types: List[CommitType]) -> Union[bool, str]:
         """
@@ -180,7 +171,7 @@ def select_commit_type(config: GitConfig, suggested_type: CommitType) -> CommitT
     selected_types = questionary.checkbox(
         "Select commit type (space to select, enter to confirm):",
         choices=commit_type_choices,
-        style=selection_style,
+        style=questionary.Style(QUESTIONARY_STYLE),
         instruction=" (suggested type marked)",
         validate=validate_single_selection
     ).ask()
