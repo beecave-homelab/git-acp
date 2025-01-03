@@ -41,7 +41,6 @@ EXCLUDED_PATTERNS: Final[List[str]] = [
     'node_modules'  # Node.js dependencies
 ]
 
-# Commit Type Configuration
 # Patterns for classifying commits based on file changes and commit messages
 COMMIT_TYPE_PATTERNS: Final[Dict[str, List[str]]] = {
     'docs': [
