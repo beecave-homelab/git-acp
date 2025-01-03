@@ -1,53 +1,91 @@
 """AI utilities module for git-acp package."""
 
 import json
-from typing import Dict, List, Optional, Any
-from ollama import chat, ChatResponse
+from collections import Counter
+from typing import Dict, Optional, Any, TypeVar, cast
+
+from openai import OpenAI
+from rich.prompt import Confirm
+from tqdm import tqdm
+
 from git_acp.git_operations import (
     GitError, run_git_command, get_recent_commits,
-    analyze_commit_patterns, find_related_commits
+    find_related_commits
 )
-from collections import Counter
 from git_acp.formatting import (
     debug_header, debug_item, debug_json, debug_preview,
-    status, success, warning
+    status, success
+)
+from git_acp.constants import (
+    DEFAULT_AI_MODEL,
+    DEFAULT_TEMPERATURE,
+    DEFAULT_NUM_RECENT_COMMITS,
+    DEFAULT_NUM_RELATED_COMMITS,
+    DEFAULT_BASE_URL,
+    DEFAULT_API_KEY
 )
 
-def create_commit_message_prompt(context: Dict[str, Any], config: Optional[Any] = None) -> str:
+GitConfig = TypeVar('GitConfig')
+
+class AIClient:
+    """Client for interacting with AI models via OpenAI package."""
+    
+    def __init__(self, config: Optional[GitConfig] = None):
+        """Initialize the AI client with configuration."""
+        self.config = config
+        self.client = OpenAI(
+            base_url=DEFAULT_BASE_URL,
+            api_key=DEFAULT_API_KEY
+        )
+
+    def chat_completion(self, messages: list, **kwargs) -> str:
+        """
+        Create a chat completion request.
+        
+        Args:
+            messages: List of message dictionaries with 'role' and 'content'.
+            kwargs: Additional configuration arguments.
+            
+        Returns:
+            str: The generated response content.
+        """
+        try:
+            response = self.client.chat.completions.create(
+                model=DEFAULT_AI_MODEL,
+                messages=messages,
+                temperature=DEFAULT_TEMPERATURE,
+                **kwargs
+            )
+            return response.choices[0].message.content
+        except Exception as e:
+            if self.config and self.config.verbose:
+                debug_header("Error in chat completion")
+                debug_item("Error", str(e))
+            raise GitError(f"AI request failed: {str(e)}") from e
+
+def create_commit_message_prompt(context: Dict[str, Any], config: Optional[GitConfig] = None) -> str:
     """
-    Create a prompt for the AI model to generate a commit message.
+    Create a prompt for generating a commit message.
     
     Args:
-        context: Dictionary containing git context information:
-                - diff: Current changes
-                - recent_commits: List of recent commits
-                - commit_patterns: Dictionary of commit patterns
-                - related_commits: List of related commits
-        config: Configuration object with verbose flag
+        context: Dictionary containing git context information
+        config: GitConfig instance containing configuration options
     
     Returns:
-        str: The formatted prompt for the AI model
+        str: Generated prompt for the AI model
     """
-    if config and config.verbose:
-        debug_header("Creating commit message prompt:")
-        debug_item("Recent commits found", str(len(context['recent_commits'])))
-        debug_item("Related commits found", str(len(context['related_commits'])))
-        debug_header("Commit patterns:")
-        debug_json(context['commit_patterns'])
+    # Get most common commit type from recent commits
+    commit_types = context['commit_patterns']['types']
+    common_type = max(commit_types.items(), key=lambda x: x[1])[0] if commit_types else "feat"
     
-    # Get the most common commit type for reference
-    common_types = list(context['commit_patterns']['types'].items())
-    common_types.sort(key=lambda x: x[1], reverse=True)
-    common_type = common_types[0][0] if common_types else "feat"
-    
-    # Format recent commits more concisely
+    # Format recent commit messages for context
     recent_messages = [c['message'] for c in context['recent_commits']]
     related_messages = [c['message'] for c in context['related_commits']]
-        
+
     prompt = f"""Generate a concise and descriptive commit message for the following changes:
 
 Changes to commit:
-{context['diff']}
+{context['staged_changes']}
 
 Repository context:
 - Most used commit type: {common_type}
@@ -66,10 +104,10 @@ Requirements:
     if config and config.verbose:
         debug_header("Generated prompt preview:")
         debug_preview(prompt)
-    
+
     return prompt
 
-def get_commit_context(config: Any) -> Dict[str, Any]:
+def get_commit_context(config: 'GitConfig') -> Dict[str, Any]:
     """
     Gather git context information for commit message generation.
     
@@ -77,84 +115,90 @@ def get_commit_context(config: Any) -> Dict[str, Any]:
         config: GitConfig instance containing configuration options
     
     Returns:
-        dict: Context information including diff, commits, and patterns
+        dict: Context information including staged changes, commit history, and patterns
         
     Raises:
         GitError: If unable to gather context information
     """
     if config.verbose:
         debug_header("Starting context gathering")
-    
-    # Get the diff for context
-    stdout, _ = run_git_command(["git", "diff", "--staged"], config)
-    if not stdout.strip():
+
+    # Get the staged changes for context
+    staged_diff, _ = run_git_command(["git", "diff", "--staged"], config)
+    if not staged_diff.strip():
         if config.verbose:
             debug_header("No staged changes, checking working directory")
-        stdout, _ = run_git_command(["git", "diff"], config)
-    
-    if not stdout:
+        staged_diff, _ = run_git_command(["git", "diff"], config)
+
+    if not staged_diff:
         raise GitError("No changes detected to generate commit message from.")
-    
+
     if config.verbose:
         debug_header("Fetching commit history")
-    
+
     # Get commit history context - fetch once and reuse
-    recent_commits = get_recent_commits(5, config)  # Get 5 most recent commits
-    related_commits = find_related_commits(stdout, 3, config)  # Find 3 most relevant commits
-    
+    recent_commit_history = get_recent_commits(DEFAULT_NUM_RECENT_COMMITS, config)
+    related_commit_history = find_related_commits(staged_diff, DEFAULT_NUM_RELATED_COMMITS, config)
+
     if config.verbose:
         debug_header("Validating commit data")
-    
+
     # Filter out any commits that don't have all required fields
-    recent_commits = [c for c in recent_commits if all(k in c for k in ['hash', 'message', 'author', 'date'])]
-    related_commits = [c for c in related_commits if all(k in c for k in ['hash', 'message', 'author', 'date'])]
-    
+    valid_recent_commits = [
+        commit for commit in recent_commit_history
+        if all(key in commit for key in ['hash', 'message', 'author', 'date'])
+    ]
+    valid_related_commits = [
+        commit for commit in related_commit_history
+        if all(key in commit for key in ['hash', 'message', 'author', 'date'])
+    ]
+
     if config.verbose:
         debug_header("Commit statistics:")
-        debug_item("Valid recent commits", str(len(recent_commits)))
-        debug_item("Valid related commits", str(len(related_commits)))
-    
+        debug_item("Valid recent commits", str(len(valid_recent_commits)))
+        debug_item("Valid related commits", str(len(valid_related_commits)))
+
     # Analyze commit patterns using the recent commits we already have
     if config.verbose:
         debug_header("Analyzing commit patterns")
-    
-    patterns = {
+
+    commit_patterns = {
         'commit_types': Counter(),
         'message_length': Counter(),
         'authors': Counter()
     }
-    
-    for commit in recent_commits:
+
+    for commit in valid_recent_commits:
         message = commit['message']
         if ': ' in message:
             commit_type = message.split(': ')[0]
-            patterns['commit_types'][commit_type] += 1
+            commit_patterns['commit_types'][commit_type] += 1
             if config and config.verbose:
                 debug_item("Found commit type", commit_type)
-        
-        length_category = len(message) // 10 * 10  # Group by tens
-        patterns['message_length'][length_category] += 1
-        patterns['authors'][commit['author']] += 1
-    
+
+        message_length = len(message) // 10 * 10  # Group by tens
+        commit_patterns['message_length'][message_length] += 1
+        commit_patterns['authors'][commit['author']] += 1
+
     # Prepare context for the model
-    context = {
-        "diff": stdout,
-        "recent_commits": recent_commits,
+    commit_context = {
+        "staged_changes": staged_diff,
+        "recent_commits": valid_recent_commits,
         "commit_patterns": {
-            "types": dict(patterns['commit_types']),
-            "typical_length": dict(patterns['message_length']),
+            "types": dict(commit_patterns['commit_types']),
+            "typical_length": dict(commit_patterns['message_length']),
         },
-        "related_commits": related_commits
+        "related_commits": valid_related_commits
     }
-    
+
     if config.verbose:
         debug_header("Context preparation complete")
-    
-    return context
 
-def generate_commit_message_with_ollama(config: Any) -> str:
+    return commit_context
+
+def generate_commit_message_with_ai(config: Any) -> str:
     """
-    Generate a commit message using Ollama AI.
+    Generate a commit message using AI.
     
     Args:
         config: GitConfig instance containing configuration options
@@ -166,38 +210,31 @@ def generate_commit_message_with_ollama(config: Any) -> str:
         GitError: If unable to generate commit message
     """
     try:
-        with status("Generating commit message with Ollama..."):
+        if config.verbose:
+            debug_header("\nStarting commit message generation")
+
+        context = get_commit_context(config)
+
+        if config.verbose:
+            debug_header("Creating AI prompt")
+        prompt = create_commit_message_prompt(context, config)
+
+        if config.verbose:
+            debug_header("Sending request to AI service")
+            debug_item("Model", DEFAULT_AI_MODEL)
+
+        ai_client = AIClient(config)
+        with status("Generating commit message..."):
+            message = ai_client.chat_completion(
+                messages=[{'role': 'user', 'content': prompt}]
+            )
+
             if config.verbose:
-                debug_header("\nStarting commit message generation")
-            
-            # Get context information
-            context = get_commit_context(config)
-            
-            if config.verbose:
-                debug_header("Creating AI prompt")
-            
-            # Create the prompt
-            prompt = create_commit_message_prompt(context, config)
-            
-            if config.verbose:
-                debug_header("Sending request to Ollama")
-                debug_item("Model", "mevatron/diffsense:1.5b")
-            
-            try:
-                response: ChatResponse = chat(
-                    model='mevatron/diffsense:1.5b',
-                    messages=[{'role': 'user', 'content': prompt}]
-                )
-                message = response.message.content.strip()
-                
-                if config.verbose:
-                    debug_header("Received response from Ollama")
-                    debug_item("Generated message")
-                    debug_preview(message)
-                
-                return message
-            except Exception as e:
-                raise GitError(f"Ollama failed: {str(e)}")
-            
+                debug_header("Received response from AI service")
+                debug_item("Generated message")
+                debug_preview(message)
+
+            return message.strip()
+
     except GitError as e:
-        raise GitError(f"Failed to generate commit message: {e}") 
+        raise GitError(f"Failed to generate commit message: {e}") from e

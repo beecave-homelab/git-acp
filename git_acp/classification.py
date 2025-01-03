@@ -2,6 +2,7 @@
 
 from enum import Enum
 from git_acp.git_operations import run_git_command, GitError
+from git_acp.constants import COMMIT_TYPE_PATTERNS
 
 class CommitType(Enum):
     """Enum for commit types with their corresponding emojis."""
@@ -59,54 +60,12 @@ def classify_commit_type(config) -> CommitType:
             print(f"[yellow]Debug: Matched keywords: {matches}[/yellow]")
         return bool(matches)
 
-    # First check for documentation changes
-    doc_keywords = ["docs/", ".md", "readme", "documentation", "license"]
-    if check_pattern(doc_keywords, diff):
-        if config.verbose:
-            print("[yellow]Debug: Classified as DOCS[/yellow]")
-        return CommitType.DOCS
-
-    # Then check for test changes
-    test_keywords = ["test", ".test.", "_test", "test_"]
-    if check_pattern(test_keywords, diff):
-        if config.verbose:
-            print("[yellow]Debug: Classified as TEST[/yellow]")
-        return CommitType.TEST
-
-    # Check for style changes
-    style_keywords = ["style", "format", "whitespace", "lint", "prettier", "eslint"]
-    if check_pattern(style_keywords, diff):
-        if config.verbose:
-            print("[yellow]Debug: Classified as STYLE[/yellow]")
-        return CommitType.STYLE
-
-    # Check for refactor
-    refactor_keywords = ["refactor", "restructure", "cleanup", "clean up", "reorganize"]
-    if check_pattern(refactor_keywords, diff):
-        if config.verbose:
-            print("[yellow]Debug: Classified as REFACTOR[/yellow]")
-        return CommitType.REFACTOR
-
-    # Check for bug fixes
-    fix_keywords = ["fix", "bug", "patch", "issue", "error", "crash", "problem", "resolve"]
-    if check_pattern(fix_keywords, diff):
-        if config.verbose:
-            print("[yellow]Debug: Classified as FIX[/yellow]")
-        return CommitType.FIX
-
-    # Check for reverts
-    if "revert" in diff.lower():
-        if config.verbose:
-            print("[yellow]Debug: Classified as REVERT[/yellow]")
-        return CommitType.REVERT
-
-    # Check for features
-    feature_keywords = ["add", "new", "feature", "update", "introduce", 
-                       "implement", "enhance", "create", "improve", "support"]
-    if check_pattern(feature_keywords, diff):
-        if config.verbose:
-            print("[yellow]Debug: Classified as FEAT[/yellow]")
-        return CommitType.FEAT
+    # Use patterns from constants
+    for commit_type, keywords in COMMIT_TYPE_PATTERNS.items():
+        if check_pattern(keywords, diff):
+            if config.verbose:
+                print(f"[yellow]Debug: Classified as {commit_type.upper()}[/yellow]")
+            return CommitType[commit_type.upper()]
 
     if config.verbose:
         print("[yellow]Debug: Defaulting to CHORE[/yellow]")

@@ -2,5 +2,5 @@ typing;python_version<"3.7"
 click>=8.0.0
 rich>=10.0.0
 questionary>=1.10.0
-ollama
+openai>=1.0.0
 tqdm
