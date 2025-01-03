@@ -12,13 +12,13 @@ class GitError(Exception):
     """Custom exception for git-related errors."""
     pass
 
-def run_git_command(command: list[str], config: Optional[Any] = None) -> Tuple[str, str]:
+def run_git_command(command: list[str], config: Optional['GitConfig'] = None) -> Tuple[str, str]:
     """
     Run a git command and return its output.
     
     Args:
         command: List of command components
-        config: Configuration object with verbose flag
+        config: GitConfig instance containing configuration options
     
     Returns:
         Tuple of (stdout, stderr)
@@ -44,12 +44,12 @@ def run_git_command(command: list[str], config: Optional[Any] = None) -> Tuple[s
     except Exception as e:
         raise GitError(f"Failed to execute git command: {e}") from e
 
-def get_current_branch(config: Optional[Any] = None) -> str:
+def get_current_branch(config: Optional['GitConfig'] = None) -> str:
     """
     Get the name of the current git branch.
     
     Args:
-        config: Configuration object with verbose flag
+        config: GitConfig instance containing configuration options
     
     Returns:
         str: Name of the current branch
@@ -62,13 +62,13 @@ def get_current_branch(config: Optional[Any] = None) -> str:
         debug_item("Current branch", stdout)
     return stdout
 
-def git_add(files: str, config: Optional[Any] = None) -> None:
+def git_add(files: str, config: Optional['GitConfig'] = None) -> None:
     """
     Add files to git staging area.
     
     Args:
         files: Space-separated list of files to add or "." for all files
-        config: Configuration object with verbose flag
+        config: GitConfig instance containing configuration options
         
     Raises:
         GitError: If the git add operation fails
@@ -79,13 +79,13 @@ def git_add(files: str, config: Optional[Any] = None) -> None:
         run_git_command(["git", "add", files], config)
     success("Files added successfully")
 
-def git_commit(message: str, config: Optional[Any] = None) -> None:
+def git_commit(message: str, config: Optional['GitConfig'] = None) -> None:
     """
     Commit staged changes to the repository.
     
     Args:
         message: The commit message
-        config: Configuration object with verbose flag
+        config: GitConfig instance containing configuration options
         
     Raises:
         GitError: If the git commit operation fails
@@ -258,12 +258,12 @@ def get_recent_commits(num_commits: int = 10, config = None) -> List[Dict[str, s
     except GitError as e:
         raise GitError(f"Failed to get commit history: {e}") from e
 
-def analyze_commit_patterns(config = None) -> Dict[str, Counter]:
+def analyze_commit_patterns(config: Optional['GitConfig'] = None) -> Dict[str, Counter]:
     """
     Analyze patterns in recent commits.
     
     Args:
-        config: Configuration object with verbose flag
+        config: GitConfig instance containing configuration options
     
     Returns:
         Dict[str, Counter]: Dictionary containing frequency analysis of:
@@ -309,17 +309,17 @@ def analyze_commit_patterns(config = None) -> Dict[str, Counter]:
     except GitError as e:
         raise GitError(f"Failed to analyze commit patterns: {e}") from e
 
-def find_related_commits(diff_content: str, num_commits: int = 5, config = None) -> List[Dict[str, str]]:
+def find_related_commits(diff_content: str, num_commits: int = 5, config: Optional['GitConfig'] = None) -> List[Dict[str, str]]:
     """
-    Find commits related to the current changes.
+    Find commits related to the given diff content.
     
     Args:
-        diff_content: Content of the current diff
+        diff_content: The diff content to find related commits for
         num_commits: Maximum number of related commits to return
-        config: Configuration object with verbose flag
+        config: GitConfig instance containing configuration options
         
     Returns:
-        List[Dict[str, str]]: List of related commit dictionaries
+        List of related commit dictionaries
         
     Raises:
         GitError: If unable to find related commits

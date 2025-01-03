@@ -2,9 +2,11 @@
 
 import json
 from collections import Counter
-from typing import Dict, Optional, Any
+from typing import Dict, Optional, Any, TypeVar, cast
 
-from ollama import chat, ChatResponse
+from ollama import chat, pull, ChatResponse
+from rich.prompt import Confirm
+from tqdm import tqdm
 
 from git_acp.git_operations import (
     GitError, run_git_command, get_recent_commits,
@@ -12,44 +14,34 @@ from git_acp.git_operations import (
 )
 from git_acp.formatting import (
     debug_header, debug_item, debug_json, debug_preview,
-    status
+    status, success
 )
 
-def create_commit_message_prompt(context: Dict[str, Any], config: Optional[Any] = None) -> str:
+GitConfig = TypeVar('GitConfig')
+
+def create_commit_message_prompt(context: Dict[str, Any], config: Optional[GitConfig] = None) -> str:
     """
-    Create a prompt for the AI model to generate a commit message.
+    Create a prompt for generating a commit message.
     
     Args:
-        context: Dictionary containing git context information:
-                - diff: Current changes
-                - recent_commits: List of recent commits
-                - commit_patterns: Dictionary of commit patterns
-                - related_commits: List of related commits
-        config: Configuration object with verbose flag
+        context: Dictionary containing git context information
+        config: GitConfig instance containing configuration options
     
     Returns:
-        str: The formatted prompt for the AI model
+        str: Generated prompt for the AI model
     """
-    if config and config.verbose:
-        debug_header("Creating commit message prompt:")
-        debug_item("Recent commits found", str(len(context['recent_commits'])))
-        debug_item("Related commits found", str(len(context['related_commits'])))
-        debug_header("Commit patterns:")
-        debug_json(context['commit_patterns'])
-
-    # Get the most common commit type for reference
-    common_types = list(context['commit_patterns']['types'].items())
-    common_types.sort(key=lambda x: x[1], reverse=True)
-    common_type = common_types[0][0] if common_types else "feat"
-
-    # Format recent commits more concisely
+    # Get most common commit type from recent commits
+    commit_types = context['commit_patterns']['types']
+    common_type = max(commit_types.items(), key=lambda x: x[1])[0] if commit_types else "feat"
+    
+    # Format recent commit messages for context
     recent_messages = [c['message'] for c in context['recent_commits']]
     related_messages = [c['message'] for c in context['related_commits']]
 
     prompt = f"""Generate a concise and descriptive commit message for the following changes:
 
 Changes to commit:
-{context['diff']}
+{context['staged_changes']}
 
 Repository context:
 - Most used commit type: {common_type}
@@ -71,7 +63,7 @@ Requirements:
 
     return prompt
 
-def get_commit_context(config: Any) -> Dict[str, Any]:
+def get_commit_context(config: 'GitConfig') -> Dict[str, Any]:
     """
     Gather git context information for commit message generation.
     
@@ -79,7 +71,7 @@ def get_commit_context(config: Any) -> Dict[str, Any]:
         config: GitConfig instance containing configuration options
     
     Returns:
-        dict: Context information including diff, commits, and patterns
+        dict: Context information including staged changes, commit history, and patterns
         
     Raises:
         GitError: If unable to gather context information
@@ -87,78 +79,127 @@ def get_commit_context(config: Any) -> Dict[str, Any]:
     if config.verbose:
         debug_header("Starting context gathering")
 
-    # Get the diff for context
-    stdout, _ = run_git_command(["git", "diff", "--staged"], config)
-    if not stdout.strip():
+    # Get the staged changes for context
+    staged_diff, _ = run_git_command(["git", "diff", "--staged"], config)
+    if not staged_diff.strip():
         if config.verbose:
             debug_header("No staged changes, checking working directory")
-        stdout, _ = run_git_command(["git", "diff"], config)
+        staged_diff, _ = run_git_command(["git", "diff"], config)
 
-    if not stdout:
+    if not staged_diff:
         raise GitError("No changes detected to generate commit message from.")
 
     if config.verbose:
         debug_header("Fetching commit history")
 
     # Get commit history context - fetch once and reuse
-    recent_commits = get_recent_commits(5, config)  # Get 5 most recent commits
-    related_commits = find_related_commits(stdout, 3, config)  # Find 3 most relevant commits
+    recent_commit_history = get_recent_commits(5, config)  # Get 5 most recent commits
+    related_commit_history = find_related_commits(staged_diff, 3, config)  # Find 3 most relevant commits
 
     if config.verbose:
         debug_header("Validating commit data")
 
     # Filter out any commits that don't have all required fields
-    recent_commits = [
-        c for c in recent_commits
-        if all(k in c for k in ['hash', 'message', 'author', 'date'])
+    valid_recent_commits = [
+        commit for commit in recent_commit_history
+        if all(key in commit for key in ['hash', 'message', 'author', 'date'])
     ]
-    related_commits = [
-        c for c in related_commits
-        if all(k in c for k in ['hash', 'message', 'author', 'date'])
+    valid_related_commits = [
+        commit for commit in related_commit_history
+        if all(key in commit for key in ['hash', 'message', 'author', 'date'])
     ]
 
     if config.verbose:
         debug_header("Commit statistics:")
-        debug_item("Valid recent commits", str(len(recent_commits)))
-        debug_item("Valid related commits", str(len(related_commits)))
+        debug_item("Valid recent commits", str(len(valid_recent_commits)))
+        debug_item("Valid related commits", str(len(valid_related_commits)))
 
     # Analyze commit patterns using the recent commits we already have
     if config.verbose:
         debug_header("Analyzing commit patterns")
 
-    patterns = {
+    commit_patterns = {
         'commit_types': Counter(),
         'message_length': Counter(),
         'authors': Counter()
     }
 
-    for commit in recent_commits:
+    for commit in valid_recent_commits:
         message = commit['message']
         if ': ' in message:
             commit_type = message.split(': ')[0]
-            patterns['commit_types'][commit_type] += 1
+            commit_patterns['commit_types'][commit_type] += 1
             if config and config.verbose:
                 debug_item("Found commit type", commit_type)
 
-        length_category = len(message) // 10 * 10  # Group by tens
-        patterns['message_length'][length_category] += 1
-        patterns['authors'][commit['author']] += 1
+        message_length = len(message) // 10 * 10  # Group by tens
+        commit_patterns['message_length'][message_length] += 1
+        commit_patterns['authors'][commit['author']] += 1
 
     # Prepare context for the model
-    context = {
-        "diff": stdout,
-        "recent_commits": recent_commits,
+    commit_context = {
+        "staged_changes": staged_diff,
+        "recent_commits": valid_recent_commits,
         "commit_patterns": {
-            "types": dict(patterns['commit_types']),
-            "typical_length": dict(patterns['message_length']),
+            "types": dict(commit_patterns['commit_types']),
+            "typical_length": dict(commit_patterns['message_length']),
         },
-        "related_commits": related_commits
+        "related_commits": valid_related_commits
     }
 
     if config.verbose:
         debug_header("Context preparation complete")
 
-    return context
+    return commit_context
+
+def pull_ollama_model(model_name: str, config: Optional[GitConfig] = None) -> bool:
+    """
+    Pull an Ollama model after user confirmation.
+    
+    Args:
+        model_name: Name of the model to pull
+        config: GitConfig instance containing configuration options
+        
+    Returns:
+        bool: True if model was pulled successfully, False otherwise
+    """
+    try:
+        if config and config.verbose:
+            debug_header("Model not found, asking for confirmation to pull")
+        
+        if not Confirm.ask(f"Model '{model_name}' not found. Would you like to pull it now?"):
+            return False
+            
+        with status(f"Pulling model {model_name}..."):
+            current_digest, bars = '', {}
+            for progress in pull(model_name, stream=True):
+                digest = progress.get('digest', '')
+                if digest != current_digest and current_digest in bars:
+                    bars[current_digest].close()
+
+                if not digest:
+                    if status_msg := progress.get('status'):
+                        if config and config.verbose:
+                            debug_item("Status", status_msg)
+                    continue
+
+                if digest not in bars and (total := progress.get('total')):
+                    bars[digest] = tqdm(total=total, desc=f'Pulling {digest[7:19]}', unit='B', unit_scale=True)
+
+                if completed := progress.get('completed'):
+                    bars[digest].update(completed - bars[digest].n)
+
+                current_digest = digest
+
+            # Close any remaining progress bars
+            for bar in bars.values():
+                bar.close()
+
+            success(f"Model {model_name} pulled successfully")
+            return True
+            
+    except Exception as e:
+        raise GitError(f"Failed to pull model: {str(e)}") from e
 
 def generate_commit_message_with_ollama(config: Any) -> str:
     """
@@ -173,26 +214,28 @@ def generate_commit_message_with_ollama(config: Any) -> str:
     Raises:
         GitError: If unable to generate commit message
     """
+    MODEL_NAME = 'mevatron/diffsense:1.5b'
+    
     try:
-        with status("Generating commit message with Ollama..."):
-            if config.verbose:
-                debug_header("\nStarting commit message generation")
+        if config.verbose:
+            debug_header("\nStarting commit message generation")
 
-            context = get_commit_context(config)
+        context = get_commit_context(config)
 
-            if config.verbose:
-                debug_header("Creating AI prompt")
-            prompt = create_commit_message_prompt(context, config)
+        if config.verbose:
+            debug_header("Creating AI prompt")
+        prompt = create_commit_message_prompt(context, config)
 
-            if config.verbose:
-                debug_header("Sending request to Ollama")
-                debug_item("Model", "mevatron/diffsense:1.5b")
+        if config.verbose:
+            debug_header("Sending request to Ollama")
+            debug_item("Model", MODEL_NAME)
 
-            try:
-                response: ChatResponse = chat(
-                    model='mevatron/diffsense:1.5b',
-                    messages=[{'role': 'user', 'content': prompt}]
-                )
+        try:
+            response: ChatResponse = chat(
+                model=MODEL_NAME,
+                messages=[{'role': 'user', 'content': prompt}]
+            )
+            with status("Generating commit message with Ollama..."):
                 message = response.message.content.strip()
 
                 if config.verbose:
@@ -201,8 +244,22 @@ def generate_commit_message_with_ollama(config: Any) -> str:
                     debug_preview(message)
 
                 return message
-            except Exception as e:
-                raise GitError(f"Ollama failed: {str(e)}") from e
+        except Exception as e:
+            error_msg = str(e).lower()
+            if "model not found" in error_msg or "try pulling it first" in error_msg:
+                # Try to pull the model if not found
+                if pull_ollama_model(MODEL_NAME, config):
+                    # Retry the request after pulling the model
+                    response: ChatResponse = chat(
+                        model=MODEL_NAME,
+                        messages=[{'role': 'user', 'content': prompt}]
+                    )
+                    with status("Generating commit message with Ollama..."):
+                        message = response.message.content.strip()
+                        return message
+                else:
+                    raise GitError("Model not available and user declined to pull it")
+            raise GitError(f"Ollama failed: {str(e)}") from e
 
     except GitError as e:
         raise GitError(f"Failed to generate commit message: {e}") from e
