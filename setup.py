@@ -39,5 +39,6 @@ setup(
         "questionary>=1.10.0",
         "ollama",
         "tqdm",
+        "python-dotenv>=1.0.0",
     ],
 )

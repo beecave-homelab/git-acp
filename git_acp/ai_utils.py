@@ -33,10 +33,24 @@ class AIClient:
     def __init__(self, config: Optional[GitConfig] = None):
         """Initialize the AI client with configuration."""
         self.config = config
-        self.client = OpenAI(
-            base_url=DEFAULT_BASE_URL,
-            api_key=DEFAULT_API_KEY
-        )
+        
+        if self.config and self.config.verbose:
+            debug_header("Initializing AI client")
+            debug_item("Base URL", DEFAULT_BASE_URL)
+            debug_item("Model", DEFAULT_AI_MODEL)
+            debug_item("Temperature", str(DEFAULT_TEMPERATURE))
+        
+        try:
+            self.client = OpenAI(
+                base_url=DEFAULT_BASE_URL,
+                api_key=DEFAULT_API_KEY,
+                timeout=30.0  # Add explicit timeout
+            )
+        except Exception as e:
+            if self.config and self.config.verbose:
+                debug_header("Error initializing AI client")
+                debug_item("Error", str(e))
+            raise GitError(f"Failed to initialize AI client: {str(e)}") from e
 
     def chat_completion(self, messages: list, **kwargs) -> str:
         """
@@ -50,18 +64,28 @@ class AIClient:
             str: The generated response content.
         """
         try:
+            if self.config and self.config.verbose:
+                debug_header("Sending chat completion request")
+                debug_item("Messages count", str(len(messages)))
+                debug_item("First message preview", messages[0]['content'][:100] + "...")
+            
             response = self.client.chat.completions.create(
                 model=DEFAULT_AI_MODEL,
                 messages=messages,
                 temperature=DEFAULT_TEMPERATURE,
+                timeout=30.0,  # Add explicit timeout
                 **kwargs
             )
             return response.choices[0].message.content
         except Exception as e:
             if self.config and self.config.verbose:
                 debug_header("Error in chat completion")
-                debug_item("Error", str(e))
-            raise GitError(f"AI request failed: {str(e)}") from e
+                debug_item("Error type", e.__class__.__name__)
+                debug_item("Error message", str(e))
+                if hasattr(e, 'response'):
+                    debug_item("Response status", str(getattr(e.response, 'status_code', 'N/A')))
+                    debug_item("Response text", str(getattr(e.response, 'text', 'N/A')))
+            raise GitError(f"AI request failed: {e.__class__.__name__}: {str(e)}") from e
 
 def create_commit_message_prompt(context: Dict[str, Any], config: Optional[GitConfig] = None) -> str:
     """
