@@ -13,21 +13,25 @@ Categories:
 """
 
 from typing import Dict, List, Final, Tuple
+from git_acp.env_config import get_env, load_env_config
+
+# Load environment variables at module import
+load_env_config()
 
 # AI Configuration
 # Settings for OpenAI-compatible API interaction
-DEFAULT_AI_MODEL: Final[str] = "mevatron/diffsense:1.5b"
-DEFAULT_TEMPERATURE: Final[float] = 0.7
-DEFAULT_BASE_URL: Final[str] = "http://192.168.2.108:11434/v1"  # Ollama API endpoint
-DEFAULT_API_KEY: Final[str] = "ollama"  # Default API key for Ollama
+DEFAULT_AI_MODEL: Final[str] = get_env('GIT_ACP_AI_MODEL', "mevatron/diffsense:1.5b")
+DEFAULT_TEMPERATURE: Final[float] = get_env('GIT_ACP_TEMPERATURE', 0.7, float)
+DEFAULT_BASE_URL: Final[str] = get_env('GIT_ACP_BASE_URL', "http://localhost:11434/v1")
+DEFAULT_API_KEY: Final[str] = get_env('GIT_ACP_API_KEY', "ollama")
 
 # Git Configuration
 # Basic settings for git operations
-DEFAULT_BRANCH: Final[str] = "main"
-DEFAULT_REMOTE: Final[str] = "origin"
-DEFAULT_NUM_RECENT_COMMITS: Final[int] = 3
-DEFAULT_NUM_RELATED_COMMITS: Final[int] = 3
-MAX_DIFF_PREVIEW_LINES: Final[int] = 10
+DEFAULT_BRANCH: Final[str] = get_env('GIT_ACP_DEFAULT_BRANCH', "main")
+DEFAULT_REMOTE: Final[str] = get_env('GIT_ACP_DEFAULT_REMOTE', "origin")
+DEFAULT_NUM_RECENT_COMMITS: Final[int] = get_env('GIT_ACP_NUM_RECENT_COMMITS', 3, int)
+DEFAULT_NUM_RELATED_COMMITS: Final[int] = get_env('GIT_ACP_NUM_RELATED_COMMITS', 3, int)
+MAX_DIFF_PREVIEW_LINES: Final[int] = get_env('GIT_ACP_MAX_DIFF_PREVIEW_LINES', 10, int)
 
 # File patterns to exclude from git operations
 # These patterns match common build artifacts and environment-specific files
@@ -98,12 +102,12 @@ COMMIT_TYPE_PATTERNS: Final[Dict[str, List[str]]] = {
 # Formatting Configuration
 # Color settings for terminal output using rich library
 COLORS: Final[Dict[str, str]] = {
-    'debug_header': 'blue',    # Debug section headers
-    'debug_value': 'cyan',     # Debug values
-    'success': 'green',        # Success messages
-    'warning': 'yellow',       # Warning messages
-    'status': 'bold green',    # Status updates
-    'error': 'bold red'        # Error messages
+    'debug_header': get_env('GIT_ACP_DEBUG_HEADER_COLOR', 'blue'),
+    'debug_value': get_env('GIT_ACP_DEBUG_VALUE_COLOR', 'cyan'),
+    'success': get_env('GIT_ACP_SUCCESS_COLOR', 'green'),
+    'warning': get_env('GIT_ACP_WARNING_COLOR', 'yellow'),
+    'status': get_env('GIT_ACP_STATUS_COLOR', 'bold green'),
+    'error': get_env('GIT_ACP_ERROR_COLOR', 'bold red')
 }
 
 # Questionary style configuration
@@ -116,4 +120,4 @@ QUESTIONARY_STYLE: Final[List[Tuple[str, str]]] = [
 ]
 
 # Terminal Configuration
-TERMINAL_WIDTH: Final[int] = 100  # Maximum width for formatted output 
+TERMINAL_WIDTH: Final[int] = get_env('GIT_ACP_TERMINAL_WIDTH', 100, int)  # Maximum width for formatted output 
