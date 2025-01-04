@@ -7,6 +7,7 @@
 !README.md
 !requirements.txt
 !setup.py
+!.env.example
 
 # Allow the package directory and Python files
 !git_acp/
