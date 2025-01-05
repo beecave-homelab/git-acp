@@ -45,6 +45,18 @@ EXCLUDED_PATTERNS: Final[List[str]] = [
     'node_modules'  # Node.js dependencies
 ]
 
+# Commit type definitions with their corresponding emojis
+COMMIT_TYPES: Final[Dict[str, str]] = {
+    'FEAT': get_env('GIT_ACP_COMMIT_TYPE_FEAT', "feat ✨"),
+    'FIX': get_env('GIT_ACP_COMMIT_TYPE_FIX', "fix 🐛"),
+    'DOCS': get_env('GIT_ACP_COMMIT_TYPE_DOCS', "docs 📝"),
+    'STYLE': get_env('GIT_ACP_COMMIT_TYPE_STYLE', "style 💎"),
+    'REFACTOR': get_env('GIT_ACP_COMMIT_TYPE_REFACTOR', "refactor ♻️"),
+    'TEST': get_env('GIT_ACP_COMMIT_TYPE_TEST', "test 🧪"),
+    'CHORE': get_env('GIT_ACP_COMMIT_TYPE_CHORE', "chore 📦"),
+    'REVERT': get_env('GIT_ACP_COMMIT_TYPE_REVERT', "revert ⏪")
+}
+
 # Patterns for classifying commits based on file changes and commit messages
 COMMIT_TYPE_PATTERNS: Final[Dict[str, List[str]]] = {
     'docs': [
