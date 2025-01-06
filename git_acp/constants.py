@@ -24,6 +24,7 @@ DEFAULT_AI_MODEL: Final[str] = get_env('GIT_ACP_AI_MODEL', "mevatron/diffsense:1
 DEFAULT_TEMPERATURE: Final[float] = get_env('GIT_ACP_TEMPERATURE', 0.7, float)
 DEFAULT_BASE_URL: Final[str] = get_env('GIT_ACP_BASE_URL', "http://localhost:11434/v1")
 DEFAULT_API_KEY: Final[str] = get_env('GIT_ACP_API_KEY', "ollama")
+DEFAULT_PROMPT_TYPE: Final[str] = get_env('GIT_ACP_PROMPT_TYPE', "advanced")  # Options: "simple" or "advanced"
 
 # Git Configuration
 # Basic settings for git operations
