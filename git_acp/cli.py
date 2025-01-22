@@ -118,8 +118,13 @@ def select_files(changed_files: Set[str]) -> str:
         rprint("[yellow]Adding all files[/yellow]")
         return "."
     
-    # Always quote file paths to handle spaces and special characters safely
-    return " ".join(f'"{f}"' for f in selected_files)
+    # Print selected files for user feedback
+    rprint("[yellow]Adding files:[/yellow]")
+    for file in selected_files:
+        rprint(f"  - {file}")
+    
+    # Return files as a space-separated string, properly quoted if needed
+    return " ".join(f'"{f}"' if ' ' in f else f for f in selected_files)
 
 def select_commit_type(config: GitConfig, suggested_type: CommitType) -> CommitType:
     """
