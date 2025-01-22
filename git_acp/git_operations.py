@@ -1,9 +1,17 @@
-"""Git operations module for git-acp package."""
+"""Git operations module for git-acp package.
+
+This module provides functions for interacting with Git repositories, including:
+- Running git commands
+- Managing files (add, commit, push)
+- Analyzing commit history
+- Handling git operations errors
+"""
 
 import subprocess
+import json
+import shlex
 from typing import Set, Tuple, List, Dict, Optional, Any
 from collections import Counter
-import json
 from git_acp.formatting import (
     debug_header, debug_item, debug_json, status, success, warning
 )
@@ -15,25 +23,27 @@ from git_acp.constants import (
 
 class GitError(Exception):
     """Custom exception for git-related errors."""
-    pass
 
-def run_git_command(command: list[str], config: Optional['GitConfig'] = None) -> Tuple[str, str]:
-    """
-    Run a git command and return its output.
+def run_git_command(
+    command: list[str], 
+    config: Optional['GitConfig'] = None
+) -> Tuple[str, str]:
+    """Run a git command and return its output.
     
     Args:
         command: List of command components
         config: GitConfig instance containing configuration options
     
     Returns:
-        Tuple of (stdout, stderr)
+        Tuple[str, str]: A tuple containing (stdout, stderr)
         
     Raises:
-        GitError: If the command fails
+        GitError: If the command fails or cannot be executed
     """
     try:
         if config and config.verbose:
             debug_item("Running git command", ' '.join(command))
+        
         process = subprocess.Popen(
             command,
             stdout=subprocess.PIPE,
@@ -41,17 +51,20 @@ def run_git_command(command: list[str], config: Optional['GitConfig'] = None) ->
             text=True
         )
         stdout, stderr = process.communicate()
+        
         if process.returncode != 0:
             raise GitError(f"Command failed: {stderr}")
+            
         if config and config.verbose and stdout.strip():
             debug_item("Command output", stdout.strip())
+            
         return stdout.strip(), stderr.strip()
+        
     except Exception as e:
         raise GitError(f"Failed to execute git command: {e}") from e
 
 def get_current_branch(config: Optional['GitConfig'] = None) -> str:
-    """
-    Get the name of the current git branch.
+    """Get the name of the current git branch.
     
     Args:
         config: GitConfig instance containing configuration options
@@ -68,8 +81,7 @@ def get_current_branch(config: Optional['GitConfig'] = None) -> str:
     return stdout
 
 def git_add(files: str, config: Optional['GitConfig'] = None) -> None:
-    """
-    Add files to git staging area.
+    """Add files to git staging area.
     
     Args:
         files: Space-separated list of files to add or "." for all files
@@ -80,13 +92,22 @@ def git_add(files: str, config: Optional['GitConfig'] = None) -> None:
     """
     if config and config.verbose:
         debug_item("Adding files to staging area", files)
+    
     with status("Adding files..."):
-        run_git_command(["git", "add", files], config)
+        if files == ".":
+            run_git_command(["git", "add", "."], config)
+        else:
+            # Split files by space, but preserve quoted strings
+            file_list = shlex.split(files)
+            for file in file_list:
+                if config and config.verbose:
+                    debug_item("Adding file", file)
+                run_git_command(["git", "add", file], config)
+    
     success("Files added successfully")
 
 def git_commit(message: str, config: Optional['GitConfig'] = None) -> None:
-    """
-    Commit staged changes to the repository.
+    """Commit staged changes to the repository.
     
     Args:
         message: The commit message
@@ -97,30 +118,30 @@ def git_commit(message: str, config: Optional['GitConfig'] = None) -> None:
     """
     if config and config.verbose:
         debug_item("Committing with message", message)
+    
     with status("Committing changes..."):
         run_git_command(["git", "commit", "-m", message], config)
     success("Changes committed successfully")
 
-def git_push(branch: str, config: Optional[Any] = None) -> None:
-    """
-    Push committed changes to the remote repository.
+def git_push(branch: str, config: Optional['GitConfig'] = None) -> None:
+    """Push committed changes to the remote repository.
     
     Args:
         branch: The name of the branch to push to
-        config: Configuration object with verbose flag
+        config: GitConfig instance containing configuration options
         
     Raises:
         GitError: If the git push operation fails or remote is not accessible
     """
     if config and config.verbose:
         debug_item("Pushing to branch", branch)
+    
     with status(f"Pushing to {branch}..."):
         run_git_command(["git", "push", DEFAULT_REMOTE, branch], config)
     success("Changes pushed successfully")
 
-def get_changed_files(config: Any) -> Set[str]:
-    """
-    Get list of changed files from git status.
+def get_changed_files(config: 'GitConfig') -> Set[str]:
+    """Get list of changed files from git status.
     
     This function retrieves both staged and unstaged changes, excluding certain
     patterns like __pycache__ and compiled Python files.
@@ -137,25 +158,20 @@ def get_changed_files(config: Any) -> Set[str]:
     if config.verbose:
         debug_header("Getting changed files")
 
-    # Get both staged and unstaged changes in porcelain format
     stdout_staged, _ = run_git_command(["git", "status", "--porcelain", "-uall"], config)
-
     files = set()
-    exclude_patterns = EXCLUDED_PATTERNS
 
-    def process_status_line(line: str) -> str | None:
-        """
-        Process a single git status line and extract the filename.
+    def process_status_line(line: str) -> Optional[str]:
+        """Process a single git status line and extract the filename.
+        
+        The format of each line is: XY FILENAME
+        where X is the status in the index and Y is the status in the working tree.
         
         Args:
             line: A line from git status --porcelain output
             
         Returns:
             Optional[str]: The processed filename if valid, None otherwise
-            
-        Notes:
-            The format of each line is: XY FILENAME
-            where X is the status in the index and Y is the status in the working tree
         """
         if not line.strip():
             return None
@@ -165,14 +181,12 @@ def get_changed_files(config: Any) -> Set[str]:
             return None
 
         path = parts[1].strip()
-
         if " -> " in path:
             _, new_path = path.split(" -> ")
             path = new_path
 
         path = path.strip().strip('"')
-
-        if any(pat in path for pat in exclude_patterns):
+        if any(pat in path for pat in EXCLUDED_PATTERNS):
             return None
 
         if config.verbose:
@@ -192,15 +206,14 @@ def get_changed_files(config: Any) -> Set[str]:
 
     return files
 
-def unstage_files(config = None) -> None:
-    """
-    Unstage all staged changes.
-    
-    Args:
-        config: Configuration object with verbose flag
+def unstage_files(config: Optional['GitConfig'] = None) -> None:
+    """Unstage all staged changes.
     
     This function is typically called when an operation is cancelled or fails,
     to restore the git staging area to its previous state.
+    
+    Args:
+        config: GitConfig instance containing configuration options
     
     Raises:
         GitError: If unable to unstage files
@@ -212,13 +225,15 @@ def unstage_files(config = None) -> None:
     except GitError as e:
         warning(f"Failed to unstage changes: {e}")
 
-def get_recent_commits(num_commits: int = 10, config = None) -> List[Dict[str, str]]:
-    """
-    Get recent commit messages and metadata.
+def get_recent_commits(
+    num_commits: int = DEFAULT_NUM_RECENT_COMMITS,
+    config: Optional['GitConfig'] = None
+) -> List[Dict[str, str]]:
+    """Get recent commit messages and metadata.
     
     Args:
         num_commits: Number of recent commits to retrieve
-        config: Configuration object with verbose flag
+        config: GitConfig instance containing configuration options
         
     Returns:
         List[Dict[str, str]]: List of commit dictionaries with 'hash', 'message', 
@@ -230,15 +245,16 @@ def get_recent_commits(num_commits: int = 10, config = None) -> List[Dict[str, s
     try:
         if config and config.verbose:
             debug_item("Retrieving recent commits", str(num_commits))
+        
         format_str = "--pretty=format:%H%n%s%n%an%n%ad%n---%n"
         stdout, _ = run_git_command(["git", "log", "-n", str(num_commits), format_str], config)
 
-        commits = []
-        current_commit = {}
+        commits: List[Dict[str, str]] = []
+        current_commit: Dict[str, str] = {}
 
         for line in stdout.split('\n'):
             if line == "---":
-                if current_commit:
+                if current_commit and len(current_commit) == 4:
                     commits.append(current_commit)
                     if config and config.verbose:
                         debug_item("Found commit", json.dumps(current_commit))
@@ -254,18 +270,18 @@ def get_recent_commits(num_commits: int = 10, config = None) -> List[Dict[str, s
             elif 'date' not in current_commit:
                 current_commit['date'] = line
 
-        if current_commit:
+        if current_commit and len(current_commit) == 4:
             commits.append(current_commit)
             if config and config.verbose:
                 debug_item("Found commit", json.dumps(current_commit))
 
         return commits
+        
     except GitError as e:
         raise GitError(f"Failed to get commit history: {e}") from e
 
 def analyze_commit_patterns(config: Optional['GitConfig'] = None) -> Dict[str, Counter]:
-    """
-    Analyze patterns in recent commits.
+    """Analyze patterns in recent commits.
     
     Args:
         config: GitConfig instance containing configuration options
@@ -282,25 +298,26 @@ def analyze_commit_patterns(config: Optional['GitConfig'] = None) -> Dict[str, C
     try:
         if config and config.verbose:
             debug_header("Analyzing commit patterns")
-        commits = get_recent_commits(5, config)  # Analyze last 5 commits
-
-        patterns = {
+        
+        commits = get_recent_commits(DEFAULT_NUM_RECENT_COMMITS, config)
+        patterns: Dict[str, Counter] = {
             'commit_types': Counter(),
             'message_length': Counter(),
             'authors': Counter()
         }
 
         for commit in commits:
-            # Analyze commit type
             message = commit['message']
+            
+            # Analyze commit type
             if ': ' in message:
                 commit_type = message.split(': ')[0]
                 patterns['commit_types'][commit_type] += 1
                 if config and config.verbose:
                     debug_item("Found commit type", commit_type)
 
-            # Analyze message length
-            length_category = len(message) // 10 * 10  # Group by tens
+            # Analyze message length (group by tens)
+            length_category = len(message) // 10 * 10
             patterns['message_length'][length_category] += 1
 
             # Count author contributions
@@ -311,12 +328,16 @@ def analyze_commit_patterns(config: Optional['GitConfig'] = None) -> Dict[str, C
             debug_json(dict(patterns))
 
         return patterns
+        
     except GitError as e:
         raise GitError(f"Failed to analyze commit patterns: {e}") from e
 
-def find_related_commits(diff_content: str, num_commits: int = 5, config: Optional['GitConfig'] = None) -> List[Dict[str, str]]:
-    """
-    Find commits related to the given diff content.
+def find_related_commits(
+    diff_content: str,
+    num_commits: int = DEFAULT_NUM_RECENT_COMMITS,
+    config: Optional['GitConfig'] = None
+) -> List[Dict[str, str]]:
+    """Find commits related to the given diff content.
     
     Args:
         diff_content: The diff content to find related commits for
@@ -324,39 +345,39 @@ def find_related_commits(diff_content: str, num_commits: int = 5, config: Option
         config: GitConfig instance containing configuration options
         
     Returns:
-        List of related commit dictionaries
+        List[Dict[str, str]]: List of related commit dictionaries
         
     Raises:
         GitError: If unable to find related commits
     """
     try:
         # Get file paths from the diff
-        files = set()
-        for line in diff_content.split('\n'):
-            if line.startswith('+++ b/') or line.startswith('--- a/'):
-                file_path = line[6:]
-                if file_path != '/dev/null':
-                    files.add(file_path)
+        files = {
+            line[6:] for line in diff_content.split('\n')
+            if (line.startswith('+++ b/') or line.startswith('--- a/'))
+            and not line.endswith('/dev/null')
+        }
 
         if not files:
             return []
 
         # Find commits that modified these files
-        related_commits = []
+        related_commits: List[Dict[str, str]] = []
+        format_str = "--pretty=format:%H%n%s%n%an%n%ad%n---%n"
+
         for file_path in files:
-            format_str = "--pretty=format:%H%n%s%n%an%n%ad%n---%n"
             stdout, _ = run_git_command([
                 "git", "log", "-n", str(num_commits),
                 "--follow", format_str, "--", file_path
             ])
 
-            current_commit = {}
+            current_commit: Dict[str, str] = {}
             for line in stdout.split('\n'):
                 if line == "---":
                     if current_commit and len(current_commit) == 4:
-                        # Make sure we have all fields
                         if current_commit not in related_commits:
                             related_commits.append(current_commit.copy())
+                    current_commit = {}
                     continue
 
                 if not current_commit:
@@ -368,15 +389,14 @@ def find_related_commits(diff_content: str, num_commits: int = 5, config: Option
                 elif 'date' not in current_commit:
                     current_commit['date'] = line
 
-            # Handle the last commit if it wasn't followed by a separator
             if current_commit and len(current_commit) == 4 and current_commit not in related_commits:
                 related_commits.append(current_commit.copy())
 
-        # Only print debug info in verbose mode
         if config and config.verbose:
             debug_header("Related commits found:")
             debug_json(related_commits)
 
         return related_commits[:num_commits]
+        
     except GitError as e:
         raise GitError(f"Failed to find related commits: {e}") from e

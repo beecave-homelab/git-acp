@@ -2,18 +2,18 @@
 
 from enum import Enum
 from git_acp.git_operations import run_git_command, GitError
-from git_acp.constants import COMMIT_TYPE_PATTERNS
+from git_acp.constants import COMMIT_TYPE_PATTERNS, COMMIT_TYPES
 
 class CommitType(Enum):
     """Enum for commit types with their corresponding emojis."""
-    FEAT = "feat ✨"
-    FIX = "fix 🐛"
-    DOCS = "docs 📝"
-    STYLE = "style 💎"
-    REFACTOR = "refactor ♻️"
-    TEST = "test 🧪"
-    CHORE = "chore 📦"
-    REVERT = "revert ⏪"
+    FEAT = COMMIT_TYPES['FEAT']
+    FIX = COMMIT_TYPES['FIX']
+    DOCS = COMMIT_TYPES['DOCS']
+    STYLE = COMMIT_TYPES['STYLE']
+    REFACTOR = COMMIT_TYPES['REFACTOR']
+    TEST = COMMIT_TYPES['TEST']
+    CHORE = COMMIT_TYPES['CHORE']
+    REVERT = COMMIT_TYPES['REVERT']
 
     @classmethod
     def from_str(cls, type_str: str) -> 'CommitType':

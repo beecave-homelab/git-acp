@@ -24,6 +24,7 @@ DEFAULT_AI_MODEL: Final[str] = get_env('GIT_ACP_AI_MODEL', "mevatron/diffsense:1
 DEFAULT_TEMPERATURE: Final[float] = get_env('GIT_ACP_TEMPERATURE', 0.7, float)
 DEFAULT_BASE_URL: Final[str] = get_env('GIT_ACP_BASE_URL', "http://localhost:11434/v1")
 DEFAULT_API_KEY: Final[str] = get_env('GIT_ACP_API_KEY', "ollama")
+DEFAULT_PROMPT_TYPE: Final[str] = get_env('GIT_ACP_PROMPT_TYPE', "advanced")  # Options: "simple" or "advanced"
 
 # Git Configuration
 # Basic settings for git operations
@@ -44,6 +45,18 @@ EXCLUDED_PATTERNS: Final[List[str]] = [
     '.venv',        # Virtual environment directory
     'node_modules'  # Node.js dependencies
 ]
+
+# Commit type definitions with their corresponding emojis
+COMMIT_TYPES: Final[Dict[str, str]] = {
+    'FEAT': get_env('GIT_ACP_COMMIT_TYPE_FEAT', "feat ✨"),
+    'FIX': get_env('GIT_ACP_COMMIT_TYPE_FIX', "fix 🐛"),
+    'DOCS': get_env('GIT_ACP_COMMIT_TYPE_DOCS', "docs 📝"),
+    'STYLE': get_env('GIT_ACP_COMMIT_TYPE_STYLE', "style 💎"),
+    'REFACTOR': get_env('GIT_ACP_COMMIT_TYPE_REFACTOR', "refactor ♻️"),
+    'TEST': get_env('GIT_ACP_COMMIT_TYPE_TEST', "test 🧪"),
+    'CHORE': get_env('GIT_ACP_COMMIT_TYPE_CHORE', "chore 📦"),
+    'REVERT': get_env('GIT_ACP_COMMIT_TYPE_REVERT', "revert ⏪")
+}
 
 # Patterns for classifying commits based on file changes and commit messages
 COMMIT_TYPE_PATTERNS: Final[Dict[str, List[str]]] = {

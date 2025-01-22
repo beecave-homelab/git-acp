@@ -88,7 +88,7 @@ def select_files(changed_files: Set[str]) -> str:
         changed_files: Set of files with uncommitted changes
         
     Returns:
-        str: Space-separated list of selected files
+        str: Space-separated list of selected files, with proper quoting
     """
     if not changed_files:
         raise GitError("No changed files found to commit.")
@@ -96,7 +96,7 @@ def select_files(changed_files: Set[str]) -> str:
     if len(changed_files) == 1:
         selected_file = next(iter(changed_files))
         rprint(f"[yellow]Adding file:[/yellow] {selected_file}")
-        return selected_file
+        return f'"{selected_file}"' if ' ' in selected_file else selected_file
     
     # Sort files and ensure paths are properly displayed
     file_choices = sorted(list(changed_files))
@@ -117,7 +117,13 @@ def select_files(changed_files: Set[str]) -> str:
     if "All files" in selected_files:
         rprint("[yellow]Adding all files[/yellow]")
         return "."
-        
+    
+    # Print selected files for user feedback
+    rprint("[yellow]Adding files:[/yellow]")
+    for file in selected_files:
+        rprint(f"  - {file}")
+    
+    # Return files as a space-separated string, properly quoted if needed
     return " ".join(f'"{f}"' if ' ' in f else f for f in selected_files)
 
 def select_commit_type(config: GitConfig, suggested_type: CommitType) -> CommitType:

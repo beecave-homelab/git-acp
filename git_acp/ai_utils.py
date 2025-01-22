@@ -22,7 +22,8 @@ from git_acp.constants import (
     DEFAULT_NUM_RECENT_COMMITS,
     DEFAULT_NUM_RELATED_COMMITS,
     DEFAULT_BASE_URL,
-    DEFAULT_API_KEY
+    DEFAULT_API_KEY,
+    DEFAULT_PROMPT_TYPE
 )
 
 GitConfig = TypeVar('GitConfig')
@@ -87,9 +88,9 @@ class AIClient:
                     debug_item("Response text", str(getattr(e.response, 'text', 'N/A')))
             raise GitError(f"AI request failed: {e.__class__.__name__}: {str(e)}") from e
 
-def create_commit_message_prompt(context: Dict[str, Any], config: Optional[GitConfig] = None) -> str:
+def create_advanced_commit_message_prompt(context: Dict[str, Any], config: Optional[GitConfig] = None) -> str:
     """
-    Create a prompt for generating a commit message.
+    Create a prompt for generating a commit message with advanced repository context.
     
     Args:
         context: Dictionary containing git context information
@@ -220,6 +221,33 @@ def get_commit_context(config: 'GitConfig') -> Dict[str, Any]:
 
     return commit_context
 
+def create_simple_commit_message_prompt(staged_changes: str, config: Optional[GitConfig] = None) -> str:
+    """
+    Create a simple prompt for generating a commit message using just the diff.
+    
+    Args:
+        staged_changes: The git diff output
+        config: GitConfig instance containing configuration options
+    
+    Returns:
+        str: Generated prompt for the AI model
+    """
+    prompt = f"""Generate a concise and descriptive commit message for the following changes:
+
+Changes to commit:
+{staged_changes}
+
+Requirements:
+1. Follow the conventional commit format (type: description)
+2. Be specific about what changed and why
+3. Keep it concise but descriptive
+"""
+    if config and config.verbose:
+        debug_header("Generated simple prompt preview:")
+        debug_preview(prompt)
+
+    return prompt
+
 def generate_commit_message_with_ai(config: Any) -> str:
     """
     Generate a commit message using AI.
@@ -238,10 +266,17 @@ def generate_commit_message_with_ai(config: Any) -> str:
             debug_header("\nStarting commit message generation")
 
         context = get_commit_context(config)
+        prompt_type = DEFAULT_PROMPT_TYPE.lower()
 
         if config.verbose:
             debug_header("Creating AI prompt")
-        prompt = create_commit_message_prompt(context, config)
+            debug_item("Prompt type", prompt_type)
+
+        # Select prompt based on configuration
+        if prompt_type == "simple":
+            prompt = create_simple_commit_message_prompt(context['staged_changes'], config)
+        else:  # "advanced" is the default
+            prompt = create_advanced_commit_message_prompt(context, config)
 
         if config.verbose:
             debug_header("Sending request to AI service")
