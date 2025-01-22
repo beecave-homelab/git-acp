@@ -5,7 +5,7 @@ with open("README.md", "r", encoding="utf-8") as fh:
 
 setup(
     name="git-acp",
-    version="0.12.1",
+    version="0.12.2",
     author="elvee",
     author_email="",
     description="A tool to automate Git add, commit, and push with AI-powered commit messages",
