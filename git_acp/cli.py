@@ -129,6 +129,7 @@ def select_files(changed_files: Set[str]) -> str:
 def select_commit_type(config: GitConfig, suggested_type: CommitType) -> CommitType:
     """
     Present an interactive selection menu for commit types.
+    If no_confirm is True, automatically selects the suggested type.
     
     Args:
         config: GitConfig instance containing configuration options
@@ -140,6 +141,11 @@ def select_commit_type(config: GitConfig, suggested_type: CommitType) -> CommitT
     Raises:
         GitError: If no commit type is selected
     """
+    if config.skip_confirmation:
+        if config.verbose:
+            debug_print(config, f"Auto-selecting suggested commit type: {suggested_type.value}")
+        return suggested_type
+
     # Create choices list with suggested type highlighted
     commit_type_choices = []
     for commit_type in CommitType:
@@ -249,8 +255,14 @@ def main(add: Optional[str], message: Optional[str], branch: Optional[str],
                 ))
                 if not Confirm.ask("Do you want to proceed?"):
                     unstage_files()
-                    rprint("[yellow]Operation cancelled.[/yellow]")
-                    return
+                    raise GitError("Operation cancelled by user.")
+            else:
+                if config.verbose:
+                    rprint(Panel.fit(
+                        formatted_message,
+                        title="[bold yellow]Auto-committing with message[/bold yellow]",
+                        border_style="yellow"
+                    ))
 
             git_commit(formatted_message)
             git_push(config.branch)
