@@ -257,12 +257,11 @@ def main(add: Optional[str], message: Optional[str], branch: Optional[str],
                     unstage_files()
                     raise GitError("Operation cancelled by user.")
             else:
-                if config.verbose:
-                    rprint(Panel.fit(
-                        formatted_message,
-                        title="[bold yellow]Auto-committing with message[/bold yellow]",
-                        border_style="yellow"
-                    ))
+                rprint(Panel.fit(
+                    formatted_message,
+                    title="[bold yellow]Auto-committing with message[/bold yellow]",
+                    border_style="yellow"
+                ))
 
             git_commit(formatted_message)
             git_push(config.branch)
