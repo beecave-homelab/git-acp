@@ -10,11 +10,9 @@ This module provides a command-line interface for automating Git operations with
 - Rich terminal output with progress indicators
 """
 
-import subprocess
 import sys
-from typing import List, Set, Union, Optional
+from typing import List, Set, Optional
 from dataclasses import dataclass
-from enum import Enum
 import click
 import questionary
 from rich.console import Console
@@ -164,7 +162,7 @@ def select_commit_type(config: GitConfig, suggested_type: CommitType) -> CommitT
     if config.verbose:
         debug_print(config, f"Suggested commit type: {suggested_type.value}")
 
-    def validate_single_selection(selected_types: List[CommitType]) -> Union[bool, str]:
+    def validate_single_selection(selected_types: List[CommitType]) -> str | bool:
         """
         Validate that exactly one commit type is selected.
         
@@ -172,7 +170,7 @@ def select_commit_type(config: GitConfig, suggested_type: CommitType) -> CommitT
             selected_types: List of selected commit types
             
         Returns:
-            Union[bool, str]: True if valid, error message string if invalid
+            str | bool: True if valid, error message string if invalid
         """
         if len(selected_types) != 1:
             return "Please select exactly one commit type"
