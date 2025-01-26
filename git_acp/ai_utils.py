@@ -6,7 +6,11 @@ from typing import Dict, Optional, Any, TypeVar, cast
 
 from openai import OpenAI
 from rich.prompt import Confirm
+from rich import print as rprint
 from tqdm import tqdm
+import click
+import questionary
+from rich.panel import Panel
 
 from git_acp.git_operations import (
     GitError, run_git_command, get_recent_commits,
@@ -23,7 +27,10 @@ from git_acp.constants import (
     DEFAULT_NUM_RELATED_COMMITS,
     DEFAULT_BASE_URL,
     DEFAULT_API_KEY,
-    DEFAULT_PROMPT_TYPE
+    DEFAULT_PROMPT_TYPE,
+    QUESTIONARY_STYLE,
+    COLORS,
+    TERMINAL_WIDTH
 )
 
 GitConfig = TypeVar('GitConfig')
@@ -256,44 +263,79 @@ def generate_commit_message_with_ai(config: Any) -> str:
         config: GitConfig instance containing configuration options
         
     Returns:
-        str: The generated commit message
-        
-    Raises:
-        GitError: If unable to generate commit message
+        str: Generated commit message
     """
+    if config.verbose:
+        debug_header("Generating commit message with AI")
+    
     try:
-        if config.verbose:
-            debug_header("\nStarting commit message generation")
-
+        client = AIClient(config)
+        
+        # Get repository context
         context = get_commit_context(config)
-        prompt_type = DEFAULT_PROMPT_TYPE.lower()
-
-        if config.verbose:
-            debug_header("Creating AI prompt")
-            debug_item("Prompt type", prompt_type)
-
-        # Select prompt based on configuration
-        if prompt_type == "simple":
-            prompt = create_simple_commit_message_prompt(context['staged_changes'], config)
-        else:  # "advanced" is the default
+        
+        # Create prompt based on context
+        if DEFAULT_PROMPT_TYPE == "advanced":
             prompt = create_advanced_commit_message_prompt(context, config)
-
+        else:
+            prompt = create_simple_commit_message_prompt(context['staged_changes'], config)
+        
+        # Generate commit message
+        messages = [{"role": "user", "content": prompt}]
+        commit_message = client.chat_completion(messages)
+        
         if config.verbose:
-            debug_header("Sending request to AI service")
-            debug_item("Model", DEFAULT_AI_MODEL)
-
-        ai_client = AIClient(config)
-        with status("Generating commit message..."):
-            message = ai_client.chat_completion(
-                messages=[{'role': 'user', 'content': prompt}]
-            )
-
-            if config.verbose:
-                debug_header("Received response from AI service")
-                debug_item("Generated message")
-                debug_preview(message)
-
-            return message.strip()
-
-    except GitError as e:
-        raise GitError(f"Failed to generate commit message: {e}") from e
+            debug_preview("Generated commit message", commit_message)
+        
+        # Allow interactive editing if enabled
+        if config.interactive:
+            if not config.use_ollama:
+                raise GitError("Interactive mode requires --ollama flag")
+                
+            # Calculate a fixed width for both panel and text input
+            display_width = min(max(len(line) for line in commit_message.split('\n')) + 4, TERMINAL_WIDTH - 20)
+                
+            # Show the AI-generated message and allow editing
+            rprint(f"\n[{COLORS['ai_message_header']}]AI-generated commit message:[/{COLORS['ai_message_header']}]")
+            rprint(Panel.fit(
+                commit_message,
+                border_style=COLORS['ai_message_border'],
+                width=display_width,
+                padding=(0, 1)  # Add horizontal padding
+            ))
+            
+            # Ask if user wants to edit
+            if questionary.confirm(
+                "Would you like to edit this commit message?",
+                style=questionary.Style(QUESTIONARY_STYLE)
+            ).ask():
+                # Show editing instructions
+                rprint(f"\n[{COLORS['instruction_text']}](Finish editing with [{COLORS['key_combination']}]'Alt+Enter'[/{COLORS['key_combination']}] or [{COLORS['key_combination']}]'Esc then Enter'[/{COLORS['key_combination']}])[/{COLORS['instruction_text']}]")
+                
+                # Use questionary text input with the AI message as default
+                edited_message = questionary.text(
+                    "Edit commit message:\n",  # Add newline to place input on next line
+                    default=commit_message,
+                    style=questionary.Style([
+                        *QUESTIONARY_STYLE,
+                        ('text', 'yellow'),  # Make input text yellow for better visibility
+                        ('answer', 'yellow'),  # Make answer text yellow for consistency
+                        ('question', '')  # Remove question styling to maximize width
+                    ]),
+                    multiline=True,
+                    qmark='',  # Remove the question mark to maximize width
+                    instruction='',  # Remove instruction to maximize width
+                ).ask()
+                
+                if edited_message is not None:
+                    commit_message = edited_message.strip()
+                    if config.verbose:
+                        debug_preview("Edited commit message", commit_message)
+        
+        return commit_message
+    
+    except Exception as e:
+        if config.verbose:
+            debug_header("Error generating commit message")
+            debug_item("Error", str(e))
+        raise GitError(f"Failed to generate commit message: {str(e)}") from e
