@@ -9,10 +9,9 @@ from collections import Counter
 from typing import Dict, Any
 
 from openai import OpenAI
-from rich.prompt import Confirm
 from rich import print as rprint
-from tqdm import tqdm
 import questionary
+from rich.panel import Panel
 
 from git_acp.git_operations import (
     GitError, run_git_command, get_recent_commits,
@@ -20,8 +19,7 @@ from git_acp.git_operations import (
     find_related_commits
 )
 from git_acp.formatting import (
-    debug_header, debug_item, debug_json, debug_preview,
-    status, success
+    debug_header, debug_item, debug_preview
 )
 from git_acp.constants import (
     DEFAULT_AI_MODEL,
@@ -37,8 +35,7 @@ from git_acp.constants import (
     TERMINAL_WIDTH
 )
 from git_acp.types import (
-    GitConfig, Message, CommitContext, CommitPatterns,
-    OptionalConfig, PromptType
+    GitConfig, OptionalConfig, PromptType
 )
 
 class AIClient:
@@ -348,11 +345,3 @@ def generate_commit_message_with_ai(config: GitConfig) -> str:
             debug_header("Error generating commit message")
             debug_item("Error", str(e))
         raise GitError(f"Failed to generate commit message: {str(e)}") from e
-
-def get_staged_changes(config: OptionalConfig = None) -> str:
-    """Get the staged changes as a diff string."""
-    return get_diff("staged", config)
-
-def get_unstaged_changes(config: OptionalConfig = None) -> str:
-    """Get the unstaged changes as a diff string."""
-    return get_diff("unstaged", config)
