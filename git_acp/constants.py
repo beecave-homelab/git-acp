@@ -120,7 +120,12 @@ COLORS: Final[Dict[str, str]] = {
     'success': get_env('GIT_ACP_SUCCESS_COLOR', 'green'),
     'warning': get_env('GIT_ACP_WARNING_COLOR', 'yellow'),
     'status': get_env('GIT_ACP_STATUS_COLOR', 'bold green'),
-    'error': get_env('GIT_ACP_ERROR_COLOR', 'bold red')
+    'error': get_env('GIT_ACP_ERROR_COLOR', 'bold red'),
+    # AI message formatting
+    'ai_message_header': get_env('GIT_ACP_AI_MESSAGE_HEADER_COLOR', 'bold yellow'),
+    'ai_message_border': get_env('GIT_ACP_AI_MESSAGE_BORDER_COLOR', 'yellow'),
+    'key_combination': get_env('GIT_ACP_KEY_COMBINATION_COLOR', 'cyan'),
+    'instruction_text': get_env('GIT_ACP_INSTRUCTION_TEXT_COLOR', 'dim')
 }
 
 # Questionary style configuration
