@@ -42,7 +42,7 @@ EXCLUDED_PATTERNS: Final[List[str]] = [
     '.pyc',         # Compiled Python files
     '.pyo',         # Optimized Python files
     '.pyd',         # Python DLL files
-    '.env',         # Environment variables file
+    '/.env$',       # Only exact .env files, not .env.example etc.
     '.venv',        # Virtual environment directory
     'node_modules'  # Node.js dependencies
 ]
