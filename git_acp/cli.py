@@ -64,7 +64,7 @@ def debug_print(config: GitConfig, message: str) -> None:
         message: Debug message to print
     """
     if config.verbose:
-        rprint(f"[yellow]Debug: {message}[/yellow]")
+        rprint(f"[{COLORS['warning']}]Debug: {message}[/{COLORS['warning']}]")
 
 def format_commit_message(commit_type: CommitType, message: str) -> str:
     """
@@ -97,7 +97,7 @@ def select_files(changed_files: Set[str]) -> str:
     
     if len(changed_files) == 1:
         selected_file = next(iter(changed_files))
-        rprint(f"[yellow]Adding file:[/yellow] {selected_file}")
+        rprint(f"[{COLORS['warning']}]Adding file:[/{COLORS['warning']}] {selected_file}")
         return f'"{selected_file}"' if ' ' in selected_file else selected_file
     
     # Sort files and ensure paths are properly displayed
@@ -117,11 +117,11 @@ def select_files(changed_files: Set[str]) -> str:
         raise GitError("No files selected.")
     
     if "All files" in selected_files:
-        rprint("[yellow]Adding all files[/yellow]")
+        rprint(f"[{COLORS['warning']}]Adding all files[/{COLORS['warning']}]")
         return "."
     
     # Print selected files for user feedback
-    rprint("[yellow]Adding files:[/yellow]")
+    rprint(f"[{COLORS['warning']}]Adding files:[/{COLORS['warning']}]")
     for file in selected_files:
         rprint(f"  - {file}")
     
@@ -143,9 +143,9 @@ def select_commit_type(config: GitConfig, suggested_type: CommitType) -> CommitT
     Raises:
         GitError: If no commit type is selected
     """
-    if config.skip_confirmation:
+    if config.skip_confirmation or suggested_type.value in ['feat', 'fix', 'docs', 'style', 'refactor', 'test', 'chore', 'revert']:
         if config.verbose:
-            debug_print(config, f"Auto-selecting suggested commit type: {suggested_type.value}")
+            debug_print(config, f"Auto-selecting commit type: {suggested_type.value}")
         return suggested_type
 
     # Create choices list with suggested type highlighted
@@ -247,15 +247,21 @@ def main(add: Optional[str], message: Optional[str], branch: Optional[str],
             suggested_type = (CommitType.from_str(commit_type) if commit_type 
                             else classify_commit_type(config))
             
-            # Let user select commit type
-            selected_type = select_commit_type(config, suggested_type)
+            # Let user select commit type, unless it was specified with -t flag
+            rprint(f"[{COLORS['bold']}]🤖 Analyzing changes to suggest commit type...[/{COLORS['bold']}]")
+            if commit_type:
+                selected_type = suggested_type
+                rprint(f"[{COLORS['success']}]✓ Using specified commit type: {selected_type.value}[/{COLORS['success']}]")
+            else:
+                selected_type = select_commit_type(config, suggested_type)
+                rprint(f"[{COLORS['success']}]✓ Commit type selected successfully[/{COLORS['success']}]")
             formatted_message = format_commit_message(selected_type, config.message)
 
             if not config.skip_confirmation:
                 rprint(Panel.fit(
                     formatted_message,
-                    title="[bold yellow]Commit Message[/bold yellow]",
-                    border_style="yellow"
+                    title=f"[{COLORS['ai_message_header']}]Commit Message[/{COLORS['ai_message_header']}]",
+                    border_style=COLORS['ai_message_border']
                 ))
                 if not Confirm.ask("Do you want to proceed?"):
                     unstage_files()
@@ -263,14 +269,14 @@ def main(add: Optional[str], message: Optional[str], branch: Optional[str],
             else:
                 rprint(Panel.fit(
                     formatted_message,
-                    title="[bold yellow]Auto-committing with message[/bold yellow]",
-                    border_style="yellow"
+                    title=f"[{COLORS['ai_message_header']}]Auto-committing with message[/{COLORS['ai_message_header']}]",
+                    border_style=COLORS['ai_message_border']
                 ))
 
             git_commit(formatted_message)
             git_push(config.branch)
 
-            rprint("\n[bold green]🎉 All operations completed successfully![/bold green]")
+            rprint(f"\n[{COLORS['success']}]🎉 All operations completed successfully![/{COLORS['success']}]")
 
         except (KeyboardInterrupt, EOFError, GitError) as e:
             # Unstage files before exiting
@@ -278,11 +284,11 @@ def main(add: Optional[str], message: Optional[str], branch: Optional[str],
             if isinstance(e, GitError):
                 raise
             # Handle user interruption
-            rprint("[yellow]Operation cancelled by user.[/yellow]")
+            rprint(f"[{COLORS['warning']}]Operation cancelled by user.[/{COLORS['warning']}]")
             sys.exit(0)  # Exit with success code since this is a user-initiated cancellation
 
     except GitError as e:
-        rprint(f"[bold red]Error:[/bold red] {e}")
+        rprint(f"[{COLORS['error']}]Error:[/{COLORS['error']}] {e}")
         sys.exit(1)
 
 if __name__ == "__main__":

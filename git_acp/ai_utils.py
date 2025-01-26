@@ -281,8 +281,10 @@ def generate_commit_message_with_ai(config: Any) -> str:
             prompt = create_simple_commit_message_prompt(context['staged_changes'], config)
         
         # Generate commit message
+        rprint(f"[{COLORS['bold']}]🤖 Generating commit message with AI...[/{COLORS['bold']}]")
         messages = [{"role": "user", "content": prompt}]
         commit_message = client.chat_completion(messages)
+        rprint(f"[{COLORS['success']}]✓ Commit message generated successfully[/{COLORS['success']}]")
         
         if config.verbose:
             debug_preview("Generated commit message", commit_message)

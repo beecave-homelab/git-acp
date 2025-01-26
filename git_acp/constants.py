@@ -125,7 +125,9 @@ COLORS: Final[Dict[str, str]] = {
     'ai_message_header': get_env('GIT_ACP_AI_MESSAGE_HEADER_COLOR', 'bold yellow'),
     'ai_message_border': get_env('GIT_ACP_AI_MESSAGE_BORDER_COLOR', 'yellow'),
     'key_combination': get_env('GIT_ACP_KEY_COMBINATION_COLOR', 'cyan'),
-    'instruction_text': get_env('GIT_ACP_INSTRUCTION_TEXT_COLOR', 'dim')
+    'instruction_text': get_env('GIT_ACP_INSTRUCTION_TEXT_COLOR', 'dim'),
+    # Text style formatting
+    'bold': get_env('GIT_ACP_BOLD_COLOR', 'dim')
 }
 
 # Questionary style configuration
