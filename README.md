@@ -16,7 +16,6 @@ A Python tool to automate Git add, commit, and push actions with optional AI-gen
 - [License](#license)
 - [Contributing](#contributing)
 
-
 ## Features
 
 - Automates git add, commit, and push operations in a single command
@@ -155,36 +154,43 @@ Without any options, the tool runs in interactive mode:
 ### Examples
 
 1. Fully interactive mode (recommended for most cases):
+
     ```bash
     git-acp
     ```
 
 2. Add specific files with a message:
+
     ```bash
     git-acp -a "README.md docs/*" -m "Update documentation"
     ```
 
 3. Use AI to generate commit message:
+
     ```bash
     git-acp -o
     ```
 
 4. Quick commit all changes without confirmations:
+
     ```bash
     git-acp -nc -m "Quick fix" -a .
     ```
 
 5. Push to specific branch with verbose output:
+
     ```bash
     git-acp -b feature/new-branch -v
     ```
 
 6. Specify commit type and message:
+
     ```bash
     git-acp -t feat -m "Add new login feature"
     ```
 
 7. AI message for specific files and type:
+
     ```bash
     git-acp -a "src/auth/*" -t feat -o
     ```
@@ -199,12 +205,14 @@ The tool can be customized using environment variables. By default, it uses the 
 Available configurations include:
 
 ### AI Configuration
+
 - `GIT_ACP_AI_MODEL`: Model name for Ollama (default: mevatron/diffsense:1.5b)
 - `GIT_ACP_TEMPERATURE`: Temperature for AI generation (0.0 to 1.0, default: 0.7)
 - `GIT_ACP_BASE_URL`: Ollama API endpoint (default: http://localhost:11434/v1)
 - `GIT_ACP_API_KEY`: API key for Ollama (default: "ollama")
 
 ### Git Configuration
+
 - `GIT_ACP_DEFAULT_BRANCH`: Default branch name for push operations (default: main)
 - `GIT_ACP_DEFAULT_REMOTE`: Default remote name (default: origin)
 - `GIT_ACP_NUM_RECENT_COMMITS`: Number of recent commits to analyze (default: 3)
@@ -212,6 +220,7 @@ Available configurations include:
 - `GIT_ACP_MAX_DIFF_PREVIEW_LINES`: Maximum number of diff lines to preview (default: 10)
 
 ### Terminal Configuration
+
 - `GIT_ACP_TERMINAL_WIDTH`: Maximum width for formatted output (default: 100)
 - Various color configurations for different output types (debug, success, warning, etc.)
 
