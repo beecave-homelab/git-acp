@@ -47,7 +47,8 @@ def run_git_command(
     """
     try:
         if config and config.verbose:
-            rprint(f"[{COLORS['debug_header']}]Running command:[/{COLORS['debug_header']}] {' '.join(command)}")
+            debug_header("Git Command Execution")
+            debug_item("Command", ' '.join(command))
         
         process = subprocess.Popen(
             command,
@@ -58,33 +59,51 @@ def run_git_command(
         stdout, stderr = process.communicate()
         
         if process.returncode != 0:
-            # Common git error patterns
-            if "not a git repository" in stderr.lower():
-                raise GitError("Not a git repository. Please run this command in a git repository.")
-            elif "did not match any files" in stderr.lower():
-                raise GitError("No files matched the specified pattern.")
-            elif "nothing to commit" in stderr.lower():
-                raise GitError("No changes to commit. Working directory is clean.")
-            elif "permission denied" in stderr.lower():
-                raise GitError("Permission denied. Please check your repository permissions.")
-            elif "remote: Repository not found" in stderr:
-                raise GitError("Remote repository not found. Please check the repository URL.")
-            elif "failed to push" in stderr.lower():
-                raise GitError("Failed to push. Please pull the latest changes first.")
-            else:
-                raise GitError(f"Git command failed: {stderr}")
+            debug_header("Git Command Failed")
+            debug_item("Command", ' '.join(command))
+            debug_item("Exit Code", str(process.returncode))
+            debug_item("Error Output", stderr.strip())
+            
+            # Common git error patterns with user-friendly messages
+            error_patterns = {
+                "not a git repository": "Not a git repository. Please run this command in a git repository.",
+                "did not match any files": "No files matched the specified pattern. Please check the file paths.",
+                "nothing to commit": "No changes to commit. Working directory is clean.",
+                "permission denied": "Permission denied. Please check your repository permissions.",
+                "remote: Repository not found": "Remote repository not found. Please check the repository URL and your access rights.",
+                "failed to push": "Failed to push changes. Please pull the latest changes and resolve any conflicts.",
+                "cannot lock ref": "Cannot lock ref. Another git process may be running.",
+                "refusing to merge unrelated histories": "Cannot merge unrelated histories. Use --allow-unrelated-histories if intended.",
+                "error: your local changes would be overwritten": "Local changes would be overwritten. Please commit or stash them first."
+            }
+            
+            for pattern, message in error_patterns.items():
+                if pattern in stderr.lower():
+                    raise GitError(message)
+            
+            # If no specific pattern matches, provide a generic error message
+            raise GitError(f"Git command failed: {stderr.strip()}")
             
         if config and config.verbose and stdout.strip():
-            debug_item("Command output", stdout.strip())
+            debug_item("Command Output", stdout.strip())
             
         return stdout.strip(), stderr.strip()
         
     except FileNotFoundError:
+        debug_header("Git Command Error")
+        debug_item("Error Type", "FileNotFoundError")
         raise GitError("Git is not installed or not in PATH. Please install git and try again.")
     except PermissionError:
+        debug_header("Git Command Error")
+        debug_item("Error Type", "PermissionError")
+        debug_item("Command", ' '.join(command))
         raise GitError("Permission denied while executing git command. Please check your permissions.")
     except Exception as e:
-        raise GitError(f"Failed to execute git command: {e}") from e
+        debug_header("Git Command Error")
+        debug_item("Error Type", e.__class__.__name__)
+        debug_item("Error Message", str(e))
+        debug_item("Command", ' '.join(command))
+        raise GitError(f"Failed to execute git command: {str(e)}") from e
 
 def get_current_branch(config: OptionalConfig = None) -> str:
     """Get the name of the current git branch.
@@ -98,10 +117,18 @@ def get_current_branch(config: OptionalConfig = None) -> str:
     Raises:
         GitError: If unable to determine current branch
     """
-    stdout, _ = run_git_command(["git", "rev-parse", "--abbrev-ref", "HEAD"], config)
-    if config and config.verbose:
-        debug_item("Current branch", stdout)
-    return stdout
+    try:
+        debug_header("Getting Current Branch")
+        stdout, _ = run_git_command(["git", "rev-parse", "--abbrev-ref", "HEAD"], config)
+        if not stdout:
+            raise GitError("Failed to determine current branch. Are you in a valid git repository?")
+        if config and config.verbose:
+            debug_item("Current Branch", stdout)
+        return stdout
+    except GitError as e:
+        debug_header("Branch Detection Failed")
+        debug_item("Error", str(e))
+        raise GitError("Could not determine the current branch. Please ensure you're in a git repository.") from e
 
 def git_add(files: str, config: OptionalConfig = None) -> None:
     """Add files to git staging area.
@@ -113,21 +140,28 @@ def git_add(files: str, config: OptionalConfig = None) -> None:
     Raises:
         GitError: If the git add operation fails
     """
-    if config and config.verbose:
-        debug_item("Adding files to staging area", files)
-    
-    with status("Adding files..."):
-        if files == ".":
-            run_git_command(["git", "add", "."], config)
-        else:
-            # Split files by space, but preserve quoted strings
-            file_list = shlex.split(files)
-            for file in file_list:
-                if config and config.verbose:
-                    debug_item("Adding file", file)
-                run_git_command(["git", "add", file], config)
-    
-    success("Files added successfully")
+    try:
+        if config and config.verbose:
+            debug_header("Adding Files to Staging Area")
+            debug_item("Files", files)
+        
+        with status("Adding files..."):
+            if files == ".":
+                run_git_command(["git", "add", "."], config)
+            else:
+                # Split files by space, but preserve quoted strings
+                file_list = shlex.split(files)
+                for file in file_list:
+                    if config and config.verbose:
+                        debug_item("Adding File", file)
+                    run_git_command(["git", "add", file], config)
+        
+        success("Files added successfully")
+    except GitError as e:
+        debug_header("Git Add Failed")
+        debug_item("Error", str(e))
+        debug_item("Files", files)
+        raise GitError(f"Failed to add files to staging area: {str(e)}") from e
 
 def git_commit(message: str, config: OptionalConfig = None) -> None:
     """Commit staged changes to the repository.
@@ -139,12 +173,18 @@ def git_commit(message: str, config: OptionalConfig = None) -> None:
     Raises:
         GitError: If the git commit operation fails
     """
-    if config and config.verbose:
-        debug_item("Committing with message", message)
-    
-    with status("Committing changes..."):
-        run_git_command(["git", "commit", "-m", message], config)
-    success("Changes committed successfully")
+    try:
+        if config and config.verbose:
+            debug_header("Committing Changes")
+            debug_item("Message", message)
+        
+        with status("Committing changes..."):
+            run_git_command(["git", "commit", "-m", message], config)
+        success("Changes committed successfully")
+    except GitError as e:
+        debug_header("Commit Failed")
+        debug_item("Error", str(e))
+        raise GitError(f"Failed to commit changes: {str(e)}") from e
 
 def git_push(branch: str, config: OptionalConfig = None) -> None:
     """Push committed changes to the remote repository.
@@ -156,12 +196,27 @@ def git_push(branch: str, config: OptionalConfig = None) -> None:
     Raises:
         GitError: If the git push operation fails or remote is not accessible
     """
-    if config and config.verbose:
-        debug_item("Pushing to branch", branch)
-    
-    with status(f"Pushing to {branch}..."):
-        run_git_command(["git", "push", DEFAULT_REMOTE, branch], config)
-    success("Changes pushed successfully")
+    try:
+        if config and config.verbose:
+            debug_header("Pushing Changes")
+            debug_item("Branch", branch)
+            debug_item("Remote", DEFAULT_REMOTE)
+        
+        with status(f"Pushing to {branch}..."):
+            run_git_command(["git", "push", DEFAULT_REMOTE, branch], config)
+        success("Changes pushed successfully")
+    except GitError as e:
+        debug_header("Push Failed")
+        debug_item("Error", str(e))
+        debug_item("Branch", branch)
+        debug_item("Remote", DEFAULT_REMOTE)
+        
+        if "rejected" in str(e).lower():
+            raise GitError(f"Push rejected. Please pull the latest changes first: git pull {DEFAULT_REMOTE} {branch}") from e
+        elif "no upstream branch" in str(e).lower():
+            raise GitError(f"No upstream branch. Set the remote with: git push --set-upstream {DEFAULT_REMOTE} {branch}") from e
+        else:
+            raise GitError(f"Failed to push changes: {str(e)}") from e
 
 def get_changed_files(config: OptionalConfig = None) -> Set[str]:
     """Get list of changed files from git status.

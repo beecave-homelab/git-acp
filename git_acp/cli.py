@@ -197,27 +197,74 @@ def main(add: Optional[str], message: Optional[str], branch: Optional[str],
         )
 
         if add is None:
-            changed_files = get_changed_files(config)
-            if not changed_files:
-                raise GitError("No changes detected in the repository.")
-            config.files = select_files(changed_files)
+            try:
+                changed_files = get_changed_files(config)
+                if not changed_files:
+                    raise GitError("No changes detected in the repository. Make some changes first.")
+                config.files = select_files(changed_files)
+            except GitError as e:
+                rprint(Panel(
+                    f"[{COLORS['error']}]Error selecting files:[/{COLORS['error']}]\n{str(e)}\n\n"
+                    "Suggestion: Make sure you're in a git repository with changes to commit.",
+                    title="File Selection Failed",
+                    border_style="red"
+                ))
+                sys.exit(1)
 
         if not config.branch:
-            config.branch = get_current_branch()
+            try:
+                config.branch = get_current_branch()
+            except GitError as e:
+                rprint(Panel(
+                    f"[{COLORS['error']}]Error getting current branch:[/{COLORS['error']}]\n{str(e)}\n\n"
+                    "Suggestion: Ensure you're in a git repository and have a valid branch.",
+                    title="Branch Detection Failed",
+                    border_style="red"
+                ))
+                sys.exit(1)
 
         # Add files first
-        git_add(config.files)
+        try:
+            git_add(config.files)
+        except GitError as e:
+            rprint(Panel(
+                f"[{COLORS['error']}]Error adding files:[/{COLORS['error']}]\n{str(e)}\n\n"
+                "Suggestion: Check file paths and repository permissions.",
+                title="Git Add Failed",
+                border_style="red"
+            ))
+            sys.exit(1)
 
         try:
             if config.use_ollama:
-                config.message = generate_commit_message_with_ai(config)
+                try:
+                    config.message = generate_commit_message_with_ai(config)
+                except GitError as e:
+                    rprint(Panel(
+                        f"[{COLORS['error']}]AI commit message generation failed:[/{COLORS['error']}]\n{str(e)}\n\n"
+                        "Suggestion: Check Ollama server status and configuration.",
+                        title="AI Generation Failed",
+                        border_style="red"
+                    ))
+                    if not Confirm.ask("Would you like to continue with a manual commit message?"):
+                        unstage_files()
+                        sys.exit(1)
 
             if not config.message:
-                raise GitError("No commit message provided.")
+                raise GitError("No commit message provided. Please specify a message with -m or use --ollama.")
 
             # Get suggested commit type
-            suggested_type = (CommitType.from_str(commit_type) if commit_type 
-                            else classify_commit_type(config))
+            try:
+                suggested_type = (CommitType.from_str(commit_type) if commit_type 
+                                else classify_commit_type(config))
+            except GitError as e:
+                rprint(Panel(
+                    f"[{COLORS['error']}]Error determining commit type:[/{COLORS['error']}]\n{str(e)}\n\n"
+                    "Suggestion: Check your changes or specify a commit type with -t.",
+                    title="Commit Type Error",
+                    border_style="red"
+                ))
+                sys.exit(1)
             
             # Let user select commit type, unless it was specified with -t flag
             rprint(f"[{COLORS['bold']}]🤖 Analyzing changes to suggest commit type...[/{COLORS['bold']}]")
@@ -225,8 +272,19 @@ def main(add: Optional[str], message: Optional[str], branch: Optional[str],
                 selected_type = suggested_type
                 rprint(f"[{COLORS['success']}]✓ Using specified commit type: {selected_type.value}[/{COLORS['success']}]")
             else:
-                selected_type = select_commit_type(config, suggested_type)
-                rprint(f"[{COLORS['success']}]✓ Commit type selected successfully[/{COLORS['success']}]")
+                try:
+                    selected_type = select_commit_type(config, suggested_type)
+                    rprint(f"[{COLORS['success']}]✓ Commit type selected successfully[/{COLORS['success']}]")
+                except GitError as e:
+                    rprint(Panel(
+                        f"[{COLORS['error']}]Error selecting commit type:[/{COLORS['error']}]\n{str(e)}\n\n"
+                        "Suggestion: Try again or specify a commit type with -t.",
+                        title="Commit Type Selection Failed",
+                        border_style="red"
+                    ))
+                    unstage_files()
+                    sys.exit(1)
+
             formatted_message = format_commit_message(selected_type, config.message)
 
             if not config.skip_confirmation:
@@ -237,7 +295,8 @@ def main(add: Optional[str], message: Optional[str], branch: Optional[str],
                 ))
                 if not Confirm.ask("Do you want to proceed?"):
                     unstage_files()
-                    raise GitError("Operation cancelled by user.")
+                    rprint(Panel("Operation cancelled by user.", title="Cancelled", border_style="yellow"))
+                    sys.exit(0)
             else:
                 rprint(Panel.fit(
                     formatted_message,
@@ -245,22 +304,45 @@ def main(add: Optional[str], message: Optional[str], branch: Optional[str],
                     border_style=COLORS['ai_message_border']
                 ))
 
-            git_commit(formatted_message)
-            git_push(config.branch)
+            try:
+                git_commit(formatted_message)
+            except GitError as e:
+                rprint(Panel(
+                    f"[{COLORS['error']}]Error committing changes:[/{COLORS['error']}]\n{str(e)}\n\n"
+                    "Suggestion: Check if there are changes to commit and try again.",
+                    title="Commit Failed",
+                    border_style="red"
+                ))
+                sys.exit(1)
 
-            rprint(f"\n[{COLORS['success']}]🎉 All operations completed successfully![/{COLORS['success']}]")
+            try:
+                git_push(config.branch)
+            except GitError as e:
+                rprint(Panel(
+                    f"[{COLORS['error']}]Error pushing changes:[/{COLORS['error']}]\n{str(e)}\n\n"
+                    "Suggestion: Pull latest changes, resolve conflicts if any, and try again.",
+                    title="Push Failed",
+                    border_style="red"
+                ))
+                sys.exit(1)
 
-        except (KeyboardInterrupt, EOFError, GitError) as e:
-            # Unstage files before exiting
+        except Exception as e:
             unstage_files()
-            if isinstance(e, GitError):
-                raise
-            # Handle user interruption
-            rprint(f"[{COLORS['warning']}]Operation cancelled by user.[/{COLORS['warning']}]")
-            sys.exit(0)  # Exit with success code since this is a user-initiated cancellation
+            rprint(Panel(
+                f"[{COLORS['error']}]An unexpected error occurred:[/{COLORS['error']}]\n{str(e)}\n\n"
+                "Suggestion: Please report this issue if it persists.",
+                title="Unexpected Error",
+                border_style="red bold"
+            ))
+            sys.exit(1)
 
-    except GitError as e:
-        rprint(f"[{COLORS['error']}]Error:[/{COLORS['error']}] {e}")
+    except Exception as e:
+        rprint(Panel(
+            f"[{COLORS['error']}]Critical error:[/{COLORS['error']}]\n{str(e)}\n\n"
+            "Suggestion: Please check your git repository and configuration.",
+            title="Critical Error",
+            border_style="red bold"
+        ))
         sys.exit(1)
 
 if __name__ == "__main__":
