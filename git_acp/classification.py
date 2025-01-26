@@ -1,7 +1,7 @@
 """Commit type classification module for git-acp package."""
 
 from enum import Enum
-from git_acp.git_operations import run_git_command, GitError
+from git_acp.git_operations import run_git_command, GitError, get_diff
 from git_acp.constants import COMMIT_TYPE_PATTERNS, COMMIT_TYPES
 
 class CommitType(Enum):
@@ -27,19 +27,24 @@ class CommitType(Enum):
                 f"Valid types are: {', '.join(valid_types)}"
             )
 
-def get_git_diff(config) -> str:
-    """Get the git diff, checking both staged and unstaged changes."""
-    # First try to get staged changes
-    stdout, _ = run_git_command(["git", "diff", "--staged"])
-    if stdout.strip():
-        if config.verbose:
-            print("[yellow]Debug: Using staged changes diff[/yellow]")
-        return stdout
-    # If no staged changes, get unstaged changes
-    if config.verbose:
-        print("[yellow]Debug: No staged changes, using unstaged diff[/yellow]")
-    stdout, _ = run_git_command(["git", "diff"])
-    return stdout
+def get_changes() -> str:
+    """Get the changes to be committed.
+    
+    Returns:
+        str: The changes as a diff string
+        
+    Raises:
+        GitError: If unable to get changes
+    """
+    try:
+        # First try staged changes
+        diff = get_diff("staged")
+        if not diff:
+            # If no staged changes, get unstaged changes
+            diff = get_diff("unstaged")
+        return diff
+    except GitError as e:
+        raise GitError(f"Failed to get changes: {e}") from e
 
 def classify_commit_type(config) -> CommitType:
     """
@@ -51,7 +56,7 @@ def classify_commit_type(config) -> CommitType:
     Returns:
         CommitType: The classified commit type
     """
-    diff = get_git_diff(config)
+    diff = get_changes()
     
     def check_pattern(keywords: list[str], diff_text: str) -> bool:
         """Check if any of the keywords appear in the diff text."""

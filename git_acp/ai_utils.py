@@ -14,6 +14,7 @@ from rich.panel import Panel
 
 from git_acp.git_operations import (
     GitError, run_git_command, get_recent_commits,
+    get_diff,
     find_related_commits
 )
 from git_acp.formatting import (
@@ -341,3 +342,11 @@ def generate_commit_message_with_ai(config: Any) -> str:
             debug_header("Error generating commit message")
             debug_item("Error", str(e))
         raise GitError(f"Failed to generate commit message: {str(e)}") from e
+
+def get_staged_changes(config: Optional['GitConfig'] = None) -> str:
+    """Get the staged changes as a diff string."""
+    return get_diff("staged", config)
+
+def get_unstaged_changes(config: Optional['GitConfig'] = None) -> str:
+    """Get the unstaged changes as a diff string."""
+    return get_diff("unstaged", config)

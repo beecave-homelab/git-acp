@@ -10,7 +10,7 @@ This module provides functions for interacting with Git repositories, including:
 import subprocess
 import json
 import shlex
-from typing import Set, Tuple, List, Dict, Optional, Any
+from typing import Set, Tuple, List, Dict, Optional, Any, Literal
 from collections import Counter
 from git_acp.formatting import (
     debug_header, debug_item, debug_json, status, success, warning
@@ -400,3 +400,201 @@ def find_related_commits(
         
     except GitError as e:
         raise GitError(f"Failed to find related commits: {e}") from e
+
+def get_diff(diff_type: Literal["staged", "unstaged"] = "staged", config: Optional['GitConfig'] = None) -> str:
+    """Get the diff for staged or unstaged changes.
+    
+    Args:
+        diff_type: Type of diff to get ("staged" or "unstaged")
+        config: GitConfig instance containing configuration options
+        
+    Returns:
+        str: The diff output
+        
+    Raises:
+        GitError: If unable to get diff
+    """
+    try:
+        if config and config.verbose:
+            debug_item("Getting diff", diff_type)
+        
+        if diff_type == "staged":
+            stdout, _ = run_git_command(["git", "diff", "--staged"], config)
+        else:
+            stdout, _ = run_git_command(["git", "diff"], config)
+            
+        return stdout
+        
+    except GitError as e:
+        raise GitError(f"Failed to get {diff_type} diff: {e}") from e
+
+def create_branch(branch_name: str, config: Optional['GitConfig'] = None) -> None:
+    """Create a new git branch.
+    
+    Args:
+        branch_name: Name of the branch to create
+        config: GitConfig instance containing configuration options
+        
+    Raises:
+        GitError: If unable to create branch
+    """
+    try:
+        if config and config.verbose:
+            debug_item("Creating branch", branch_name)
+            
+        run_git_command(["git", "checkout", "-b", branch_name], config)
+        success(f"Created and switched to branch '{branch_name}'")
+        
+    except GitError as e:
+        raise GitError(f"Failed to create branch: {e}") from e
+
+def delete_branch(branch_name: str, force: bool = False, config: Optional['GitConfig'] = None) -> None:
+    """Delete a git branch.
+    
+    Args:
+        branch_name: Name of the branch to delete
+        force: Whether to force delete the branch
+        config: GitConfig instance containing configuration options
+        
+    Raises:
+        GitError: If unable to delete branch
+    """
+    try:
+        if config and config.verbose:
+            debug_item("Deleting branch", branch_name)
+            
+        cmd = ["git", "branch", "-D" if force else "-d", branch_name]
+        run_git_command(cmd, config)
+        success(f"Deleted branch '{branch_name}'")
+        
+    except GitError as e:
+        raise GitError(f"Failed to delete branch: {e}") from e
+
+def merge_branch(source_branch: str, config: Optional['GitConfig'] = None) -> None:
+    """Merge a branch into the current branch.
+    
+    Args:
+        source_branch: Name of the branch to merge from
+        config: GitConfig instance containing configuration options
+        
+    Raises:
+        GitError: If unable to merge branch
+    """
+    try:
+        if config and config.verbose:
+            debug_item("Merging branch", source_branch)
+            
+        run_git_command(["git", "merge", source_branch], config)
+        success(f"Merged '{source_branch}' into current branch")
+        
+    except GitError as e:
+        raise GitError(f"Failed to merge branch: {e}") from e
+
+def manage_remote(
+    operation: Literal["add", "remove", "set-url"],
+    remote_name: str,
+    url: Optional[str] = None,
+    config: Optional['GitConfig'] = None
+) -> None:
+    """Manage git remotes.
+    
+    Args:
+        operation: Type of remote operation
+        remote_name: Name of the remote
+        url: URL for the remote (required for add and set-url)
+        config: GitConfig instance containing configuration options
+        
+    Raises:
+        GitError: If unable to manage remote
+    """
+    try:
+        if config and config.verbose:
+            debug_item(f"Remote operation: {operation}", f"{remote_name} {url or ''}")
+            
+        if operation == "remove":
+            run_git_command(["git", "remote", "remove", remote_name], config)
+        elif url:
+            if operation == "add":
+                run_git_command(["git", "remote", "add", remote_name, url], config)
+            else:  # set-url
+                run_git_command(["git", "remote", "set-url", remote_name, url], config)
+        success(f"Remote operation '{operation}' completed successfully")
+        
+    except GitError as e:
+        raise GitError(f"Failed to {operation} remote: {e}") from e
+
+def manage_tags(
+    operation: Literal["create", "delete", "push"],
+    tag_name: str,
+    message: Optional[str] = None,
+    config: Optional['GitConfig'] = None
+) -> None:
+    """Manage git tags.
+    
+    Args:
+        operation: Type of tag operation
+        tag_name: Name of the tag
+        message: Tag message (for create operation)
+        config: GitConfig instance containing configuration options
+        
+    Raises:
+        GitError: If unable to manage tag
+    """
+    try:
+        if config and config.verbose:
+            debug_item(f"Tag operation: {operation}", tag_name)
+            
+        if operation == "create":
+            cmd = ["git", "tag", "-a", tag_name, "-m", message or tag_name]
+            run_git_command(cmd, config)
+        elif operation == "delete":
+            run_git_command(["git", "tag", "-d", tag_name], config)
+        else:  # push
+            run_git_command(["git", "push", DEFAULT_REMOTE, tag_name], config)
+        success(f"Tag operation '{operation}' completed successfully")
+        
+    except GitError as e:
+        raise GitError(f"Failed to {operation} tag: {e}") from e
+
+def manage_stash(
+    operation: Literal["save", "pop", "apply", "drop", "list"],
+    message: Optional[str] = None,
+    stash_id: Optional[str] = None,
+    config: Optional['GitConfig'] = None
+) -> Optional[str]:
+    """Manage git stash operations.
+    
+    Args:
+        operation: Type of stash operation
+        message: Stash message (for save operation)
+        stash_id: Stash identifier (for pop, apply, drop operations)
+        config: GitConfig instance containing configuration options
+        
+    Returns:
+        Optional[str]: Stash list output for list operation
+        
+    Raises:
+        GitError: If unable to manage stash
+    """
+    try:
+        if config and config.verbose:
+            debug_item(f"Stash operation: {operation}", f"{message or ''} {stash_id or ''}")
+            
+        if operation == "save":
+            cmd = ["git", "stash", "push", "-m", message] if message else ["git", "stash"]
+            run_git_command(cmd, config)
+        elif operation == "list":
+            stdout, _ = run_git_command(["git", "stash", "list"], config)
+            return stdout
+        else:
+            cmd = ["git", "stash", operation]
+            if stash_id:
+                cmd.append(stash_id)
+            run_git_command(cmd, config)
+            
+        if operation != "list":
+            success(f"Stash operation '{operation}' completed successfully")
+        return None
+        
+    except GitError as e:
+        raise GitError(f"Failed to {operation} stash: {e}") from e
