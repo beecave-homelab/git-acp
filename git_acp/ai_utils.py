@@ -42,9 +42,12 @@ class AIClient:
     """Client for interacting with AI models via OpenAI package."""
     
     def __init__(self, config: OptionalConfig = None):
-        """Initialize the AI client with configuration."""
-        self.config = config
+        """Initialize the AI client with configuration.
         
+        Args:
+            config: Optional configuration settings
+        """
+        self.config = config
         if self.config and self.config.verbose:
             debug_header("Initializing AI client")
             debug_item("Base URL", DEFAULT_BASE_URL)
@@ -58,6 +61,12 @@ class AIClient:
                 api_key=DEFAULT_API_KEY,
                 timeout=DEFAULT_AI_TIMEOUT
             )
+        except ValueError as e:
+            if "Invalid URL" in str(e):
+                raise GitError("Invalid Ollama server URL. Please check your configuration.") from e
+            raise GitError(f"Invalid AI configuration: {str(e)}") from e
+        except ConnectionError:
+            raise GitError("Could not connect to Ollama server. Please ensure it's running.") from None
         except Exception as e:
             if self.config and self.config.verbose:
                 debug_header("Error initializing AI client")
@@ -89,6 +98,14 @@ class AIClient:
                 **kwargs
             )
             return response.choices[0].message.content
+        except TimeoutError:
+            raise GitError("AI request timed out. Please try again or check your connection.") from None
+        except ConnectionError:
+            raise GitError("Could not connect to Ollama server. Please ensure it's running.") from None
+        except ValueError as e:
+            if "model" in str(e).lower():
+                raise GitError(f"AI model '{DEFAULT_AI_MODEL}' not found. Please ensure it's installed in Ollama.") from e
+            raise GitError(f"Invalid AI request: {str(e)}") from e
         except Exception as e:
             if self.config and self.config.verbose:
                 debug_header("Error in chat completion")

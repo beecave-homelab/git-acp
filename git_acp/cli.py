@@ -12,7 +12,6 @@ This module provides a command-line interface for automating Git operations with
 
 import sys
 from typing import List, Set, Optional
-from dataclasses import dataclass
 import click
 import questionary
 from rich.console import Console
@@ -27,30 +26,9 @@ from git_acp.git_operations import (
 from git_acp.classification import CommitType, classify_commit_type
 from git_acp.ai_utils import generate_commit_message_with_ai
 from git_acp.constants import COLORS, QUESTIONARY_STYLE
-from git_acp.types import OptionalConfig
+from git_acp.types import GitConfig, OptionalConfig
 
 console = Console()
-
-@dataclass
-class GitConfig:
-    """Configuration settings for git operations.
-
-    Attributes:
-        files: Files to be added to git staging. Defaults to "." for all files.
-        message: Commit message to use. Defaults to "Automated commit".
-        branch: Target branch for push operation. If None, uses current branch.
-        use_ollama: Whether to use Ollama AI for commit message generation.
-        interactive: Whether to allow editing of AI-generated commit messages.
-        skip_confirmation: Whether to skip confirmation prompts.
-        verbose: Whether to show debug information.
-    """
-    files: str = "."
-    message: str = "Automated commit"
-    branch: OptionalConfig = None
-    use_ollama: bool = False
-    interactive: bool = False
-    skip_confirmation: bool = False
-    verbose: bool = False
 
 def debug_print(config: GitConfig, message: str) -> None:
     """Print a debug message if verbose mode is enabled.

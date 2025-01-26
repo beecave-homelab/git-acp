@@ -58,13 +58,31 @@ def run_git_command(
         stdout, stderr = process.communicate()
         
         if process.returncode != 0:
-            raise GitError(f"Command failed: {stderr}")
+            # Common git error patterns
+            if "not a git repository" in stderr.lower():
+                raise GitError("Not a git repository. Please run this command in a git repository.")
+            elif "did not match any files" in stderr.lower():
+                raise GitError("No files matched the specified pattern.")
+            elif "nothing to commit" in stderr.lower():
+                raise GitError("No changes to commit. Working directory is clean.")
+            elif "permission denied" in stderr.lower():
+                raise GitError("Permission denied. Please check your repository permissions.")
+            elif "remote: Repository not found" in stderr:
+                raise GitError("Remote repository not found. Please check the repository URL.")
+            elif "failed to push" in stderr.lower():
+                raise GitError("Failed to push. Please pull the latest changes first.")
+            else:
+                raise GitError(f"Git command failed: {stderr}")
             
         if config and config.verbose and stdout.strip():
             debug_item("Command output", stdout.strip())
             
         return stdout.strip(), stderr.strip()
         
+    except FileNotFoundError:
+        raise GitError("Git is not installed or not in PATH. Please install git and try again.")
+    except PermissionError:
+        raise GitError("Permission denied while executing git command. Please check your permissions.")
     except Exception as e:
         raise GitError(f"Failed to execute git command: {e}") from e
 
