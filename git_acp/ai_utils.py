@@ -1,4 +1,8 @@
-"""AI utilities module for git-acp package."""
+"""AI-powered commit message generation utilities.
+
+This module provides functions for generating commit messages using AI models,
+with support for both simple and advanced context-aware generation.
+"""
 
 import json
 from collections import Counter
@@ -29,6 +33,7 @@ from git_acp.constants import (
     DEFAULT_BASE_URL,
     DEFAULT_API_KEY,
     DEFAULT_PROMPT_TYPE,
+    DEFAULT_AI_TIMEOUT,
     QUESTIONARY_STYLE,
     COLORS,
     TERMINAL_WIDTH
@@ -50,12 +55,13 @@ class AIClient:
             debug_item("Base URL", DEFAULT_BASE_URL)
             debug_item("Model", DEFAULT_AI_MODEL)
             debug_item("Temperature", str(DEFAULT_TEMPERATURE))
+            debug_item("Timeout", str(DEFAULT_AI_TIMEOUT))
         
         try:
             self.client = OpenAI(
                 base_url=DEFAULT_BASE_URL,
                 api_key=DEFAULT_API_KEY,
-                timeout=30.0  # Add explicit timeout
+                timeout=DEFAULT_AI_TIMEOUT
             )
         except Exception as e:
             if self.config and self.config.verbose:
@@ -84,7 +90,7 @@ class AIClient:
                 model=DEFAULT_AI_MODEL,
                 messages=messages,
                 temperature=DEFAULT_TEMPERATURE,
-                timeout=30.0,  # Add explicit timeout
+                timeout=DEFAULT_AI_TIMEOUT,
                 **kwargs
             )
             return response.choices[0].message.content
@@ -99,9 +105,8 @@ class AIClient:
             raise GitError(f"AI request failed: {e.__class__.__name__}: {str(e)}") from e
 
 def create_advanced_commit_message_prompt(context: Dict[str, Any], config: OptionalConfig = None) -> str:
-    """
-    Create a prompt for generating a commit message with advanced repository context.
-    
+    """Create an AI prompt for generating a commit message with repository context.
+
     Args:
         context: Dictionary containing git context information
         config: GitConfig instance containing configuration options
@@ -232,9 +237,8 @@ def get_commit_context(config: GitConfig) -> Dict[str, Any]:
     return commit_context
 
 def create_simple_commit_message_prompt(staged_changes: str, config: OptionalConfig = None) -> str:
-    """
-    Create a simple prompt for generating a commit message using just the diff.
-    
+    """Create a simple AI prompt for generating a commit message from diff.
+
     Args:
         staged_changes: The git diff output
         config: GitConfig instance containing configuration options

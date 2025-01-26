@@ -1,4 +1,8 @@
-"""Type definitions for git-acp package."""
+"""Type definitions and aliases for git-acp package.
+
+This module defines custom types and type aliases used throughout the package,
+including configuration types, git operation types, and AI-related types.
+"""
 
 from typing import TypeVar, Dict, List, Optional, Any, Literal
 

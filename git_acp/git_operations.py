@@ -1,4 +1,4 @@
-"""Git operations module for git-acp package.
+"""Git repository operations module.
 
 This module provides functions for interacting with Git repositories, including:
 - Running git commands
@@ -37,8 +37,8 @@ def run_git_command(
     command: list[str], 
     config: OptionalConfig = None
 ) -> Tuple[str, str]:
-    """Run a git command and return its output.
-    
+    """Execute a git command and return its output.
+
     Args:
         command: List of command components
         config: GitConfig instance containing configuration options
@@ -290,8 +290,8 @@ def get_recent_commits(
         raise GitError(f"Failed to get commit history: {e}") from e
 
 def analyze_commit_patterns(config: OptionalConfig = None) -> Dict[str, Counter]:
-    """Analyze patterns in recent commits.
-    
+    """Analyze patterns in recent commit history.
+
     Args:
         config: GitConfig instance containing configuration options
     
@@ -346,8 +346,8 @@ def find_related_commits(
     num_commits: int = DEFAULT_NUM_RECENT_COMMITS,
     config: OptionalConfig = None
 ) -> List[Dict[str, str]]:
-    """Find commits related to the given diff content.
-    
+    """Find commits related to changes in the given diff content.
+
     Args:
         diff_content: The diff content to find related commits for
         num_commits: Maximum number of related commits to return

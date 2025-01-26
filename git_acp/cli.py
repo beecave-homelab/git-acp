@@ -1,7 +1,6 @@
 #!/usr/bin/env python3
 
-"""
-Git Add-Commit-Push (git-acp) automation tool.
+"""Command-line interface for Git Add-Commit-Push automation.
 
 This module provides a command-line interface for automating Git operations with enhanced features:
 - Interactive file selection for staging
@@ -36,9 +35,8 @@ console = Console()
 
 @dataclass
 class GitConfig:
-    """
-    Configuration class for git operations.
-    
+    """Configuration settings for git operations.
+
     Attributes:
         files: Files to be added to git staging. Defaults to "." for all files.
         message: Commit message to use. Defaults to "Automated commit".
@@ -57,9 +55,8 @@ class GitConfig:
     verbose: bool = False
 
 def debug_print(config: GitConfig, message: str) -> None:
-    """
-    Print debug message if verbose mode is enabled.
-    
+    """Print a debug message if verbose mode is enabled.
+
     Args:
         config: GitConfig instance containing configuration options
         message: Debug message to print
@@ -68,9 +65,8 @@ def debug_print(config: GitConfig, message: str) -> None:
         rprint(f"[{COLORS['warning']}]Debug: {message}[/{COLORS['warning']}]")
 
 def format_commit_message(commit_type: CommitType, message: str) -> str:
-    """
-    Format the commit message according to the conventional commits specification.
-    
+    """Format a commit message according to conventional commits specification.
+
     Args:
         commit_type: The type of commit
         message: The commit message
@@ -84,9 +80,8 @@ def format_commit_message(commit_type: CommitType, message: str) -> str:
     return f"{commit_type.value}: {title}\n\n{description}".strip()
 
 def select_files(changed_files: Set[str]) -> str:
-    """
-    Present an interactive selection menu for changed files.
-    
+    """Present an interactive selection menu for changed files.
+
     Args:
         changed_files: Set of files with uncommitted changes
         

@@ -1,11 +1,15 @@
-"""Commit type classification module for git-acp package."""
+"""Commit type classification and change analysis utilities.
+
+This module provides functionality for classifying commit types and analyzing
+changes in the repository to suggest appropriate commit types.
+"""
 
 from enum import Enum
 from git_acp.git_operations import run_git_command, GitError, get_diff
 from git_acp.constants import COMMIT_TYPE_PATTERNS, COMMIT_TYPES
 
 class CommitType(Enum):
-    """Enum for commit types with their corresponding emojis."""
+    """Enumeration of conventional commit types with emojis."""
     FEAT = COMMIT_TYPES['FEAT']
     FIX = COMMIT_TYPES['FIX']
     DOCS = COMMIT_TYPES['DOCS']
@@ -17,7 +21,17 @@ class CommitType(Enum):
 
     @classmethod
     def from_str(cls, type_str: str) -> 'CommitType':
-        """Convert string to CommitType, case insensitive."""
+        """Convert a string to a CommitType enum value.
+
+        Args:
+            type_str: The commit type string to convert
+
+        Returns:
+            CommitType: The corresponding enum value
+
+        Raises:
+            GitError: If the type string is invalid
+        """
         try:
             return cls[type_str.upper()]
         except KeyError:
@@ -28,8 +42,8 @@ class CommitType(Enum):
             )
 
 def get_changes() -> str:
-    """Get the changes to be committed.
-    
+    """Retrieve the staged or unstaged changes in the repository.
+
     Returns:
         str: The changes as a diff string
         
