@@ -4,10 +4,12 @@ This module defines custom types and type aliases used throughout the package,
 including configuration types, git operation types, and AI-related types.
 """
 
-from typing import TypeVar, Dict, List, Optional, Any, Literal
+from typing import Dict, Optional, Any, Literal
 
 # Configuration type
-GitConfig = TypeVar('GitConfig')
+class GitConfig:
+    """Base type for git configuration."""
+    pass
 
 # Git operations types
 CommitDict = Dict[str, str]
@@ -20,7 +22,6 @@ StashOperation = Literal["save", "pop", "apply", "drop", "list"]
 PromptType = Literal["simple", "advanced"]
 Message = Dict[str, str]
 CommitContext = Dict[str, Any]
-CommitPatterns = Dict[str, Dict[str, int]]
 
 # Common type aliases
 OptionalConfig = Optional[GitConfig] 
