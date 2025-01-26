@@ -1,7 +1,6 @@
 #!/usr/bin/env python3
 
-"""
-Git Add-Commit-Push (git-acp) automation tool.
+"""Command-line interface for Git Add-Commit-Push automation.
 
 This module provides a command-line interface for automating Git operations with enhanced features:
 - Interactive file selection for staging
@@ -11,11 +10,8 @@ This module provides a command-line interface for automating Git operations with
 - Rich terminal output with progress indicators
 """
 
-import subprocess
 import sys
-from typing import Optional, List, Tuple, Set, Any, Union
-from dataclasses import dataclass
-from enum import Enum
+from typing import List, Set, Optional
 import click
 import questionary
 from rich.console import Console
@@ -30,46 +26,23 @@ from git_acp.git_operations import (
 from git_acp.classification import CommitType, classify_commit_type
 from git_acp.ai_utils import generate_commit_message_with_ai
 from git_acp.constants import COLORS, QUESTIONARY_STYLE
+from git_acp.types import GitConfig, OptionalConfig
 
 console = Console()
 
-@dataclass
-class GitConfig:
-    """
-    Configuration class for git operations.
-    
-    Attributes:
-        files: Files to be added to git staging. Defaults to "." for all files.
-        message: Commit message to use. Defaults to "Automated commit".
-        branch: Target branch for push operation. If None, uses current branch.
-        use_ollama: Whether to use Ollama AI for commit message generation.
-        interactive: Whether to allow editing of AI-generated commit messages.
-        skip_confirmation: Whether to skip confirmation prompts.
-        verbose: Whether to show debug information.
-    """
-    files: str = "."
-    message: str = "Automated commit"
-    branch: Optional[str] = None
-    use_ollama: bool = False
-    interactive: bool = False
-    skip_confirmation: bool = False
-    verbose: bool = False
-
 def debug_print(config: GitConfig, message: str) -> None:
-    """
-    Print debug message if verbose mode is enabled.
-    
+    """Print a debug message if verbose mode is enabled.
+
     Args:
         config: GitConfig instance containing configuration options
         message: Debug message to print
     """
     if config.verbose:
-        rprint(f"[yellow]Debug: {message}[/yellow]")
+        rprint(f"[{COLORS['warning']}]Debug: {message}[/{COLORS['warning']}]")
 
 def format_commit_message(commit_type: CommitType, message: str) -> str:
-    """
-    Format the commit message according to the conventional commits specification.
-    
+    """Format a commit message according to conventional commits specification.
+
     Args:
         commit_type: The type of commit
         message: The commit message
@@ -83,9 +56,8 @@ def format_commit_message(commit_type: CommitType, message: str) -> str:
     return f"{commit_type.value}: {title}\n\n{description}".strip()
 
 def select_files(changed_files: Set[str]) -> str:
-    """
-    Present an interactive selection menu for changed files.
-    
+    """Present an interactive selection menu for changed files.
+
     Args:
         changed_files: Set of files with uncommitted changes
         
@@ -97,7 +69,7 @@ def select_files(changed_files: Set[str]) -> str:
     
     if len(changed_files) == 1:
         selected_file = next(iter(changed_files))
-        rprint(f"[yellow]Adding file:[/yellow] {selected_file}")
+        rprint(f"[{COLORS['warning']}]Adding file:[/{COLORS['warning']}] {selected_file}")
         return f'"{selected_file}"' if ' ' in selected_file else selected_file
     
     # Sort files and ensure paths are properly displayed
@@ -117,11 +89,11 @@ def select_files(changed_files: Set[str]) -> str:
         raise GitError("No files selected.")
     
     if "All files" in selected_files:
-        rprint("[yellow]Adding all files[/yellow]")
+        rprint(f"[{COLORS['warning']}]Adding all files[/{COLORS['warning']}]")
         return "."
     
     # Print selected files for user feedback
-    rprint("[yellow]Adding files:[/yellow]")
+    rprint(f"[{COLORS['warning']}]Adding files:[/{COLORS['warning']}]")
     for file in selected_files:
         rprint(f"  - {file}")
     
@@ -143,9 +115,9 @@ def select_commit_type(config: GitConfig, suggested_type: CommitType) -> CommitT
     Raises:
         GitError: If no commit type is selected
     """
-    if config.skip_confirmation:
+    if config.skip_confirmation or suggested_type.value in ['feat', 'fix', 'docs', 'style', 'refactor', 'test', 'chore', 'revert']:
         if config.verbose:
-            debug_print(config, f"Auto-selecting suggested commit type: {suggested_type.value}")
+            debug_print(config, f"Auto-selecting commit type: {suggested_type.value}")
         return suggested_type
 
     # Create choices list with suggested type highlighted
@@ -168,7 +140,7 @@ def select_commit_type(config: GitConfig, suggested_type: CommitType) -> CommitT
     if config.verbose:
         debug_print(config, f"Suggested commit type: {suggested_type.value}")
 
-    def validate_single_selection(selected_types: List[CommitType]) -> Union[bool, str]:
+    def validate_single_selection(selected_types: List[CommitType]) -> str | bool:
         """
         Validate that exactly one commit type is selected.
         
@@ -176,7 +148,7 @@ def select_commit_type(config: GitConfig, suggested_type: CommitType) -> CommitT
             selected_types: List of selected commit types
             
         Returns:
-            Union[bool, str]: True if valid, error message string if invalid
+            str | bool: True if valid, error message string if invalid
         """
         if len(selected_types) != 1:
             return "Please select exactly one commit type"
@@ -225,64 +197,152 @@ def main(add: Optional[str], message: Optional[str], branch: Optional[str],
         )
 
         if add is None:
-            changed_files = get_changed_files(config)
-            if not changed_files:
-                raise GitError("No changes detected in the repository.")
-            config.files = select_files(changed_files)
+            try:
+                changed_files = get_changed_files(config)
+                if not changed_files:
+                    raise GitError("No changes detected in the repository. Make some changes first.")
+                config.files = select_files(changed_files)
+            except GitError as e:
+                rprint(Panel(
+                    f"[{COLORS['error']}]Error selecting files:[/{COLORS['error']}]\n{str(e)}\n\n"
+                    "Suggestion: Make sure you're in a git repository with changes to commit.",
+                    title="File Selection Failed",
+                    border_style="red"
+                ))
+                sys.exit(1)
 
         if not config.branch:
-            config.branch = get_current_branch()
+            try:
+                config.branch = get_current_branch()
+            except GitError as e:
+                rprint(Panel(
+                    f"[{COLORS['error']}]Error getting current branch:[/{COLORS['error']}]\n{str(e)}\n\n"
+                    "Suggestion: Ensure you're in a git repository and have a valid branch.",
+                    title="Branch Detection Failed",
+                    border_style="red"
+                ))
+                sys.exit(1)
 
         # Add files first
-        git_add(config.files)
+        try:
+            git_add(config.files)
+        except GitError as e:
+            rprint(Panel(
+                f"[{COLORS['error']}]Error adding files:[/{COLORS['error']}]\n{str(e)}\n\n"
+                "Suggestion: Check file paths and repository permissions.",
+                title="Git Add Failed",
+                border_style="red"
+            ))
+            sys.exit(1)
 
         try:
             if config.use_ollama:
-                config.message = generate_commit_message_with_ai(config)
+                try:
+                    config.message = generate_commit_message_with_ai(config)
+                except GitError as e:
+                    rprint(Panel(
+                        f"[{COLORS['error']}]AI commit message generation failed:[/{COLORS['error']}]\n{str(e)}\n\n"
+                        "Suggestion: Check Ollama server status and configuration.",
+                        title="AI Generation Failed",
+                        border_style="red"
+                    ))
+                    if not Confirm.ask("Would you like to continue with a manual commit message?"):
+                        unstage_files()
+                        sys.exit(1)
 
             if not config.message:
-                raise GitError("No commit message provided.")
+                raise GitError("No commit message provided. Please specify a message with -m or use --ollama.")
 
             # Get suggested commit type
-            suggested_type = (CommitType.from_str(commit_type) if commit_type 
-                            else classify_commit_type(config))
+            try:
+                suggested_type = (CommitType.from_str(commit_type) if commit_type 
+                                else classify_commit_type(config))
+            except GitError as e:
+                rprint(Panel(
+                    f"[{COLORS['error']}]Error determining commit type:[/{COLORS['error']}]\n{str(e)}\n\n"
+                    "Suggestion: Check your changes or specify a commit type with -t.",
+                    title="Commit Type Error",
+                    border_style="red"
+                ))
+                sys.exit(1)
             
-            # Let user select commit type
-            selected_type = select_commit_type(config, suggested_type)
+            # Let user select commit type, unless it was specified with -t flag
+            rprint(f"[{COLORS['bold']}]🤖 Analyzing changes to suggest commit type...[/{COLORS['bold']}]")
+            if commit_type:
+                selected_type = suggested_type
+                rprint(f"[{COLORS['success']}]✓ Using specified commit type: {selected_type.value}[/{COLORS['success']}]")
+            else:
+                try:
+                    selected_type = select_commit_type(config, suggested_type)
+                    rprint(f"[{COLORS['success']}]✓ Commit type selected successfully[/{COLORS['success']}]")
+                except GitError as e:
+                    rprint(Panel(
+                        f"[{COLORS['error']}]Error selecting commit type:[/{COLORS['error']}]\n{str(e)}\n\n"
+                        "Suggestion: Try again or specify a commit type with -t.",
+                        title="Commit Type Selection Failed",
+                        border_style="red"
+                    ))
+                    unstage_files()
+                    sys.exit(1)
+
             formatted_message = format_commit_message(selected_type, config.message)
 
             if not config.skip_confirmation:
                 rprint(Panel.fit(
                     formatted_message,
-                    title="[bold yellow]Commit Message[/bold yellow]",
-                    border_style="yellow"
+                    title=f"[{COLORS['ai_message_header']}]Commit Message[/{COLORS['ai_message_header']}]",
+                    border_style=COLORS['ai_message_border']
                 ))
                 if not Confirm.ask("Do you want to proceed?"):
                     unstage_files()
-                    raise GitError("Operation cancelled by user.")
+                    rprint(Panel("Operation cancelled by user.", title="Cancelled", border_style="yellow"))
+                    sys.exit(0)
             else:
                 rprint(Panel.fit(
                     formatted_message,
-                    title="[bold yellow]Auto-committing with message[/bold yellow]",
-                    border_style="yellow"
+                    title=f"[{COLORS['ai_message_header']}]Auto-committing with message[/{COLORS['ai_message_header']}]",
+                    border_style=COLORS['ai_message_border']
                 ))
 
-            git_commit(formatted_message)
-            git_push(config.branch)
+            try:
+                git_commit(formatted_message)
+            except GitError as e:
+                rprint(Panel(
+                    f"[{COLORS['error']}]Error committing changes:[/{COLORS['error']}]\n{str(e)}\n\n"
+                    "Suggestion: Check if there are changes to commit and try again.",
+                    title="Commit Failed",
+                    border_style="red"
+                ))
+                sys.exit(1)
 
-            rprint("\n[bold green]🎉 All operations completed successfully![/bold green]")
+            try:
+                git_push(config.branch)
+            except GitError as e:
+                rprint(Panel(
+                    f"[{COLORS['error']}]Error pushing changes:[/{COLORS['error']}]\n{str(e)}\n\n"
+                    "Suggestion: Pull latest changes, resolve conflicts if any, and try again.",
+                    title="Push Failed",
+                    border_style="red"
+                ))
+                sys.exit(1)
 
-        except (KeyboardInterrupt, EOFError, GitError) as e:
-            # Unstage files before exiting
+        except Exception as e:
             unstage_files()
-            if isinstance(e, GitError):
-                raise
-            # Handle user interruption
-            rprint("[yellow]Operation cancelled by user.[/yellow]")
-            sys.exit(0)  # Exit with success code since this is a user-initiated cancellation
+            rprint(Panel(
+                f"[{COLORS['error']}]An unexpected error occurred:[/{COLORS['error']}]\n{str(e)}\n\n"
+                "Suggestion: Please report this issue if it persists.",
+                title="Unexpected Error",
+                border_style="red bold"
+            ))
+            sys.exit(1)
 
-    except GitError as e:
-        rprint(f"[bold red]Error:[/bold red] {e}")
+    except Exception as e:
+        rprint(Panel(
+            f"[{COLORS['error']}]Critical error:[/{COLORS['error']}]\n{str(e)}\n\n"
+            "Suggestion: Please check your git repository and configuration.",
+            title="Critical Error",
+            border_style="red bold"
+        ))
         sys.exit(1)
 
 if __name__ == "__main__":

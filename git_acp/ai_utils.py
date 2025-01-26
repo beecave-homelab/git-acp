@@ -1,24 +1,26 @@
-"""AI utilities module for git-acp package."""
+"""AI-powered commit message generation utilities.
+
+This module provides functions for generating commit messages using AI models,
+with support for both simple and advanced context-aware generation.
+"""
 
 import json
 from collections import Counter
-from typing import Dict, Optional, Any, TypeVar, cast
+from typing import Dict, Any
 
 from openai import OpenAI
-from rich.prompt import Confirm
 from rich import print as rprint
-from tqdm import tqdm
-import click
 import questionary
 from rich.panel import Panel
+from rich.progress import Progress
 
 from git_acp.git_operations import (
     GitError, run_git_command, get_recent_commits,
+    get_diff,
     find_related_commits
 )
 from git_acp.formatting import (
-    debug_header, debug_item, debug_json, debug_preview,
-    status, success
+    debug_header, debug_item, debug_preview
 )
 from git_acp.constants import (
     DEFAULT_AI_MODEL,
@@ -28,37 +30,55 @@ from git_acp.constants import (
     DEFAULT_BASE_URL,
     DEFAULT_API_KEY,
     DEFAULT_PROMPT_TYPE,
+    DEFAULT_AI_TIMEOUT,
     QUESTIONARY_STYLE,
     COLORS,
     TERMINAL_WIDTH
 )
-
-GitConfig = TypeVar('GitConfig')
+from git_acp.types import (
+    GitConfig, OptionalConfig, PromptType
+)
 
 class AIClient:
     """Client for interacting with AI models via OpenAI package."""
     
-    def __init__(self, config: Optional[GitConfig] = None):
-        """Initialize the AI client with configuration."""
-        self.config = config
+    def __init__(self, config: OptionalConfig = None):
+        """Initialize the AI client with configuration.
         
+        Args:
+            config: Optional configuration settings
+        """
+        self.config = config
         if self.config and self.config.verbose:
             debug_header("Initializing AI client")
             debug_item("Base URL", DEFAULT_BASE_URL)
             debug_item("Model", DEFAULT_AI_MODEL)
             debug_item("Temperature", str(DEFAULT_TEMPERATURE))
+            debug_item("Timeout", str(DEFAULT_AI_TIMEOUT))
         
         try:
             self.client = OpenAI(
                 base_url=DEFAULT_BASE_URL,
                 api_key=DEFAULT_API_KEY,
-                timeout=30.0  # Add explicit timeout
+                timeout=DEFAULT_AI_TIMEOUT
             )
+        except ValueError as e:
+            debug_header("AI Client Initialization Failed")
+            debug_item("Error Type", "ValueError")
+            debug_item("Error Message", str(e))
+            if "Invalid URL" in str(e):
+                raise GitError("Invalid Ollama server URL. Please check your configuration.") from e
+            raise GitError("Invalid AI configuration. Please verify your settings.") from e
+        except ConnectionError:
+            debug_header("AI Client Connection Failed")
+            debug_item("Error Type", "ConnectionError")
+            debug_item("Base URL", DEFAULT_BASE_URL)
+            raise GitError("Could not connect to Ollama server. Please ensure it's running.") from None
         except Exception as e:
-            if self.config and self.config.verbose:
-                debug_header("Error initializing AI client")
-                debug_item("Error", str(e))
-            raise GitError(f"Failed to initialize AI client: {str(e)}") from e
+            debug_header("AI Client Initialization Failed")
+            debug_item("Error Type", e.__class__.__name__)
+            debug_item("Error Message", str(e))
+            raise GitError("Failed to initialize AI client. Please check your configuration and try again.") from e
 
     def chat_completion(self, messages: list, **kwargs) -> str:
         """
@@ -70,35 +90,110 @@ class AIClient:
             
         Returns:
             str: The generated response content.
+            
+        Raises:
+            GitError: With specific error context for different failure scenarios
         """
         try:
             if self.config and self.config.verbose:
                 debug_header("Sending chat completion request")
                 debug_item("Messages count", str(len(messages)))
                 debug_item("First message preview", messages[0]['content'][:100] + "...")
+                debug_item("Timeout", f"{DEFAULT_AI_TIMEOUT}s")
             
-            response = self.client.chat.completions.create(
-                model=DEFAULT_AI_MODEL,
-                messages=messages,
-                temperature=DEFAULT_TEMPERATURE,
-                timeout=30.0,  # Add explicit timeout
-                **kwargs
-            )
-            return response.choices[0].message.content
+            with Progress() as progress:
+                # Create a task with 100 steps (for percentage-based progress)
+                task = progress.add_task("Waiting for AI response...", total=100)
+                
+                # Start the request in a separate thread to allow progress updates
+                from threading import Thread, Event
+                from time import sleep
+                
+                response_event = Event()
+                response_data = {"response": None, "error": None}
+                
+                def make_request():
+                    try:
+                        response_data["response"] = self.client.chat.completions.create(
+                            model=DEFAULT_AI_MODEL,
+                            messages=messages,
+                            temperature=DEFAULT_TEMPERATURE,
+                            timeout=DEFAULT_AI_TIMEOUT,
+                            **kwargs
+                        )
+                    except Exception as e:
+                        response_data["error"] = e
+                    finally:
+                        response_event.set()
+                
+                thread = Thread(target=make_request)
+                thread.start()
+                
+                # Update progress while waiting for response
+                elapsed = 0
+                while not response_event.is_set() and elapsed < DEFAULT_AI_TIMEOUT:
+                    progress.update(task, completed=int((elapsed / DEFAULT_AI_TIMEOUT) * 100))
+                    sleep(0.1)  # Update every 100ms
+                    elapsed += 0.1
+                
+                # Complete the progress bar
+                progress.update(task, completed=100)
+                
+                # Check for errors or timeout
+                if response_data["error"]:
+                    raise response_data["error"]
+                if not response_event.is_set():
+                    raise TimeoutError("Request timed out")
+                
+                response = response_data["response"]
+                if not response or not response.choices:
+                    raise GitError("AI model returned an empty response. Please try again.")
+                    
+                return response.choices[0].message.content
+                
+        except TimeoutError:
+            debug_header("AI Request Timeout")
+            debug_item("Timeout Value", str(DEFAULT_AI_TIMEOUT))
+            raise GitError(
+                f"AI request timed out after {DEFAULT_AI_TIMEOUT} seconds. "
+                "Try increasing the timeout value in your configuration or check if Ollama is responding."
+            ) from None
+        except ConnectionError:
+            debug_header("AI Connection Failed")
+            debug_item("Base URL", DEFAULT_BASE_URL)
+            debug_item("Model", DEFAULT_AI_MODEL)
+            raise GitError(
+                "Could not connect to Ollama server. Please ensure:\n"
+                "1. Ollama is running (run 'ollama serve')\n"
+                "2. The model is installed (run 'ollama pull mevatron/diffsense:1.5b')\n"
+                "3. The server URL is correct in your configuration"
+            ) from None
+        except ValueError as e:
+            debug_header("AI Request Parameter Error")
+            debug_item("Error Message", str(e))
+            if "model" in str(e).lower():
+                raise GitError(
+                    f"AI model '{DEFAULT_AI_MODEL}' not found. "
+                    "Please run 'ollama pull mevatron/diffsense:1.5b' to install it."
+                ) from e
+            raise GitError(f"Invalid AI request parameters: {str(e)}") from e
         except Exception as e:
-            if self.config and self.config.verbose:
-                debug_header("Error in chat completion")
-                debug_item("Error type", e.__class__.__name__)
-                debug_item("Error message", str(e))
-                if hasattr(e, 'response'):
-                    debug_item("Response status", str(getattr(e.response, 'status_code', 'N/A')))
-                    debug_item("Response text", str(getattr(e.response, 'text', 'N/A')))
-            raise GitError(f"AI request failed: {e.__class__.__name__}: {str(e)}") from e
+            debug_header("AI Request Failed")
+            debug_item("Error Type", e.__class__.__name__)
+            debug_item("Error Message", str(e))
+            if hasattr(e, 'response'):
+                debug_item("Response Status", str(getattr(e.response, 'status_code', 'N/A')))
+                debug_item("Response Text", str(getattr(e.response, 'text', 'N/A')))
+            raise GitError(
+                "AI request failed. Please ensure:\n"
+                "1. Ollama server is running and responsive\n"
+                "2. The required model is installed\n"
+                "3. Your network connection is stable"
+            ) from e
 
-def create_advanced_commit_message_prompt(context: Dict[str, Any], config: Optional[GitConfig] = None) -> str:
-    """
-    Create a prompt for generating a commit message with advanced repository context.
-    
+def create_advanced_commit_message_prompt(context: Dict[str, Any], config: OptionalConfig = None) -> str:
+    """Create an AI prompt for generating a commit message with repository context.
+
     Args:
         context: Dictionary containing git context information
         config: GitConfig instance containing configuration options
@@ -139,7 +234,7 @@ Requirements:
 
     return prompt
 
-def get_commit_context(config: 'GitConfig') -> Dict[str, Any]:
+def get_commit_context(config: GitConfig) -> Dict[str, Any]:
     """
     Gather git context information for commit message generation.
     
@@ -228,10 +323,9 @@ def get_commit_context(config: 'GitConfig') -> Dict[str, Any]:
 
     return commit_context
 
-def create_simple_commit_message_prompt(staged_changes: str, config: Optional[GitConfig] = None) -> str:
-    """
-    Create a simple prompt for generating a commit message using just the diff.
-    
+def create_simple_commit_message_prompt(staged_changes: str, config: OptionalConfig = None) -> str:
+    """Create a simple AI prompt for generating a commit message from diff.
+
     Args:
         staged_changes: The git diff output
         config: GitConfig instance containing configuration options
@@ -255,7 +349,7 @@ Requirements:
 
     return prompt
 
-def generate_commit_message_with_ai(config: Any) -> str:
+def generate_commit_message_with_ai(config: GitConfig) -> str:
     """
     Generate a commit message using AI.
     
@@ -272,20 +366,39 @@ def generate_commit_message_with_ai(config: Any) -> str:
         client = AIClient(config)
         
         # Get repository context
+        if config.verbose:
+            debug_header("Gathering repository context")
         context = get_commit_context(config)
         
         # Create prompt based on context
+        if config.verbose:
+            debug_header("Creating AI prompt")
         if DEFAULT_PROMPT_TYPE == "advanced":
             prompt = create_advanced_commit_message_prompt(context, config)
         else:
             prompt = create_simple_commit_message_prompt(context['staged_changes'], config)
         
         # Generate commit message
+        rprint(f"[{COLORS['bold']}]🤖 Generating commit message with AI...[/{COLORS['bold']}]")
         messages = [{"role": "user", "content": prompt}]
-        commit_message = client.chat_completion(messages)
+        
+        try:
+            commit_message = client.chat_completion(messages)
+            rprint(f"[{COLORS['success']}]✓ Commit message generated successfully[/{COLORS['success']}]")
+        except GitError as e:
+            if "timed out" in str(e).lower():
+                # If timeout occurs, try with a simpler prompt
+                warning("AI request timed out. Trying with a simpler prompt...")
+                prompt = create_simple_commit_message_prompt(context['staged_changes'], config)
+                messages = [{"role": "user", "content": prompt}]
+                commit_message = client.chat_completion(messages)
+                rprint(f"[{COLORS['success']}]✓ Commit message generated with simpler prompt[/{COLORS['success']}]")
+            else:
+                raise
         
         if config.verbose:
-            debug_preview("Generated commit message", commit_message)
+            debug_header("Generated commit message")
+            debug_item("Message", commit_message[:100] + "..." if len(commit_message) > 100 else commit_message)
         
         # Allow interactive editing if enabled
         if config.interactive:
@@ -330,7 +443,8 @@ def generate_commit_message_with_ai(config: Any) -> str:
                 if edited_message is not None:
                     commit_message = edited_message.strip()
                     if config.verbose:
-                        debug_preview("Edited commit message", commit_message)
+                        debug_header("Edited commit message")
+                        debug_item("Message", commit_message[:100] + "..." if len(commit_message) > 100 else commit_message)
         
         return commit_message
     

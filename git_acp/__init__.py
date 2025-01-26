@@ -1,11 +1,10 @@
-"""
-Git Add-Commit-Push (git_acp) automation package.
+"""Git Add-Commit-Push automation package.
 
-Provides a command-line tool for automating Git operations with enhanced features:
+A command-line tool for automating Git operations with enhanced features:
 - Interactive file selection
 - AI-powered commit message generation
 - Smart commit type classification
 - Conventional commits support
 """
 
-__version__ = "0.13.0"
+__version__ = "0.13.4"

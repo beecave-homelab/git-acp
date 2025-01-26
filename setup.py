@@ -5,10 +5,10 @@ with open("README.md", "r", encoding="utf-8") as fh:
 
 setup(
     name="git-acp",
-    version="0.13.0",
+    version="0.13.4",
     author="elvee",
     author_email="",
-    description="A tool to automate Git add, commit, and push with AI-powered commit messages",
+    description="Git Add-Commit-Push automation tool with AI-powered commit messages",
     long_description=long_description,
     long_description_content_type="text/markdown",
     url="https://github.com/beecave-homelab/git-acp",

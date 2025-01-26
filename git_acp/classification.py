@@ -1,11 +1,15 @@
-"""Commit type classification module for git-acp package."""
+"""Commit type classification and change analysis utilities.
+
+This module provides functionality for classifying commit types and analyzing
+changes in the repository to suggest appropriate commit types.
+"""
 
 from enum import Enum
-from git_acp.git_operations import run_git_command, GitError
+from git_acp.git_operations import GitError, get_diff
 from git_acp.constants import COMMIT_TYPE_PATTERNS, COMMIT_TYPES
 
 class CommitType(Enum):
-    """Enum for commit types with their corresponding emojis."""
+    """Enumeration of conventional commit types with emojis."""
     FEAT = COMMIT_TYPES['FEAT']
     FIX = COMMIT_TYPES['FIX']
     DOCS = COMMIT_TYPES['DOCS']
@@ -17,7 +21,17 @@ class CommitType(Enum):
 
     @classmethod
     def from_str(cls, type_str: str) -> 'CommitType':
-        """Convert string to CommitType, case insensitive."""
+        """Convert a string to a CommitType enum value.
+
+        Args:
+            type_str: The commit type string to convert
+
+        Returns:
+            CommitType: The corresponding enum value
+
+        Raises:
+            GitError: If the type string is invalid
+        """
         try:
             return cls[type_str.upper()]
         except KeyError:
@@ -27,19 +41,34 @@ class CommitType(Enum):
                 f"Valid types are: {', '.join(valid_types)}"
             )
 
-def get_git_diff(config) -> str:
-    """Get the git diff, checking both staged and unstaged changes."""
-    # First try to get staged changes
-    stdout, _ = run_git_command(["git", "diff", "--staged"])
-    if stdout.strip():
-        if config.verbose:
-            print("[yellow]Debug: Using staged changes diff[/yellow]")
-        return stdout
-    # If no staged changes, get unstaged changes
-    if config.verbose:
-        print("[yellow]Debug: No staged changes, using unstaged diff[/yellow]")
-    stdout, _ = run_git_command(["git", "diff"])
-    return stdout
+def get_changes() -> str:
+    """Retrieve the staged or unstaged changes in the repository.
+
+    Returns:
+        str: The changes as a diff string
+        
+    Raises:
+        GitError: If unable to get changes or if no changes are found
+    """
+    try:
+        debug_header("Retrieving Git Changes")
+        # First try staged changes
+        diff = get_diff("staged")
+        if not diff:
+            debug_item("Status", "No staged changes found, checking unstaged changes")
+            # If no staged changes, get unstaged changes
+            diff = get_diff("unstaged")
+        
+        if not diff:
+            raise GitError("No changes detected in the repository. Please make some changes first.")
+        
+        debug_item("Changes Found", "Successfully retrieved repository changes")
+        return diff
+    except GitError as e:
+        debug_header("Failed to Retrieve Changes")
+        debug_item("Error Type", "GitError")
+        debug_item("Error Message", str(e))
+        raise GitError("Failed to retrieve changes. Please ensure you have a valid Git repository with changes.") from e
 
 def classify_commit_type(config) -> CommitType:
     """
@@ -50,23 +79,53 @@ def classify_commit_type(config) -> CommitType:
         
     Returns:
         CommitType: The classified commit type
+        
+    Raises:
+        GitError: If unable to classify commit type or if changes cannot be retrieved
     """
-    diff = get_git_diff(config)
-    
-    def check_pattern(keywords: list[str], diff_text: str) -> bool:
-        """Check if any of the keywords appear in the diff text."""
-        matches = [k for k in keywords if k in diff_text.lower()]
-        if matches and config.verbose:
-            print(f"[yellow]Debug: Matched keywords: {matches}[/yellow]")
-        return bool(matches)
+    try:
+        debug_header("Starting Commit Classification")
+        diff = get_changes()
+        
+        def check_pattern(keywords: list[str], diff_text: str) -> bool:
+            """Check if any of the keywords appear in the diff text."""
+            try:
+                matches = [k for k in keywords if k in diff_text.lower()]
+                if matches and config.verbose:
+                    debug_item("Matched Keywords", ", ".join(matches))
+                return bool(matches)
+            except Exception as e:
+                debug_header("Pattern Matching Error")
+                debug_item("Error Type", e.__class__.__name__)
+                debug_item("Error Message", str(e))
+                return False
 
-    # Use patterns from constants
-    for commit_type, keywords in COMMIT_TYPE_PATTERNS.items():
-        if check_pattern(keywords, diff):
-            if config.verbose:
-                print(f"[yellow]Debug: Classified as {commit_type.upper()}[/yellow]")
-            return CommitType[commit_type.upper()]
+        # Use patterns from constants
+        for commit_type, keywords in COMMIT_TYPE_PATTERNS.items():
+            try:
+                if check_pattern(keywords, diff):
+                    if config.verbose:
+                        debug_header("Commit Classification Result")
+                        debug_item("Selected Type", commit_type.upper())
+                    return CommitType[commit_type.upper()]
+            except KeyError as e:
+                debug_header("Invalid Commit Type")
+                debug_item("Type", commit_type)
+                debug_item("Error", str(e))
+                raise GitError(f"Invalid commit type pattern detected: {commit_type}. Please check commit type definitions.") from e
 
-    if config.verbose:
-        print("[yellow]Debug: Defaulting to CHORE[/yellow]")
-    return CommitType.CHORE 
+        if config.verbose:
+            debug_header("No Specific Pattern Matched")
+            debug_item("Default Type", "CHORE")
+        return CommitType.CHORE
+        
+    except GitError as e:
+        debug_header("Commit Classification Failed")
+        debug_item("Error Type", "GitError")
+        debug_item("Error Message", str(e))
+        raise GitError(f"Failed to classify commit type: {str(e)}") from e
+    except Exception as e:
+        debug_header("Unexpected Classification Error")
+        debug_item("Error Type", e.__class__.__name__)
+        debug_item("Error Message", str(e))
+        raise GitError("An unexpected error occurred during commit classification.") from e 

@@ -12,7 +12,7 @@ Categories:
     - Terminal: Terminal-specific configurations
 """
 
-from typing import Dict, List, Final, Tuple
+from typing import Dict, List, Final
 from git_acp.env_config import get_env, load_env_config
 
 # Load environment variables at module import
@@ -25,6 +25,7 @@ DEFAULT_TEMPERATURE: Final[float] = get_env('GIT_ACP_TEMPERATURE', 0.7, float)
 DEFAULT_BASE_URL: Final[str] = get_env('GIT_ACP_BASE_URL', "http://localhost:11434/v1")
 DEFAULT_API_KEY: Final[str] = get_env('GIT_ACP_API_KEY', "ollama")
 DEFAULT_PROMPT_TYPE: Final[str] = get_env('GIT_ACP_PROMPT_TYPE', "advanced")  # Options: "simple" or "advanced"
+DEFAULT_AI_TIMEOUT: Final[float] = get_env('GIT_ACP_AI_TIMEOUT', 120.0, float)  # Timeout in seconds for AI requests
 
 # Git Configuration
 # Basic settings for git operations
@@ -125,11 +126,13 @@ COLORS: Final[Dict[str, str]] = {
     'ai_message_header': get_env('GIT_ACP_AI_MESSAGE_HEADER_COLOR', 'bold yellow'),
     'ai_message_border': get_env('GIT_ACP_AI_MESSAGE_BORDER_COLOR', 'yellow'),
     'key_combination': get_env('GIT_ACP_KEY_COMBINATION_COLOR', 'cyan'),
-    'instruction_text': get_env('GIT_ACP_INSTRUCTION_TEXT_COLOR', 'dim')
+    'instruction_text': get_env('GIT_ACP_INSTRUCTION_TEXT_COLOR', 'dim'),
+    # Text style formatting
+    'bold': get_env('GIT_ACP_BOLD_COLOR', 'dim')
 }
 
 # Questionary style configuration
-QUESTIONARY_STYLE: Final[List[Tuple[str, str]]] = [
+QUESTIONARY_STYLE: Final[list[tuple[str, str]]] = [
     ('qmark', 'fg:yellow bold'),
     ('question', 'bold'),
     ('pointer', 'fg:yellow bold'),

@@ -3,7 +3,7 @@
 A Python tool to automate Git add, commit, and push actions with optional AI-generated commit messages using Ollama. Features a beautiful CLI interface with color-coded output and progress indicators.
 
 ![Python](https://img.shields.io/badge/python-3.6%2B-blue)
-![Version](https://img.shields.io/badge/version-0.13.0-brightgreen)
+![Version](https://img.shields.io/badge/version-0.13.4-brightgreen)
 ![License](https://img.shields.io/badge/license-MIT-green)
 
 ## Table of Contents
@@ -15,7 +15,6 @@ A Python tool to automate Git add, commit, and push actions with optional AI-gen
 - [Environment Configuration](#environment-configuration)
 - [License](#license)
 - [Contributing](#contributing)
-
 
 ## Features
 
@@ -155,65 +154,100 @@ Without any options, the tool runs in interactive mode:
 ### Examples
 
 1. Fully interactive mode (recommended for most cases):
+
     ```bash
     git-acp
     ```
 
 2. Add specific files with a message:
+
     ```bash
     git-acp -a "README.md docs/*" -m "Update documentation"
     ```
 
 3. Use AI to generate commit message:
+
     ```bash
     git-acp -o
     ```
 
 4. Quick commit all changes without confirmations:
+
     ```bash
     git-acp -nc -m "Quick fix" -a .
     ```
 
 5. Push to specific branch with verbose output:
+
     ```bash
     git-acp -b feature/new-branch -v
     ```
 
 6. Specify commit type and message:
+
     ```bash
     git-acp -t feat -m "Add new login feature"
     ```
 
 7. AI message for specific files and type:
+
     ```bash
     git-acp -a "src/auth/*" -t feat -o
     ```
 
 ## Environment Configuration
 
-The tool can be customized using environment variables. By default, it uses the values specified in the `constants.py` file. To customize these values:
+The tool can be customized using environment variables. Configuration is done through:
 
 1. Create a `.env` file in `~/.config/git-acp/.env`
 2. Copy the contents from the `.env.example` file and modify as needed
 
-Available configurations include:
+Available configurations are organized into categories:
 
 ### AI Configuration
+
 - `GIT_ACP_AI_MODEL`: Model name for Ollama (default: mevatron/diffsense:1.5b)
-- `GIT_ACP_TEMPERATURE`: Temperature for AI generation (0.0 to 1.0, default: 0.7)
+- `GIT_ACP_TEMPERATURE`: Temperature for AI generation (0.0 to 1.0, higher = more creative, default: 0.7)
 - `GIT_ACP_BASE_URL`: Ollama API endpoint (default: http://localhost:11434/v1)
 - `GIT_ACP_API_KEY`: API key for Ollama (default: "ollama")
+- `GIT_ACP_PROMPT_TYPE`: Type of prompt for commit message generation ("simple" or "advanced", default: advanced)
+- `GIT_ACP_AI_TIMEOUT`: Timeout for AI requests in seconds (default: 120.0)
 
 ### Git Configuration
+
 - `GIT_ACP_DEFAULT_BRANCH`: Default branch name for push operations (default: main)
 - `GIT_ACP_DEFAULT_REMOTE`: Default remote name (default: origin)
-- `GIT_ACP_NUM_RECENT_COMMITS`: Number of recent commits to analyze (default: 3)
+- `GIT_ACP_NUM_RECENT_COMMITS`: Number of recent commits to analyze for context (default: 3)
 - `GIT_ACP_NUM_RELATED_COMMITS`: Number of related commits to analyze (default: 3)
 - `GIT_ACP_MAX_DIFF_PREVIEW_LINES`: Maximum number of diff lines to preview (default: 10)
 
 ### Terminal Configuration
+
 - `GIT_ACP_TERMINAL_WIDTH`: Maximum width for formatted output (default: 100)
-- Various color configurations for different output types (debug, success, warning, etc.)
+- Color configurations for different output types:
+  - `GIT_ACP_DEBUG_HEADER_COLOR`: Color for debug headers (default: blue)
+  - `GIT_ACP_DEBUG_VALUE_COLOR`: Color for debug values (default: cyan)
+  - `GIT_ACP_SUCCESS_COLOR`: Color for success messages (default: green)
+  - `GIT_ACP_WARNING_COLOR`: Color for warnings (default: yellow)
+  - `GIT_ACP_STATUS_COLOR`: Color for status messages (default: bold green)
+  - `GIT_ACP_ERROR_COLOR`: Color for error messages (default: bold red)
+  - `GIT_ACP_AI_MESSAGE_HEADER_COLOR`: Color for AI message headers (default: bold yellow)
+  - `GIT_ACP_AI_MESSAGE_BORDER_COLOR`: Color for AI message borders (default: yellow)
+  - `GIT_ACP_KEY_COMBINATION_COLOR`: Color for key combinations (default: cyan)
+  - `GIT_ACP_INSTRUCTION_TEXT_COLOR`: Color for instruction text (default: dim)
+  - `GIT_ACP_BOLD_COLOR`: Color for bold text (default: dim)
+
+### Commit Types Configuration
+
+Customize commit types and their emojis:
+- `GIT_ACP_COMMIT_TYPE_FEAT`: Feature commits (default: "feat ✨")
+- `GIT_ACP_COMMIT_TYPE_FIX`: Bug fix commits (default: "fix 🐛")
+- `GIT_ACP_COMMIT_TYPE_DOCS`: Documentation commits (default: "docs 📝")
+- `GIT_ACP_COMMIT_TYPE_STYLE`: Style/formatting commits (default: "style 💎")
+- `GIT_ACP_COMMIT_TYPE_REFACTOR`: Refactoring commits (default: "refactor ♻️")
+- `GIT_ACP_COMMIT_TYPE_TEST`: Test commits (default: "test 🧪")
+- `GIT_ACP_COMMIT_TYPE_CHORE`: Chore/maintenance commits (default: "chore 📦")
+- `GIT_ACP_COMMIT_TYPE_REVERT`: Revert commits (default: "revert ⏪")
 
 ## Commit Types
 
