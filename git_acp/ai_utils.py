@@ -12,9 +12,7 @@ from openai import OpenAI
 from rich.prompt import Confirm
 from rich import print as rprint
 from tqdm import tqdm
-import click
 import questionary
-from rich.panel import Panel
 
 from git_acp.git_operations import (
     GitError, run_git_command, get_recent_commits,

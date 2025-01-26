@@ -23,5 +23,4 @@ CommitContext = Dict[str, Any]
 CommitPatterns = Dict[str, Dict[str, int]]
 
 # Common type aliases
-JsonDict = Dict[str, Any]
 OptionalConfig = Optional[GitConfig] 

@@ -247,99 +247,45 @@ def get_recent_commits(
     Returns:
         List[Dict[str, str]]: List of commit dictionaries with 'hash', 'message', 
                              'author', and 'date' keys
-        
-    Raises:
-        GitError: If unable to get commit history
     """
     try:
         if config and config.verbose:
-            debug_item("Retrieving recent commits", str(num_commits))
+            debug_header("Getting recent commits")
+            debug_item("Number of commits", str(num_commits))
         
-        format_str = "--pretty=format:%H%n%s%n%an%n%ad%n---%n"
-        stdout, _ = run_git_command(["git", "log", "-n", str(num_commits), format_str], config)
-
-        commits: List[Dict[str, str]] = []
-        current_commit: Dict[str, str] = {}
-
-        for line in stdout.split('\n'):
-            if line == "---":
-                if current_commit and len(current_commit) == 4:
+        format_str = '%H%n%s%n%an%n%aI'  # hash, subject, author, ISO date
+        stdout, _ = run_git_command([
+            "git", "log",
+            f"-{num_commits}",
+            f"--pretty=format:{format_str}",
+            "--no-merges"
+        ], config)
+        
+        commits = []
+        current_commit = {}
+        
+        for i, line in enumerate(stdout.split('\n')):
+            if i % 4 == 0:
+                if current_commit:
                     commits.append(current_commit)
-                    if config and config.verbose:
-                        debug_item("Found commit", json.dumps(current_commit))
-                    current_commit = {}
-                continue
-
-            if not current_commit:
-                current_commit['hash'] = line
-            elif 'message' not in current_commit:
+                current_commit = {'hash': line}
+            elif i % 4 == 1:
                 current_commit['message'] = line
-            elif 'author' not in current_commit:
+            elif i % 4 == 2:
                 current_commit['author'] = line
-            elif 'date' not in current_commit:
+            else:
                 current_commit['date'] = line
-
-        if current_commit and len(current_commit) == 4:
+        
+        if current_commit:
             commits.append(current_commit)
-            if config and config.verbose:
-                debug_item("Found commit", json.dumps(current_commit))
-
+            
+        if config and config.verbose:
+            debug_item("Found commits", str(len(commits)))
+            
         return commits
         
-    except GitError as e:
-        raise GitError(f"Failed to get commit history: {e}") from e
-
-def analyze_commit_patterns(config: OptionalConfig = None) -> Dict[str, Counter]:
-    """Analyze patterns in recent commit history.
-
-    Args:
-        config: GitConfig instance containing configuration options
-    
-    Returns:
-        Dict[str, Counter]: Dictionary containing frequency analysis of:
-            - commit_types: Types of commits (feat, fix, etc.)
-            - message_length: Typical message lengths
-            - authors: Commit authors
-            
-    Raises:
-        GitError: If unable to analyze commits
-    """
-    try:
-        if config and config.verbose:
-            debug_header("Analyzing commit patterns")
-        
-        commits = get_recent_commits(DEFAULT_NUM_RECENT_COMMITS, config)
-        patterns: Dict[str, Counter] = {
-            'commit_types': Counter(),
-            'message_length': Counter(),
-            'authors': Counter()
-        }
-
-        for commit in commits:
-            message = commit['message']
-            
-            # Analyze commit type
-            if ': ' in message:
-                commit_type = message.split(': ')[0]
-                patterns['commit_types'][commit_type] += 1
-                if config and config.verbose:
-                    debug_item("Found commit type", commit_type)
-
-            # Analyze message length (group by tens)
-            length_category = len(message) // 10 * 10
-            patterns['message_length'][length_category] += 1
-
-            # Count author contributions
-            patterns['authors'][commit['author']] += 1
-
-        if config and config.verbose:
-            debug_header("Commit patterns:")
-            debug_json(dict(patterns))
-
-        return patterns
-        
-    except GitError as e:
-        raise GitError(f"Failed to analyze commit patterns: {e}") from e
+    except Exception as e:
+        raise GitError(f"Failed to get recent commits: {e}") from e
 
 def find_related_commits(
     diff_content: str,
@@ -410,27 +356,30 @@ def find_related_commits(
     except GitError as e:
         raise GitError(f"Failed to find related commits: {e}") from e
 
-def get_diff(diff_type: Literal["staged", "unstaged"] = "staged", config: OptionalConfig = None) -> str:
-    """Get the diff for staged or unstaged changes.
+def get_diff(diff_type: DiffType = "staged", config: OptionalConfig = None) -> str:
+    """Get the git diff output for staged or unstaged changes.
     
     Args:
         diff_type: Type of diff to get ("staged" or "unstaged")
         config: GitConfig instance containing configuration options
         
     Returns:
-        str: The diff output
+        str: The git diff output
         
     Raises:
         GitError: If unable to get diff
     """
     try:
         if config and config.verbose:
-            debug_item("Getting diff", diff_type)
+            debug_header(f"Getting {diff_type} diff")
         
         if diff_type == "staged":
             stdout, _ = run_git_command(["git", "diff", "--staged"], config)
         else:
             stdout, _ = run_git_command(["git", "diff"], config)
+            
+        if config and config.verbose:
+            debug_item("Diff length", str(len(stdout)))
             
         return stdout
         
