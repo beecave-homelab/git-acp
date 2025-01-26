@@ -12,7 +12,7 @@ Categories:
     - Terminal: Terminal-specific configurations
 """
 
-from typing import Dict, List, Final, Tuple
+from typing import Dict, List, Final
 from git_acp.env_config import get_env, load_env_config
 
 # Load environment variables at module import
@@ -132,7 +132,7 @@ COLORS: Final[Dict[str, str]] = {
 }
 
 # Questionary style configuration
-QUESTIONARY_STYLE: Final[List[Tuple[str, str]]] = [
+QUESTIONARY_STYLE: Final[list[tuple[str, str]]] = [
     ('qmark', 'fg:yellow bold'),
     ('question', 'bold'),
     ('pointer', 'fg:yellow bold'),
