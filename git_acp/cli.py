@@ -43,6 +43,7 @@ class GitConfig:
         message: Commit message to use. Defaults to "Automated commit".
         branch: Target branch for push operation. If None, uses current branch.
         use_ollama: Whether to use Ollama AI for commit message generation.
+        interactive: Whether to allow editing of AI-generated commit messages.
         skip_confirmation: Whether to skip confirmation prompts.
         verbose: Whether to show debug information.
     """
@@ -50,6 +51,7 @@ class GitConfig:
     message: str = "Automated commit"
     branch: Optional[str] = None
     use_ollama: bool = False
+    interactive: bool = False
     skip_confirmation: bool = False
     verbose: bool = False
 
@@ -198,6 +200,7 @@ def select_commit_type(config: GitConfig, suggested_type: CommitType) -> CommitT
 @click.option('-m', '--message', help="Commit message. Defaults to 'Automated commit'.")
 @click.option('-b', '--branch', help="Specify the branch to push to. Defaults to the current active branch.")
 @click.option('-o', '--ollama', is_flag=True, help="Use Ollama AI to generate the commit message.")
+@click.option('-i', '--interactive', is_flag=True, help="Allow editing of AI-generated commit message (requires --ollama).")
 @click.option('-nc', '--no-confirm', is_flag=True, help="Skip confirmation prompts.")
 @click.option('-t', '--type', 'commit_type',
               type=click.Choice(['feat', 'fix', 'docs', 'style', 'refactor', 'test', 'chore', 'revert'],
@@ -205,7 +208,7 @@ def select_commit_type(config: GitConfig, suggested_type: CommitType) -> CommitT
               help="Override automatic commit type suggestion.")
 @click.option('-v', '--verbose', is_flag=True, help="Show debug information.")
 def main(add: Optional[str], message: Optional[str], branch: Optional[str],
-         ollama: bool, no_confirm: bool, commit_type: Optional[str], verbose: bool) -> None:
+         ollama: bool, interactive: bool, no_confirm: bool, commit_type: Optional[str], verbose: bool) -> None:
     """
     Automate git add, commit, and push operations with optional AI-generated commit messages.
     """
@@ -216,6 +219,7 @@ def main(add: Optional[str], message: Optional[str], branch: Optional[str],
             message=message or "Automated commit",
             branch=branch,
             use_ollama=ollama,
+            interactive=interactive,
             skip_confirmation=no_confirm,
             verbose=verbose
         )
