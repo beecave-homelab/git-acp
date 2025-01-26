@@ -13,7 +13,7 @@ This module provides a command-line interface for automating Git operations with
 
 import subprocess
 import sys
-from typing import Optional, List, Tuple, Set, Any, Union
+from typing import List, Set, Union, Optional
 from dataclasses import dataclass
 from enum import Enum
 import click
@@ -30,6 +30,7 @@ from git_acp.git_operations import (
 from git_acp.classification import CommitType, classify_commit_type
 from git_acp.ai_utils import generate_commit_message_with_ai
 from git_acp.constants import COLORS, QUESTIONARY_STYLE
+from git_acp.types import OptionalConfig
 
 console = Console()
 
@@ -49,7 +50,7 @@ class GitConfig:
     """
     files: str = "."
     message: str = "Automated commit"
-    branch: Optional[str] = None
+    branch: OptionalConfig = None
     use_ollama: bool = False
     interactive: bool = False
     skip_confirmation: bool = False

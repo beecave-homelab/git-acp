@@ -18,15 +18,24 @@ from git_acp.formatting import (
 from git_acp.constants import (
     EXCLUDED_PATTERNS,
     DEFAULT_REMOTE,
-    DEFAULT_NUM_RECENT_COMMITS
+    DEFAULT_NUM_RECENT_COMMITS,
+    COLORS
 )
+from rich.console import Console
+from rich import print as rprint
+from git_acp.types import (
+    GitConfig, OptionalConfig, CommitDict,
+    DiffType, RemoteOperation, TagOperation, StashOperation
+)
+
+console = Console()
 
 class GitError(Exception):
     """Custom exception for git-related errors."""
 
 def run_git_command(
     command: list[str], 
-    config: Optional['GitConfig'] = None
+    config: OptionalConfig = None
 ) -> Tuple[str, str]:
     """Run a git command and return its output.
     
@@ -42,7 +51,7 @@ def run_git_command(
     """
     try:
         if config and config.verbose:
-            debug_item("Running git command", ' '.join(command))
+            rprint(f"[{COLORS['debug_header']}]Running command:[/{COLORS['debug_header']}] {' '.join(command)}")
         
         process = subprocess.Popen(
             command,
@@ -63,7 +72,7 @@ def run_git_command(
     except Exception as e:
         raise GitError(f"Failed to execute git command: {e}") from e
 
-def get_current_branch(config: Optional['GitConfig'] = None) -> str:
+def get_current_branch(config: OptionalConfig = None) -> str:
     """Get the name of the current git branch.
     
     Args:
@@ -80,7 +89,7 @@ def get_current_branch(config: Optional['GitConfig'] = None) -> str:
         debug_item("Current branch", stdout)
     return stdout
 
-def git_add(files: str, config: Optional['GitConfig'] = None) -> None:
+def git_add(files: str, config: OptionalConfig = None) -> None:
     """Add files to git staging area.
     
     Args:
@@ -106,7 +115,7 @@ def git_add(files: str, config: Optional['GitConfig'] = None) -> None:
     
     success("Files added successfully")
 
-def git_commit(message: str, config: Optional['GitConfig'] = None) -> None:
+def git_commit(message: str, config: OptionalConfig = None) -> None:
     """Commit staged changes to the repository.
     
     Args:
@@ -123,7 +132,7 @@ def git_commit(message: str, config: Optional['GitConfig'] = None) -> None:
         run_git_command(["git", "commit", "-m", message], config)
     success("Changes committed successfully")
 
-def git_push(branch: str, config: Optional['GitConfig'] = None) -> None:
+def git_push(branch: str, config: OptionalConfig = None) -> None:
     """Push committed changes to the remote repository.
     
     Args:
@@ -140,7 +149,7 @@ def git_push(branch: str, config: Optional['GitConfig'] = None) -> None:
         run_git_command(["git", "push", DEFAULT_REMOTE, branch], config)
     success("Changes pushed successfully")
 
-def get_changed_files(config: 'GitConfig') -> Set[str]:
+def get_changed_files(config: OptionalConfig = None) -> Set[str]:
     """Get list of changed files from git status.
     
     This function retrieves both staged and unstaged changes, excluding certain
@@ -206,7 +215,7 @@ def get_changed_files(config: 'GitConfig') -> Set[str]:
 
     return files
 
-def unstage_files(config: Optional['GitConfig'] = None) -> None:
+def unstage_files(config: OptionalConfig = None) -> None:
     """Unstage all staged changes.
     
     This function is typically called when an operation is cancelled or fails,
@@ -227,7 +236,7 @@ def unstage_files(config: Optional['GitConfig'] = None) -> None:
 
 def get_recent_commits(
     num_commits: int = DEFAULT_NUM_RECENT_COMMITS,
-    config: Optional['GitConfig'] = None
+    config: OptionalConfig = None
 ) -> List[Dict[str, str]]:
     """Get recent commit messages and metadata.
     
@@ -280,7 +289,7 @@ def get_recent_commits(
     except GitError as e:
         raise GitError(f"Failed to get commit history: {e}") from e
 
-def analyze_commit_patterns(config: Optional['GitConfig'] = None) -> Dict[str, Counter]:
+def analyze_commit_patterns(config: OptionalConfig = None) -> Dict[str, Counter]:
     """Analyze patterns in recent commits.
     
     Args:
@@ -335,7 +344,7 @@ def analyze_commit_patterns(config: Optional['GitConfig'] = None) -> Dict[str, C
 def find_related_commits(
     diff_content: str,
     num_commits: int = DEFAULT_NUM_RECENT_COMMITS,
-    config: Optional['GitConfig'] = None
+    config: OptionalConfig = None
 ) -> List[Dict[str, str]]:
     """Find commits related to the given diff content.
     
@@ -401,7 +410,7 @@ def find_related_commits(
     except GitError as e:
         raise GitError(f"Failed to find related commits: {e}") from e
 
-def get_diff(diff_type: Literal["staged", "unstaged"] = "staged", config: Optional['GitConfig'] = None) -> str:
+def get_diff(diff_type: Literal["staged", "unstaged"] = "staged", config: OptionalConfig = None) -> str:
     """Get the diff for staged or unstaged changes.
     
     Args:
@@ -428,7 +437,7 @@ def get_diff(diff_type: Literal["staged", "unstaged"] = "staged", config: Option
     except GitError as e:
         raise GitError(f"Failed to get {diff_type} diff: {e}") from e
 
-def create_branch(branch_name: str, config: Optional['GitConfig'] = None) -> None:
+def create_branch(branch_name: str, config: OptionalConfig = None) -> None:
     """Create a new git branch.
     
     Args:
@@ -448,7 +457,7 @@ def create_branch(branch_name: str, config: Optional['GitConfig'] = None) -> Non
     except GitError as e:
         raise GitError(f"Failed to create branch: {e}") from e
 
-def delete_branch(branch_name: str, force: bool = False, config: Optional['GitConfig'] = None) -> None:
+def delete_branch(branch_name: str, force: bool = False, config: OptionalConfig = None) -> None:
     """Delete a git branch.
     
     Args:
@@ -470,7 +479,7 @@ def delete_branch(branch_name: str, force: bool = False, config: Optional['GitCo
     except GitError as e:
         raise GitError(f"Failed to delete branch: {e}") from e
 
-def merge_branch(source_branch: str, config: Optional['GitConfig'] = None) -> None:
+def merge_branch(source_branch: str, config: OptionalConfig = None) -> None:
     """Merge a branch into the current branch.
     
     Args:
@@ -494,7 +503,7 @@ def manage_remote(
     operation: Literal["add", "remove", "set-url"],
     remote_name: str,
     url: Optional[str] = None,
-    config: Optional['GitConfig'] = None
+    config: OptionalConfig = None
 ) -> None:
     """Manage git remotes.
     
@@ -527,7 +536,7 @@ def manage_tags(
     operation: Literal["create", "delete", "push"],
     tag_name: str,
     message: Optional[str] = None,
-    config: Optional['GitConfig'] = None
+    config: OptionalConfig = None
 ) -> None:
     """Manage git tags.
     
@@ -560,7 +569,7 @@ def manage_stash(
     operation: Literal["save", "pop", "apply", "drop", "list"],
     message: Optional[str] = None,
     stash_id: Optional[str] = None,
-    config: Optional['GitConfig'] = None
+    config: OptionalConfig = None
 ) -> Optional[str]:
     """Manage git stash operations.
     

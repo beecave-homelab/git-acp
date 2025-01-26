@@ -2,7 +2,7 @@
 
 import json
 from collections import Counter
-from typing import Dict, Optional, Any, TypeVar, cast
+from typing import Dict, Any
 
 from openai import OpenAI
 from rich.prompt import Confirm
@@ -33,13 +33,15 @@ from git_acp.constants import (
     COLORS,
     TERMINAL_WIDTH
 )
-
-GitConfig = TypeVar('GitConfig')
+from git_acp.types import (
+    GitConfig, Message, CommitContext, CommitPatterns,
+    OptionalConfig, PromptType
+)
 
 class AIClient:
     """Client for interacting with AI models via OpenAI package."""
     
-    def __init__(self, config: Optional[GitConfig] = None):
+    def __init__(self, config: OptionalConfig = None):
         """Initialize the AI client with configuration."""
         self.config = config
         
@@ -96,7 +98,7 @@ class AIClient:
                     debug_item("Response text", str(getattr(e.response, 'text', 'N/A')))
             raise GitError(f"AI request failed: {e.__class__.__name__}: {str(e)}") from e
 
-def create_advanced_commit_message_prompt(context: Dict[str, Any], config: Optional[GitConfig] = None) -> str:
+def create_advanced_commit_message_prompt(context: Dict[str, Any], config: OptionalConfig = None) -> str:
     """
     Create a prompt for generating a commit message with advanced repository context.
     
@@ -140,7 +142,7 @@ Requirements:
 
     return prompt
 
-def get_commit_context(config: 'GitConfig') -> Dict[str, Any]:
+def get_commit_context(config: GitConfig) -> Dict[str, Any]:
     """
     Gather git context information for commit message generation.
     
@@ -229,7 +231,7 @@ def get_commit_context(config: 'GitConfig') -> Dict[str, Any]:
 
     return commit_context
 
-def create_simple_commit_message_prompt(staged_changes: str, config: Optional[GitConfig] = None) -> str:
+def create_simple_commit_message_prompt(staged_changes: str, config: OptionalConfig = None) -> str:
     """
     Create a simple prompt for generating a commit message using just the diff.
     
@@ -256,7 +258,7 @@ Requirements:
 
     return prompt
 
-def generate_commit_message_with_ai(config: Any) -> str:
+def generate_commit_message_with_ai(config: GitConfig) -> str:
     """
     Generate a commit message using AI.
     
@@ -345,10 +347,10 @@ def generate_commit_message_with_ai(config: Any) -> str:
             debug_item("Error", str(e))
         raise GitError(f"Failed to generate commit message: {str(e)}") from e
 
-def get_staged_changes(config: Optional['GitConfig'] = None) -> str:
+def get_staged_changes(config: OptionalConfig = None) -> str:
     """Get the staged changes as a diff string."""
     return get_diff("staged", config)
 
-def get_unstaged_changes(config: Optional['GitConfig'] = None) -> str:
+def get_unstaged_changes(config: OptionalConfig = None) -> str:
     """Get the unstaged changes as a diff string."""
     return get_diff("unstaged", config)
