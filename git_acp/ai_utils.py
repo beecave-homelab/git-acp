@@ -102,15 +102,50 @@ class AIClient:
                 debug_item("Timeout", f"{DEFAULT_AI_TIMEOUT}s")
             
             with Progress() as progress:
-                task = progress.add_task("Waiting for AI response...", total=1)
-                response = self.client.chat.completions.create(
-                    model=DEFAULT_AI_MODEL,
-                    messages=messages,
-                    temperature=DEFAULT_TEMPERATURE,
-                    timeout=DEFAULT_AI_TIMEOUT,
-                    **kwargs
-                )
+                # Create a task with 100 steps (for percentage-based progress)
+                task = progress.add_task("Waiting for AI response...", total=100)
                 
+                # Start the request in a separate thread to allow progress updates
+                from threading import Thread, Event
+                from time import sleep
+                
+                response_event = Event()
+                response_data = {"response": None, "error": None}
+                
+                def make_request():
+                    try:
+                        response_data["response"] = self.client.chat.completions.create(
+                            model=DEFAULT_AI_MODEL,
+                            messages=messages,
+                            temperature=DEFAULT_TEMPERATURE,
+                            timeout=DEFAULT_AI_TIMEOUT,
+                            **kwargs
+                        )
+                    except Exception as e:
+                        response_data["error"] = e
+                    finally:
+                        response_event.set()
+                
+                thread = Thread(target=make_request)
+                thread.start()
+                
+                # Update progress while waiting for response
+                elapsed = 0
+                while not response_event.is_set() and elapsed < DEFAULT_AI_TIMEOUT:
+                    progress.update(task, completed=int((elapsed / DEFAULT_AI_TIMEOUT) * 100))
+                    sleep(0.1)  # Update every 100ms
+                    elapsed += 0.1
+                
+                # Complete the progress bar
+                progress.update(task, completed=100)
+                
+                # Check for errors or timeout
+                if response_data["error"]:
+                    raise response_data["error"]
+                if not response_event.is_set():
+                    raise TimeoutError("Request timed out")
+                
+                response = response_data["response"]
                 if not response or not response.choices:
                     raise GitError("AI model returned an empty response. Please try again.")
                     
@@ -331,17 +366,17 @@ def generate_commit_message_with_ai(config: GitConfig) -> str:
         client = AIClient(config)
         
         # Get repository context
-        with Progress() as progress:
-            task = progress.add_task("Gathering repository context...", total=1)
-            context = get_commit_context(config)
+        if config.verbose:
+            debug_header("Gathering repository context")
+        context = get_commit_context(config)
         
         # Create prompt based on context
-        with Progress() as progress:
-            task = progress.add_task("Creating AI prompt...", total=1)
-            if DEFAULT_PROMPT_TYPE == "advanced":
-                prompt = create_advanced_commit_message_prompt(context, config)
-            else:
-                prompt = create_simple_commit_message_prompt(context['staged_changes'], config)
+        if config.verbose:
+            debug_header("Creating AI prompt")
+        if DEFAULT_PROMPT_TYPE == "advanced":
+            prompt = create_advanced_commit_message_prompt(context, config)
+        else:
+            prompt = create_simple_commit_message_prompt(context['staged_changes'], config)
         
         # Generate commit message
         rprint(f"[{COLORS['bold']}]🤖 Generating commit message with AI...[/{COLORS['bold']}]")
