@@ -288,7 +288,8 @@ def generate_commit_message_with_ai(config: Any) -> str:
         rprint(f"[{COLORS['success']}]✓ Commit message generated successfully[/{COLORS['success']}]")
         
         if config.verbose:
-            debug_preview("Generated commit message", commit_message)
+            debug_header("Generated commit message")
+            debug_item("Message", commit_message[:100] + "..." if len(commit_message) > 100 else commit_message)
         
         # Allow interactive editing if enabled
         if config.interactive:
@@ -333,7 +334,8 @@ def generate_commit_message_with_ai(config: Any) -> str:
                 if edited_message is not None:
                     commit_message = edited_message.strip()
                     if config.verbose:
-                        debug_preview("Edited commit message", commit_message)
+                        debug_header("Edited commit message")
+                        debug_item("Message", commit_message[:100] + "..." if len(commit_message) > 100 else commit_message)
         
         return commit_message
     
