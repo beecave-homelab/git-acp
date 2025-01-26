@@ -5,7 +5,7 @@ changes in the repository to suggest appropriate commit types.
 """
 
 from enum import Enum
-from git_acp.git_operations import run_git_command, GitError, get_diff
+from git_acp.git_operations import GitError, get_diff
 from git_acp.constants import COMMIT_TYPE_PATTERNS, COMMIT_TYPES
 
 class CommitType(Enum):
