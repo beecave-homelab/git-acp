@@ -142,6 +142,8 @@ Without any options, the tool runs in interactive mode:
 4. Generates or prompts for a commit message
 5. Shows a preview and confirmation before pushing
 
+![git-acp interactive mode](./assets/examples/git-acp-interactive-mode.gif)
+
 ### Options
 
 - `-a, --add <file>`: Add specified file(s) to staging. If not specified, shows interactive file selection.
