@@ -15,15 +15,21 @@
 !git_acp/cli/
 !git_acp/git/
 !git_acp/utils/
+!git_acp/config/
 !git_acp/ai/*.py
 !git_acp/cli/*.py
 !git_acp/git/*.py
 !git_acp/utils/*.py
+!git_acp/config/*.py
 !git_acp/*.py
 !git_acp/__init__.py
 !tests/
 !tests/*.py
 !tests/__init__.py
+!docs/
+!docs/*.md
+!docs/*.png
+!docs/*/*.png
 
 # Still ignore Python-specific files even in allowed directories
 **/__pycache__/
