@@ -5,9 +5,9 @@ changes in the repository to suggest appropriate commit types.
 """
 
 from enum import Enum
-from git_acp.git_operations import GitError, get_diff
-from git_acp.constants import COMMIT_TYPE_PATTERNS, COMMIT_TYPES
-from git_acp.formatting import debug_header, debug_item
+from git_acp.git.git_operations import GitError, get_diff
+from git_acp.config import COMMIT_TYPE_PATTERNS, COMMIT_TYPES
+from git_acp.utils import debug_header, debug_item
 
 class CommitType(Enum):
     """Enumeration of conventional commit types with emojis."""

@@ -3,8 +3,8 @@
 import json
 import pytest
 from unittest.mock import patch, MagicMock
-from git_acp.ai_utils import generate_commit_message_with_ollama
-from git_acp.git_operations import (
+from git_acp.ai import generate_commit_message
+from git_acp.git import (
     run_git_command, get_recent_commits,
     analyze_commit_patterns, find_related_commits
 )
@@ -30,7 +30,7 @@ def test_generate_commit_message(request, capsys):
         mock_chat.return_value = mock_response
         
         # Generate commit message
-        message = generate_commit_message_with_ollama({})
+        message = generate_commit_message({})
         
         # Verify we got a commit message back
         assert message.strip()

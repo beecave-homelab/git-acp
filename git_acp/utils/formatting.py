@@ -5,9 +5,10 @@ including debug information, success messages, warnings, and status updates.
 """
 
 import json
-from rich import print as rprint
 from rich.console import Console
-from git_acp.constants import COLORS, TERMINAL_WIDTH
+from rich.progress import Progress
+from rich import print as rprint
+from git_acp.config import COLORS, TERMINAL_WIDTH
 
 console = Console(width=TERMINAL_WIDTH)
 

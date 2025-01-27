@@ -11,6 +11,14 @@
 
 # Allow the package directory and Python files
 !git_acp/
+!git_acp/ai/
+!git_acp/cli/
+!git_acp/git/
+!git_acp/utils/
+!git_acp/ai/*.py
+!git_acp/cli/*.py
+!git_acp/git/*.py
+!git_acp/utils/*.py
 !git_acp/*.py
 !git_acp/__init__.py
 !tests/
