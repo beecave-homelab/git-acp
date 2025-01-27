@@ -28,8 +28,10 @@
 !tests/__init__.py
 !docs/
 !docs/*.md
-!docs/*.png
-!docs/*/*.png
+!assets/
+!assets/*/
+!assets/*/*.png
+!assets/*/*.gif
 
 # Still ignore Python-specific files even in allowed directories
 **/__pycache__/
