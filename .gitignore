@@ -28,8 +28,11 @@
 !tests/__init__.py
 !docs/
 !docs/*.md
+!docs/api/
 !docs/api/*.md
+!docs/getting_started/
 !docs/getting_started/*.md
+!docs/usage/
 !docs/usage/*.md
 !assets/
 !assets/*/
