@@ -210,7 +210,7 @@ Available configurations are organized into categories:
 
 - `GIT_ACP_AI_MODEL`: Model name for Ollama (default: mevatron/diffsense:1.5b)
 - `GIT_ACP_TEMPERATURE`: Temperature for AI generation (0.0 to 1.0, higher = more creative, default: 0.7)
-- `GIT_ACP_BASE_URL`: Ollama API endpoint (default: http://localhost:11434/v1)
+- `GIT_ACP_BASE_URL`: Ollama API endpoint (default: <http://localhost:11434/v1>)
 - `GIT_ACP_API_KEY`: API key for Ollama (default: "ollama")
 - `GIT_ACP_PROMPT_TYPE`: Type of prompt for commit message generation ("simple" or "advanced", default: advanced)
 - `GIT_ACP_AI_TIMEOUT`: Timeout for AI requests in seconds (default: 120.0)
