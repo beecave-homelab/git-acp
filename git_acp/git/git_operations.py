@@ -11,10 +11,11 @@ import subprocess
 import json
 import shlex
 from typing import Set, Tuple, List, Dict, Optional, Any, Literal
-from git_acp.formatting import (
-    debug_header, debug_item, debug_json, status, success, warning
+from git_acp.utils import (
+    debug_header, debug_item, debug_json, status, success, warning,
+    GitConfig, OptionalConfig, DiffType
 )
-from git_acp.constants import (
+from git_acp.config import (
     EXCLUDED_PATTERNS,
     DEFAULT_REMOTE,
     DEFAULT_NUM_RECENT_COMMITS,
@@ -22,7 +23,6 @@ from git_acp.constants import (
 )
 from rich.console import Console
 from rich import print as rprint
-from git_acp.types import GitConfig, OptionalConfig, DiffType
 from collections import Counter
 
 console = Console()

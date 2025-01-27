@@ -14,16 +14,17 @@ import questionary
 from rich.panel import Panel
 from rich.progress import Progress
 
-from git_acp.git_operations import (
+from git_acp.git import (
     GitError, run_git_command, get_recent_commits,
     get_diff,
     find_related_commits,
     analyze_commit_patterns
 )
-from git_acp.formatting import (
-    debug_header, debug_item, debug_preview
+from git_acp.utils import (
+    debug_header, debug_item, debug_preview,
+    GitConfig, OptionalConfig, PromptType
 )
-from git_acp.constants import (
+from git_acp.config import (
     DEFAULT_AI_MODEL,
     DEFAULT_TEMPERATURE,
     DEFAULT_NUM_RECENT_COMMITS,
@@ -35,9 +36,6 @@ from git_acp.constants import (
     QUESTIONARY_STYLE,
     COLORS,
     TERMINAL_WIDTH
-)
-from git_acp.types import (
-    GitConfig, OptionalConfig, PromptType
 )
 
 class AIClient:

@@ -19,14 +19,14 @@ from rich.panel import Panel
 from rich.prompt import Confirm
 from rich import print as rprint
 
-from git_acp.git_operations import (
+from git_acp.git import (
     GitError, run_git_command, get_current_branch, git_add,
-    git_commit, git_push, get_changed_files, unstage_files
+    git_commit, git_push, get_changed_files, unstage_files,
+    CommitType, classify_commit_type
 )
-from git_acp.classification import CommitType, classify_commit_type
-from git_acp.ai_utils import generate_commit_message
-from git_acp.constants import COLORS, QUESTIONARY_STYLE
-from git_acp.types import GitConfig, OptionalConfig
+from git_acp.ai import generate_commit_message
+from git_acp.config import COLORS, QUESTIONARY_STYLE
+from git_acp.utils import GitConfig, OptionalConfig
 
 console = Console()
 
