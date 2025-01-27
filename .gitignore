@@ -28,6 +28,10 @@
 !tests/__init__.py
 !docs/
 !docs/*.md
+!docs/api/*.md
+!docs/getting_started/*.md
+!docs/usage/*.md
+!docs/.gitkeep
 !assets/
 !assets/*/
 !assets/*/*.png
