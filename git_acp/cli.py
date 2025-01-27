@@ -24,7 +24,7 @@ from git_acp.git_operations import (
     git_commit, git_push, get_changed_files, unstage_files
 )
 from git_acp.classification import CommitType, classify_commit_type
-from git_acp.ai_utils import generate_commit_message_with_ai
+from git_acp.ai_utils import generate_commit_message
 from git_acp.constants import COLORS, QUESTIONARY_STYLE
 from git_acp.types import GitConfig, OptionalConfig
 
@@ -72,33 +72,41 @@ def select_files(changed_files: Set[str]) -> str:
         rprint(f"[{COLORS['warning']}]Adding file:[/{COLORS['warning']}] {selected_file}")
         return f'"{selected_file}"' if ' ' in selected_file else selected_file
     
-    # Sort files and ensure paths are properly displayed
-    file_choices = sorted(list(changed_files))
+    # Create choices with the original filenames
+    choices = []
+    for file in sorted(list(changed_files)):
+        choices.append({
+            'name': file,  # Display name
+            'value': file  # Actual value
+        })
     
     # Add "All files" as the last option
-    file_choices.append("All files")
+    choices.append({
+        'name': "All files",
+        'value': "All files"
+    })
     
     # Use a wider display for the checkbox prompt
-    selected_files = questionary.checkbox(
+    selected = questionary.checkbox(
         "Select files to commit (space to select, enter to confirm):",
-        choices=file_choices,
+        choices=choices,
         style=questionary.Style(QUESTIONARY_STYLE)
     ).ask()
     
-    if not selected_files:
+    if not selected:
         raise GitError("No files selected.")
     
-    if "All files" in selected_files:
+    if "All files" in selected:
         rprint(f"[{COLORS['warning']}]Adding all files[/{COLORS['warning']}]")
         return "."
     
     # Print selected files for user feedback
     rprint(f"[{COLORS['warning']}]Adding files:[/{COLORS['warning']}]")
-    for file in selected_files:
+    for file in selected:
         rprint(f"  - {file}")
     
     # Return files as a space-separated string, properly quoted if needed
-    return " ".join(f'"{f}"' if ' ' in f else f for f in selected_files)
+    return " ".join(f'"{f}"' if ' ' in f else f for f in selected)
 
 def select_commit_type(config: GitConfig, suggested_type: CommitType) -> CommitType:
     """
@@ -179,8 +187,13 @@ def select_commit_type(config: GitConfig, suggested_type: CommitType) -> CommitT
                               case_sensitive=False),
               help="Override automatic commit type suggestion.")
 @click.option('-v', '--verbose', is_flag=True, help="Show debug information.")
+@click.option('-p', '--prompt-type',
+              type=click.Choice(['simple', 'advanced'], case_sensitive=False),
+              default='advanced',
+              help="Type of prompt to use for AI commit message generation.")
 def main(add: Optional[str], message: Optional[str], branch: Optional[str],
-         ollama: bool, interactive: bool, no_confirm: bool, commit_type: Optional[str], verbose: bool) -> None:
+         ollama: bool, interactive: bool, no_confirm: bool, commit_type: Optional[str],
+         verbose: bool, prompt_type: str) -> None:
     """
     Automate git add, commit, and push operations with optional AI-generated commit messages.
     """
@@ -193,7 +206,8 @@ def main(add: Optional[str], message: Optional[str], branch: Optional[str],
             use_ollama=ollama,
             interactive=interactive,
             skip_confirmation=no_confirm,
-            verbose=verbose
+            verbose=verbose,
+            prompt_type=prompt_type.lower()
         )
 
         if add is None:
@@ -238,7 +252,7 @@ def main(add: Optional[str], message: Optional[str], branch: Optional[str],
         try:
             if config.use_ollama:
                 try:
-                    config.message = generate_commit_message_with_ai(config)
+                    config.message = generate_commit_message(config)
                 except GitError as e:
                     rprint(Panel(
                         f"[{COLORS['error']}]AI commit message generation failed:[/{COLORS['error']}]\n{str(e)}\n\n"

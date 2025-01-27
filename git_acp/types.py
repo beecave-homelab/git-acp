@@ -20,6 +20,7 @@ class GitConfig:
         interactive: Whether to allow editing of AI-generated commit messages.
         skip_confirmation: Whether to skip confirmation prompts.
         verbose: Whether to show debug information.
+        prompt_type: Type of prompt to use for AI commit message generation.
     """
     files: str = "."
     message: str = "Automated commit"
@@ -28,6 +29,7 @@ class GitConfig:
     interactive: bool = False
     skip_confirmation: bool = False
     verbose: bool = False
+    prompt_type: str = "advanced"  # Default to advanced prompt type
 
 # Git operations types
 CommitDict = Dict[str, str]
