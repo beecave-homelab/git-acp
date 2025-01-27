@@ -3,7 +3,7 @@
 A Python tool to automate Git add, commit, and push actions with optional AI-generated commit messages using Ollama. Features a beautiful CLI interface with color-coded output and progress indicators.
 
 ![Python](https://img.shields.io/badge/python-3.6%2B-blue)
-![Version](https://img.shields.io/badge/version-0.13.4-brightgreen)
+![Version](https://img.shields.io/badge/version-0.14.0-brightgreen)
 ![License](https://img.shields.io/badge/license-MIT-green)
 
 ## Table of Contents
@@ -142,14 +142,16 @@ Without any options, the tool runs in interactive mode:
 
 ### Options
 
-- `-a, --add <file>`: Add specified file(s) to staging. Use quotes for multiple files: `"file1.py file2.py"`. If not specified, shows interactive file selection.
-- `-m, --message <msg>`: Commit message. If not provided with `-o`, prompts for input.
-- `-b, --branch <branch>`: Push to specified branch. Defaults to current branch.
+- `-a, --add <file>`: Add specified file(s) to staging. If not specified, shows interactive file selection.
+- `-m, --message <msg>`: Commit message. Defaults to 'Automated commit'.
+- `-b, --branch <branch>`: Specify the branch to push to. Defaults to current active branch.
 - `-o, --ollama`: Use Ollama AI to generate commit message based on your changes.
-- `-nc, --no-confirm`: Skip all confirmation prompts.
-- `-t, --type <type>`: Override automatic commit type suggestion.
+- `-i, --interactive`: Allow editing of AI-generated commit message (requires --ollama).
+- `-nc, --no-confirm`: Skip confirmation prompts.
+- `-t, --type <type>`: Override automatic commit type suggestion. Available types: feat, fix, docs, style, refactor, test, chore, revert.
 - `-v, --verbose`: Show detailed debug information.
-- `-h, --help`: Show help message.
+- `-p, --prompt-type <type>`: Type of prompt to use for AI commit message generation (simple or advanced).
+- `--help`: Show help message and exit.
 
 ### Examples
 
@@ -240,6 +242,7 @@ Available configurations are organized into categories:
 ### Commit Types Configuration
 
 Customize commit types and their emojis:
+
 - `GIT_ACP_COMMIT_TYPE_FEAT`: Feature commits (default: "feat ✨")
 - `GIT_ACP_COMMIT_TYPE_FIX`: Bug fix commits (default: "fix 🐛")
 - `GIT_ACP_COMMIT_TYPE_DOCS`: Documentation commits (default: "docs 📝")

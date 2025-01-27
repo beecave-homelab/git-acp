@@ -1,6 +1,6 @@
 import pytest
 from unittest.mock import patch, MagicMock
-from git_acp.git_operations import (
+from git_acp.git import (
     GitError,
     run_git_command,
     get_current_branch,
@@ -9,9 +9,10 @@ from git_acp.git_operations import (
     git_push,
     get_changed_files,
     unstage_files,
+    get_diff,
     get_recent_commits,
-    analyze_commit_patterns,
-    find_related_commits
+    find_related_commits,
+    analyze_commit_patterns
 )
 
 # Mock configuration class
