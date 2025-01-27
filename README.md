@@ -256,14 +256,14 @@ Customize commit types and their emojis:
 
 The tool intelligently suggests commit types based on your changes and commit history. Available types:
 
-- ✨ `feat`: New features or significant enhancements
-- 🐛 `fix`: Bug fixes and error corrections
-- 📝 `docs`: Documentation changes only
-- 💎 `style`: Code style/formatting changes (no functional changes)
-- ♻️ `refactor`: Code refactoring without functional changes
-- 🧪 `test`: Adding or modifying tests
-- 📦 `chore`: Maintenance tasks, dependencies, build changes
-- ⏪ `revert`: Reverting previous changes
+- `feat ✨`: New features or significant enhancements
+- `fix 🐛`: Bug fixes and error corrections
+- `docs 📝`: Documentation changes only
+- `style 💎`: Code style/formatting changes (no functional changes)
+- `refactor ♻️`: Code refactoring without functional changes
+- `test 🧪`: Adding or modifying tests
+- `chore 📦`: Maintenance tasks, dependencies, build changes
+- `revert ⏪`: Reverting previous changes
 
 The tool analyzes your changes and suggests the most appropriate type, but you can choose any type using the interactive selector or override it with the `-t` option.
 
