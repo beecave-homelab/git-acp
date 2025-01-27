@@ -22,7 +22,7 @@ from rich import print as rprint
 from git_acp.git import (
     GitError, run_git_command, get_current_branch, git_add,
     git_commit, git_push, get_changed_files, unstage_files,
-    CommitType, classify_commit_type
+    CommitType, classify_commit_type, setup_signal_handlers
 )
 from git_acp.ai import generate_commit_message
 from git_acp.config import COLORS, QUESTIONARY_STYLE
@@ -93,7 +93,9 @@ def select_files(changed_files: Set[str]) -> str:
         style=questionary.Style(QUESTIONARY_STYLE)
     ).ask()
     
-    if not selected:
+    if selected is None:  # User cancelled
+        raise GitError("Operation cancelled by user.")
+    elif not selected:  # No selection made
         raise GitError("No files selected.")
     
     if "All files" in selected:
@@ -170,7 +172,9 @@ def select_commit_type(config: GitConfig, suggested_type: CommitType) -> CommitT
         validate=validate_single_selection
     ).ask()
     
-    if not selected_types or len(selected_types) != 1:
+    if selected_types is None:  # User cancelled
+        raise GitError("Operation cancelled by user.")
+    elif not selected_types or len(selected_types) != 1:  # No selection made
         raise GitError("No commit type selected.")
         
     return selected_types[0]
@@ -235,6 +239,9 @@ def main(add: Optional[str], message: Optional[str], branch: Optional[str],
     - General: Program behavior control (-nc, -v)
 
     """
+    # Set up signal handler for graceful interruption
+    setup_signal_handlers()
+    
     try:
         # If no files specified, show interactive selection
         config = GitConfig(
@@ -255,12 +262,20 @@ def main(add: Optional[str], message: Optional[str], branch: Optional[str],
                     raise GitError("No changes detected in the repository. Make some changes first.")
                 config.files = select_files(changed_files)
             except GitError as e:
-                rprint(Panel(
-                    f"[{COLORS['error']}]Error selecting files:[/{COLORS['error']}]\n{str(e)}\n\n"
-                    "Suggestion: Make sure you're in a git repository with changes to commit.",
-                    title="File Selection Failed",
-                    border_style="red"
-                ))
+                if "cancelled by user" in str(e).lower():
+                    unstage_files()
+                    rprint(Panel(
+                        "Operation cancelled by user.",
+                        title="Cancelled",
+                        border_style="yellow"
+                    ))
+                else:
+                    rprint(Panel(
+                        f"[{COLORS['error']}]Error selecting files:[/{COLORS['error']}]\n{str(e)}\n\n"
+                        "Suggestion: Make sure you're in a git repository with changes to commit.",
+                        title="File Selection Failed",
+                        border_style="red"
+                    ))
                 sys.exit(1)
 
         if not config.branch:
@@ -328,12 +343,19 @@ def main(add: Optional[str], message: Optional[str], branch: Optional[str],
                     selected_type = select_commit_type(config, suggested_type)
                     rprint(f"[{COLORS['success']}]✓ Commit type selected successfully[/{COLORS['success']}]")
                 except GitError as e:
-                    rprint(Panel(
-                        f"[{COLORS['error']}]Error selecting commit type:[/{COLORS['error']}]\n{str(e)}\n\n"
-                        "Suggestion: Try again or specify a commit type with -t.",
-                        title="Commit Type Selection Failed",
-                        border_style="red"
-                    ))
+                    if "cancelled by user" in str(e).lower():
+                        rprint(Panel(
+                            "Operation cancelled by user.",
+                            title="Cancelled",
+                            border_style="yellow"
+                        ))
+                    else:
+                        rprint(Panel(
+                            f"[{COLORS['error']}]Error selecting commit type:[/{COLORS['error']}]\n{str(e)}\n\n"
+                            "Suggestion: Try again or specify a commit type with -t.",
+                            title="Commit Type Selection Failed",
+                            border_style="red"
+                        ))
                     unstage_files()
                     sys.exit(1)
 

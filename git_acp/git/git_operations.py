@@ -10,6 +10,8 @@ This module provides functions for interacting with Git repositories, including:
 import subprocess
 import json
 import shlex
+import signal
+import sys
 from typing import Set, Tuple, List, Dict, Optional, Any, Literal
 from git_acp.utils import (
     debug_header, debug_item, debug_json, status, success, warning,
@@ -22,6 +24,7 @@ from git_acp.config import (
     COLORS
 )
 from rich.console import Console
+from rich.panel import Panel
 from rich import print as rprint
 from collections import Counter
 
@@ -694,3 +697,17 @@ def analyze_commit_patterns(commits: List[Dict[str, str]], config: OptionalConfi
         debug_item("Commit scopes found", str(dict(patterns['scopes'])))
     
     return patterns
+
+def setup_signal_handlers() -> None:
+    """Set up signal handlers for graceful interruption of git operations."""
+    def signal_handler(signum, frame):
+        """Handle interrupt signals by unstaging files and exiting gracefully."""
+        unstage_files()
+        rprint(Panel(
+            "Operation cancelled by user.",
+            title="Cancelled",
+            border_style="yellow"
+        ))
+        sys.exit(1)
+    
+    signal.signal(signal.SIGINT, signal_handler)

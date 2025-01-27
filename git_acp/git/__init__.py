@@ -12,7 +12,8 @@ from git_acp.git.git_operations import (
     get_diff,
     get_recent_commits,
     find_related_commits,
-    analyze_commit_patterns
+    analyze_commit_patterns,
+    setup_signal_handlers
 )
 from git_acp.git.classification import CommitType, classify_commit_type
 
@@ -30,5 +31,6 @@ __all__ = [
     'find_related_commits',
     'analyze_commit_patterns',
     'CommitType',
-    'classify_commit_type'
+    'classify_commit_type',
+    'setup_signal_handlers'
 ]
