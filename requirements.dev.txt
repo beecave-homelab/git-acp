@@ -1,0 +1,9 @@
+pytest>=8.0.0
+pytest-mock>=3.14.0
+typing;python_version<"3.7"
+click==8.1.8
+rich==13.9.4
+questionary==2.1.0
+openai==1.59.3
+tqdm==4.67.1
+python-dotenv==1.0.1
