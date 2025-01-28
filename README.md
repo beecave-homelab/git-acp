@@ -48,6 +48,8 @@ A Python tool to automate Git add, commit, and push actions with optional AI-gen
 
 ## Installation
 
+For detailed installation instructions, please refer to the [Installation Guide](./docs/getting_started/installation.md).
+
 ### Option 1: Global Installation with pipx (Recommended)
 
 [pipx](https://pypa.github.io/pipx/) is the recommended way to install Python CLI applications globally. It creates isolated environments for each application, ensuring dependency conflicts are avoided.
@@ -105,9 +107,6 @@ pipx uninstall git-acp
 
     # Activate on macOS/Linux
     source venv/bin/activate
-
-    # Activate on Windows
-    # .\venv\Scripts\activate
     ```
 
 3. Install the package:
@@ -116,15 +115,9 @@ pipx uninstall git-acp
     pip install .
     ```
 
-### Option 3: Install Directly with pip
-
-Not recommended for CLI tools, but possible:
-
-```bash
-pip install git+https://github.com/beecave-homelab/git-acp.git
-```
-
 ## Usage
+
+For more detailed usage examples, please refer to the [Basic Usage](./docs/usage/basic_usage.md) and [Advanced Usage](./docs/usage/advanced_usage.md) guides.
 
 After installation, you can use the `git-acp` command from anywhere in your terminal. The tool provides both interactive and command-line interfaces:
 
@@ -142,7 +135,7 @@ Without any options, the tool runs in interactive mode:
 4. Generates or prompts for a commit message
 5. Shows a preview and confirmation before pushing
 
-![git-acp interactive mode](./assets/examples/git-acp-interactive-mode.gif)
+![git-acp interactive mode](./assets/examples/git-acp-example-output-default.gif)
 
 ### Options
 
@@ -202,6 +195,8 @@ Without any options, the tool runs in interactive mode:
     ```
 
 ## Environment Configuration
+
+For setting up the environment, please refer to the [Introduction to Environment Configuration](./docs/getting_started/introduction.md).
 
 The tool can be customized using environment variables. Configuration is done through:
 
