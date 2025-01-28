@@ -190,12 +190,6 @@ export PATH="$HOME/.local/bin:$PATH"
 
 ### System-Specific Notes
 
-#### Windows
-
-- Ensure Python is added to PATH
-- Use PowerShell or Git Bash
-- May require admin privileges
-
 #### macOS
 
 - Use Homebrew for dependencies

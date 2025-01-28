@@ -20,6 +20,28 @@ This will:
 4. Generate or prompt for a commit message
 5. Show a preview and confirmation before pushing
 
+### Command Options
+
+The tool provides several options grouped into three categories:
+
+#### Git Operations
+
+- `-a, --add <file>`: Specify files to stage for commit. Shows interactive selection if omitted
+- `-m, --message <message>`: Custom commit message (defaults to 'Automated commit' without --ollama)
+- `-b, --branch <branch>`: Target branch for push operation
+- `-t, --type <type>`: Manually specify the commit type
+
+#### AI Features
+
+- `-o, --ollama`: Use Ollama AI to generate descriptive commit messages
+- `-i, --interactive`: Review and edit AI-generated messages (requires --ollama)
+- `-p, --prompt-type <type>`: Select AI prompt complexity ('simple' or 'advanced')
+
+#### General Options
+
+- `-nc, --no-confirm`: Skip all confirmation prompts
+- `-v, --verbose`: Enable detailed debug output
+
 ### Quick Commit with Message
 
 To quickly commit specific files with a message:
