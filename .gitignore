@@ -1,11 +1,12 @@
 # Ignore everything by default
 *
 
-# But allow these files
+# Files at the root of the repository
 !.gitignore
 !LICENSE
 !README.md
 !requirements.txt
+!requirements.dev.txt
 !setup.py
 !.env.example
 
@@ -23,9 +24,23 @@
 !git_acp/config/*.py
 !git_acp/*.py
 !git_acp/__init__.py
+
+# Tests
 !tests/
+!tests/ai/
+!tests/ai/*.py
+!tests/cli/
+!tests/cli/*.py
+!tests/git/
+!tests/git/*.py
+!tests/utils/
+!tests/utils/*.py
+!tests/config/
+!tests/config/*.py
 !tests/*.py
 !tests/__init__.py
+
+# Docs
 !docs/
 !docs/*.md
 !docs/api/
@@ -34,6 +49,10 @@
 !docs/getting_started/*.md
 !docs/usage/
 !docs/usage/*.md
+!docs/tests/
+!docs/tests/*.md
+
+# Assets like images and gifs
 !assets/
 !assets/*/
 !assets/*/*.png
