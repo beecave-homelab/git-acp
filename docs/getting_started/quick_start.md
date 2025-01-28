@@ -63,4 +63,4 @@ git_commit(commit_message)
 - **Command-Line Options**: Customize operations with options like `-a` for adding files, `-m` for commit messages, and `-b` for specifying branches.
 - **Verbose Output**: Use `-v` for detailed debug information.
 
-This guide provides a basic overview to get you started. For more detailed usage, refer to the advanced usage section. 
+This guide provides a basic overview to get you started. For more detailed usage, refer to the advanced usage section.

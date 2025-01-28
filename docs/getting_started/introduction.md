@@ -54,4 +54,4 @@ The package is organized into several key components:
 - Python 3.6 or higher
 - Git installed and configured
 - Ollama installed (optional, for AI features)
-- pipx (recommended for installation) 
+- pipx (recommended for installation)

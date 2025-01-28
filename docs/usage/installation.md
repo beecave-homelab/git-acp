@@ -5,11 +5,13 @@ This guide provides detailed instructions for installing `git-acp` and its depen
 ## Prerequisites
 
 ### Required Software
+
 - Python 3.6 or higher
 - Git
 - pip or pipx
 
 ### Optional Dependencies
+
 - Ollama (for AI features)
 
 ## Installation Methods
@@ -21,18 +23,21 @@ This guide provides detailed instructions for installing `git-acp` and its depen
 #### Install pipx
 
 On macOS:
+
 ```bash
 brew install pipx
 pipx ensurepath
 ```
 
 On Linux:
+
 ```bash
 python3 -m pip install --user pipx
 python3 -m pipx ensurepath
 ```
 
 On Windows:
+
 ```bash
 python -m pip install --user pipx
 python -m pipx ensurepath
@@ -96,6 +101,7 @@ For AI-powered commit message generation:
 ### 1. Install Ollama
 
 On macOS/Linux:
+
 ```bash
 curl https://ollama.ai/install.sh | sh
 ```
@@ -162,18 +168,21 @@ GIT_ACP_BASE_URL=http://localhost:11434/v1
 ### Common Issues
 
 #### Package Not Found
+
 ```bash
 # Ensure Python and pip are up to date
 python -m pip install --upgrade pip
 ```
 
 #### Permission Issues
+
 ```bash
 # Install with user permissions
 pip install --user git+https://github.com/beecave-homelab/git-acp.git
 ```
 
 #### Path Issues
+
 ```bash
 # Add to PATH (if needed)
 export PATH="$HOME/.local/bin:$PATH"
@@ -182,15 +191,18 @@ export PATH="$HOME/.local/bin:$PATH"
 ### System-Specific Notes
 
 #### Windows
+
 - Ensure Python is added to PATH
 - Use PowerShell or Git Bash
 - May require admin privileges
 
 #### macOS
+
 - Use Homebrew for dependencies
 - Consider using pipx
 
 #### Linux
+
 - Install system dependencies
 - Use distribution package manager
-- Check file permissions 
+- Check file permissions

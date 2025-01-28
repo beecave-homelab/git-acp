@@ -13,6 +13,7 @@ git-acp
 ```
 
 This will:
+
 1. Show status of changed files
 2. Present a selection menu for staging files
 3. Suggest a commit type based on changes
@@ -84,12 +85,14 @@ git-acp -a "*.css" -t style -m "Update button styles"
 ## File Selection
 
 ### Interactive Selection
+
 - Use space to select/deselect files
 - Enter to confirm selection
 - Arrow keys to navigate
 - Select "All files" to stage everything
 
 ### Pattern Matching
+
 - Use wildcards: `*.py`, `src/**/*.js`
 - Multiple patterns: `"*.md" "src/*.py"`
 - Exclude patterns: `"src/*" "!src/test/*"`
@@ -97,11 +100,13 @@ git-acp -a "*.css" -t style -m "Update button styles"
 ## Commit Messages
 
 ### Manual Messages
+
 - Keep messages concise but descriptive
 - Follow conventional commits format
 - Include scope if relevant
 
 ### AI-Generated Messages
+
 - Use `-o` for AI generation
 - `-i` allows editing before commit
 - Choose prompt type with `-p`
@@ -109,11 +114,13 @@ git-acp -a "*.css" -t style -m "Update button styles"
 ## Confirmation and Safety
 
 ### Confirmation Prompts
+
 - Review changes before commit
 - Confirm commit message
 - Verify push operation
 
 ### Skip Confirmations
+
 Use `-nc` to skip all confirmations:
 
 ```bash
@@ -123,6 +130,7 @@ git-acp -nc -a . -m "Quick update"
 ## Error Handling
 
 The tool provides clear error messages for common issues:
+
 - Repository not found
 - Nothing to commit
 - Push conflicts
@@ -141,4 +149,4 @@ For verbose output and debugging:
 
 ```bash
 git-acp -v
-``` 
+```
