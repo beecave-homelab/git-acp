@@ -22,6 +22,7 @@ Then edit the `.env` file to customize your settings.
 The AI model selection determines which Ollama model will be used for generating commit messages. Different models have different capabilities, sizes, and performance characteristics. The default model `mevatron/diffsense:1.5b` is optimized for understanding code changes and generating relevant commit messages.
 
 **Tested Models:**
+
 - `mevatron/diffsense:0.5b`
 - `mevatron/diffsense:1.5b`
 - `tavernari/git-commit-message:latest`

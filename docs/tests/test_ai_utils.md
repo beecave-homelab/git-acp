@@ -83,4 +83,4 @@ This module provides utilities for AI-powered commit message generation, includi
 - **Unit Testing:** Utilize `pytest` and `pytest-mock` to mock external dependencies like the `OpenAI` client, `questionary` prompts, and Git operations. Test each function and method in isolation to ensure they handle inputs and outputs correctly.
 - **Integration Testing:** Employ `pytest` to simulate AI responses and verify that commit messages are generated and formatted correctly when functions work together.
 - **Functional Testing:** Use `pytest` to simulate user interactions for editing commit messages and verify the overall workflow, ensuring that end-to-end functionality works as intended.
-- **Error Handling Testing:** Use `pytest-mock` to simulate various failure scenarios (e.g., AI timeouts, invalid configurations) and ensure that errors are handled gracefully with informative messages using `pytest.raises`. 
+- **Error Handling Testing:** Use `pytest-mock` to simulate various failure scenarios (e.g., AI timeouts, invalid configurations) and ensure that errors are handled gracefully with informative messages using `pytest.raises`.

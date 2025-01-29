@@ -74,4 +74,4 @@ This module provides utility functions for formatting and displaying output in t
 - **Unit Testing:** Utilize `pytest` and `pytest-mock` to mock the `rich` library's `Console` and `print` functions, capturing and verifying the output of each formatting function.
 - **Snapshot Testing:** Employ `pytest-snapshot` to capture the output of formatting functions and compare them against expected snapshots to detect unintended changes.
 - **Edge Case Testing:** Test formatting functions with empty strings, very long messages, and special characters using `pytest` to ensure robustness.
-- **Integration Testing:** Use the formatting functions in combination with other modules to ensure seamless integration and correct output formatting. 
+- **Integration Testing:** Use the formatting functions in combination with other modules to ensure seamless integration and correct output formatting.

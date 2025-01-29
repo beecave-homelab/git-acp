@@ -203,4 +203,4 @@ This module provides functions for interacting with Git repositories, including 
 - **Unit Testing:** Utilize `pytest` and `pytest-mock` to mock `subprocess.Popen` and other external dependencies, simulating Git command executions and outputs. Test each function's logic independently.
 - **Integration Testing:** Employ `pytest` with temporary Git repositories (using `tempfile` and `git init`) to perform real Git operations and verify interactions between functions.
 - **Functional Testing:** Simulate complete workflows involving multiple Git operations using `pytest` to ensure end-to-end functionality.
-- **Error Handling Testing:** Use `pytest-mock` to simulate various error conditions (e.g., network issues, permission errors) and verify graceful handling and informative error messages. 
+- **Error Handling Testing:** Use `pytest-mock` to simulate various error conditions (e.g., network issues, permission errors) and verify graceful handling and informative error messages.

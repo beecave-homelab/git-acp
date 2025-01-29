@@ -92,4 +92,4 @@ This module serves as an initializer for the `git_acp.utils` package, importing 
 
 - **Unit Testing:** Utilize `pytest` and `pytest-mock` to import and verify the accessibility and functionality of exported members through each `__init__.py` module.
 - **Integration Testing:** Use `pytest` to combine exported members in sample workflows, ensuring they work correctly when accessed through their respective packages.
-- **Namespace Management Testing:** Assert that `__all__` accurately reflects all intended exports using `pytest` to automate the checks. 
+- **Namespace Management Testing:** Assert that `__all__` accurately reflects all intended exports using `pytest` to automate the checks.

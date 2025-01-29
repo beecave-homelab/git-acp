@@ -27,4 +27,4 @@ This module defines custom types and type aliases used throughout the `git_acp` 
 **Types of Testing:**
 
 - **Unit Testing:** Utilize `pytest` and `pytest-mock` to instantiate `GitConfig` with various parameters and verify attribute values.
-- **Type Checking:** Integrate `mypy` within the testing framework to ensure that type annotations are correctly applied and enforced. 
+- **Type Checking:** Integrate `mypy` within the testing framework to ensure that type annotations are correctly applied and enforced.

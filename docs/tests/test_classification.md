@@ -41,4 +41,4 @@ This module provides functionality for classifying commit types based on Git dif
 - **Unit Testing:** Utilize `pytest` and `pytest-mock` to mock Git operations, providing controlled diffs and commit histories. Test the classification logic in isolation to ensure accurate commit type identification.
 - **Integration Testing:** Use `pytest` with a temporary Git repository containing specific changes to verify that commit types are classified accurately based on real diffs.
 - **Edge Case Testing:** Employ `pytest` to handle scenarios with ambiguous changes, multiple pattern matches, or empty commit histories to ensure robust classification.
-- **Error Handling Testing:** Use `pytest-mock` to simulate invalid patterns or unexpected input formats and verify that errors are handled gracefully with informative `GitError` exceptions. 
+- **Error Handling Testing:** Use `pytest-mock` to simulate invalid patterns or unexpected input formats and verify that errors are handled gracefully with informative `GitError` exceptions.

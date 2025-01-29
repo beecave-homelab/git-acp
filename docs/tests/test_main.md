@@ -20,4 +20,4 @@ This module serves as the main entry point for the `git_acp` package, allowing i
 - **Integration Testing:** Utilize `pytest` to execute the `git_acp` package as a script within a controlled environment, verifying that it performs the intended operations by invoking the CLI `main` function.
 - **Functional Testing:** Use `pytest` to simulate various execution scenarios, including valid and invalid command-line arguments, ensuring correct behavior when the package is run directly.
 - **Mocking:** Employ `pytest-mock` to mock the `main` function, verifying that it is called when the script is executed and that it handles inputs correctly.
-- **Command-Line Argument Testing:** Use `pytest` to pass different arguments to the script and assert that the program responds as expected, handling both valid and invalid inputs gracefully. 
+- **Command-Line Argument Testing:** Use `pytest` to pass different arguments to the script and assert that the program responds as expected, handling both valid and invalid inputs gracefully.
