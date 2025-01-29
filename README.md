@@ -74,14 +74,15 @@ GIT_ACP_AI_MODEL=mevatron/diffsense:1.5b
 GIT_ACP_DEFAULT_BRANCH=main
 ```
 
-See [Configuration Documentation](docs/getting_started/advanced_usage.md#environment-configuration) for all available options.
+See [Advanced Usage](docs/usage/advanced_usage.md#advanced-usage) for all available options.
 
 ## Documentation
 
 - [API Reference](docs/api/overview.md)
 - [Getting Started](docs/getting_started/introduction.md)
-- [Testing Overview](docs/tests/test_plan.md)
 - [Usage](docs/usage/basic_usage.md)
+- [Testing Overview](docs/tests/test_plan.md)
+
 
 ## License
 
