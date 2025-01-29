@@ -36,13 +36,6 @@ python3 -m pip install --user pipx
 python3 -m pipx ensurepath
 ```
 
-On Windows:
-
-```bash
-python -m pip install --user pipx
-python -m pipx ensurepath
-```
-
 #### Install git-acp
 
 ```bash
@@ -61,6 +54,12 @@ pipx upgrade git-acp
 pipx uninstall git-acp
 ```
 
+#### Reinstall git-acp
+
+```bash
+pipx reinstall git-acp
+```
+
 ### 2. Install in a Virtual Environment
 
 #### Create Virtual Environment
@@ -75,9 +74,6 @@ python -m venv venv
 
 # Activate on macOS/Linux
 source venv/bin/activate
-
-# Activate on Windows
-# .\venv\Scripts\activate
 ```
 
 #### Install Package

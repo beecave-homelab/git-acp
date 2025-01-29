@@ -1,6 +1,6 @@
 # `git_acp` Package Documentation
 
-**Version**: `0.14.0`  
+**Version**: `0.14.1`  
 **Summary**: The `git_acp` package is a command-line utility and Python API for automating common Git workflows with enhanced features such as:
 
 - Interactive file selection
