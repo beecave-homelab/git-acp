@@ -305,7 +305,16 @@ def main(add: Optional[str], message: Optional[str], branch: Optional[str],
         try:
             if config.use_ollama:
                 try:
+                    # Add interruptible section around AI generation
                     config.message = generate_commit_message(config)
+                except KeyboardInterrupt:
+                    unstage_files()
+                    rprint(Panel(
+                        "AI generation cancelled by user",
+                        title="Cancelled",
+                        border_style="yellow"
+                    ))
+                    sys.exit(0)
                 except GitError as e:
                     rprint(Panel(
                         f"[{COLORS['error']}]AI commit message generation failed:[/{COLORS['error']}]\n{str(e)}\n\n"
@@ -400,15 +409,14 @@ def main(add: Optional[str], message: Optional[str], branch: Optional[str],
                 ))
                 sys.exit(1)
 
-        except Exception as e:
+        except KeyboardInterrupt:
             unstage_files()
             rprint(Panel(
-                f"[{COLORS['error']}]An unexpected error occurred:[/{COLORS['error']}]\n{str(e)}\n\n"
-                "Suggestion: Please report this issue if it persists.",
-                title="Unexpected Error",
-                border_style="red bold"
+                "Operation cancelled by user",
+                title="Cancelled",
+                border_style="yellow"
             ))
-            sys.exit(1)
+            sys.exit(0)
 
     except Exception as e:
         rprint(Panel(

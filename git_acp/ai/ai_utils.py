@@ -114,8 +114,13 @@ class AIClient:
                 response_event = Event()
                 response_data = {"response": None, "error": None}
                 
+                # Add cancellation flag
+                cancellation_flag = Event()
+                
                 def make_request():
                     try:
+                        if cancellation_flag.is_set():
+                            return
                         response_data["response"] = self.client.chat.completions.create(
                             model=DEFAULT_AI_MODEL,
                             messages=messages,
@@ -124,8 +129,8 @@ class AIClient:
                             **kwargs
                         )
                     except Exception as e:
-                        response_data["error"] = e
-                    finally:
+                        if not cancellation_flag.is_set():
+                            response_data["error"] = e
                         response_event.set()
                 
                 thread = Thread(target=make_request)
@@ -134,9 +139,14 @@ class AIClient:
                 # Update progress while waiting for response
                 elapsed = 0
                 while not response_event.is_set() and elapsed < DEFAULT_AI_TIMEOUT:
-                    progress.update(task, completed=int((elapsed / DEFAULT_AI_TIMEOUT) * 100))
-                    sleep(0.1)  # Update every 100ms
-                    elapsed += 0.1
+                    try:
+                        progress.update(task, completed=int((elapsed / DEFAULT_AI_TIMEOUT) * 100))
+                        sleep(0.1)
+                        elapsed += 0.1
+                    except KeyboardInterrupt:
+                        cancellation_flag.set()
+                        response_event.set()
+                        raise
                 
                 # Complete the progress bar
                 progress.update(task, completed=100)
@@ -153,6 +163,10 @@ class AIClient:
                     
                 return response.choices[0].message.content
                 
+        except KeyboardInterrupt:
+            if self.config and self.config.verbose:
+                debug_header("AI Request Cancelled by User")
+            raise GitError("AI generation cancelled by user") from None
         except TimeoutError:
             if self.config and self.config.verbose:
                 debug_header("AI Request Timeout")
