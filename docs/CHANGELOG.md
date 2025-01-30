@@ -2,6 +2,29 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.14.2] - 30-01-2025
+
+### Added
+- test 🧪: Add unit tests for formatting utilities and type definitions (23f6b14)
+- test 🧪: Add comprehensive test suite and commit type classification (0b88a5a)
+- test 🧪: Add comprehensive test suite for configuration constants and environment handling (39abbfa)
+- test 🧪: Add development requirements to requirements.dev.txt (6b923bc)
+
+### Changed
+- refactor ♻️: Add cancellation support for AI requests in AIClient (e77f260)
+- docs 📝: Update test documentation and add error handling testing (8c95c20)
+- docs 📝: Add comprehensive CHANGELOG.md and update versioning (63ceee3)
+- docs 📝: Update README.md for improved clarity and structure (8b0daa1)
+- chore 📦: Bump version to 0.14.2 in README, API documentation, and setup.py (d26b0fb)
+- docs 📝: Generate detailed test cases for git_acp package (eaa6456)
+
+### Fixed
+- test 🧪: Remove deprecated test suite for git_acp/cli/cli.py (fd68c2a)
+
+### Removed
+- revert ⏪: Remove outdated test plan for `cli.py` (24e215a)
+- chore 📦: Remove AI utilities and git operations test files (e05581f)
+
 ## [0.14.1] - 29-01-2025
 
 ### Added
@@ -25,10 +48,6 @@ All notable changes to this project will be documented in this file.
 ### Fixed
 - fix 🐛: Add configuration management for git-acp (e02019c)
 - fix 🐛: Enhance user experience with signal handling in git_acp (d515d58)
-
-### Removed
-- revert ⏪: Remove outdated test plan for `cli.py` (24e215a)
-- chore 📦: Remove AI utilities and git operations test files (e05581f)
 
 ## [0.14.0] - 28-01-2025
 
@@ -110,7 +129,6 @@ All notable changes to this project will be documented in this file.
 
 ### Documentation
 - docs 📝: Enhance README with modern badges and detailed features (cfc5e7f)
-- docs 📝: Add .env.example file for AI configuration settings (ba2ca01)
 
 ## [0.11.0] - 19-01-2025
 
