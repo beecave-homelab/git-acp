@@ -1,6 +1,6 @@
 # `git_acp` Package Documentation
 
-**Version**: `0.14.1`  
+**Version**: `0.14.2`  
 **Summary**: The `git_acp` package is a command-line utility and Python API for automating common Git workflows with enhanced features such as:
 
 - Interactive file selection
@@ -71,7 +71,7 @@ git_acp/
 ## Top-Level Module (`git_acp`)
 
 **Location**: `git_acp/__init__.py`  
-This is the root of the package. It defines the package’s version and imports public-facing objects from submodules.
+This is the root of the package. It defines the package's version and imports public-facing objects from submodules.
 
 - **Attributes**:
   - `__version__`: The version of the `git_acp` package.
@@ -106,7 +106,7 @@ Contains the core logic for generating commit messages with AI.
 - **Function**: `generate_commit_message(config: GitConfig) -> str`  
   Generates a commit message using AI.  
   **Args**:  
-  - `config (GitConfig)`: The user’s Git configuration containing flags such as `use_ollama`, `verbose`, etc.  
+  - `config (GitConfig)`: The user's Git configuration containing flags such as `use_ollama`, `verbose`, etc.  
   **Returns**:  
   - `str`: The AI-generated (and possibly user-edited) commit message.
 
