@@ -27,6 +27,7 @@ from git_acp.git import (
 from git_acp.ai import generate_commit_message
 from git_acp.config import COLORS, QUESTIONARY_STYLE
 from git_acp.utils import GitConfig, OptionalConfig
+from git_acp.cli.pr import pr
 
 console = Console()
 
@@ -55,60 +56,40 @@ def format_commit_message(commit_type: CommitType, message: str) -> str:
     description = '\n'.join(lines[1:])
     return f"{commit_type.value}: {title}\n\n{description}".strip()
 
-def select_files(changed_files: Set[str]) -> str:
+def select_files(changed_files: List[str]) -> List[str]:
     """Present an interactive selection menu for changed files.
-
+    
     Args:
-        changed_files: Set of files with uncommitted changes
+        changed_files: List of files that have changes
         
     Returns:
-        str: Space-separated list of selected files, with proper quoting
+        List[str]: Selected files for staging
+        
+    Raises:
+        GitError: If no files are selected
     """
-    if not changed_files:
-        raise GitError("No changed files found to commit.")
+    # Add "All files" option at the top
+    choices = [
+        {'name': "All files", 'value': changed_files, 'checked': False}
+    ]
     
-    if len(changed_files) == 1:
-        selected_file = next(iter(changed_files))
-        rprint(f"[{COLORS['warning']}]Adding file:[/{COLORS['warning']}] {selected_file}")
-        return f'"{selected_file}"' if ' ' in selected_file else selected_file
+    # Add individual files
+    choices.extend([
+        {'name': f, 'value': [f], 'checked': False}
+        for f in changed_files
+    ])
     
-    # Create choices with the original filenames
-    choices = []
-    for file in sorted(list(changed_files)):
-        choices.append({
-            'name': file,  # Display name
-            'value': file  # Actual value
-        })
-    
-    # Add "All files" as the last option
-    choices.append({
-        'name': "All files",
-        'value': "All files"
-    })
-    
-    # Use a wider display for the checkbox prompt
     selected = questionary.checkbox(
-        "Select files to commit (space to select, enter to confirm):",
+        "Select files to stage (space to select, enter to confirm):",
         choices=choices,
         style=questionary.Style(QUESTIONARY_STYLE)
     ).ask()
     
     if selected is None:  # User cancelled
-        raise GitError("Operation cancelled by user.")
-    elif not selected:  # No selection made
-        raise GitError("No files selected.")
-    
-    if "All files" in selected:
-        rprint(f"[{COLORS['warning']}]Adding all files[/{COLORS['warning']}]")
-        return "."
-    
-    # Print selected files for user feedback
-    rprint(f"[{COLORS['warning']}]Adding files:[/{COLORS['warning']}]")
-    for file in selected:
-        rprint(f"  - {file}")
-    
-    # Return files as a space-separated string, properly quoted if needed
-    return " ".join(f'"{f}"' if ' ' in f else f for f in selected)
+        raise GitError("Operation cancelled by user")
+        
+    # Flatten the list of selected files
+    return [item for sublist in selected for item in sublist]
 
 def select_commit_type(config: GitConfig, suggested_type: CommitType) -> CommitType:
     """
@@ -179,11 +160,39 @@ def select_commit_type(config: GitConfig, suggested_type: CommitType) -> CommitT
         
     return selected_types[0]
 
-@click.command()
-# Git Operations Group
-@click.option('-a', '--add', 
-              help="Specify files to stage for commit. If not provided, shows an interactive file selection menu.",
-              metavar="<file>")
+@click.group()
+@click.version_option()
+def main():
+    """Automate git add, commit, and push operations with smart features.
+
+    This tool streamlines your git workflow by combining add, commit, and push
+    operations with intelligent features like AI-powered commit messages and
+    conventional commits support.
+
+    \b
+    Features:
+    - Interactive file selection for staging
+    - AI-powered commit message generation
+    - Smart commit type classification
+    - Conventional commits format support
+    - Rich terminal output with progress indicators
+    - Automated PR creation with AI-powered descriptions
+
+    \b
+    Commands:
+    - commit: Basic git workflow (add, commit, push)
+    - pr: Create pull requests with AI-generated descriptions
+    """
+    pass
+
+@main.command(name="commit")
+@click.option(
+    "-a",
+    "--add",
+    "files_to_add",
+    multiple=True,
+    help="Specify files to stage for commit. If not provided, shows an interactive file selection menu.",
+)
 @click.option('-m', '--message', 
               help="Custom commit message. If not provided with --ollama, defaults to 'Automated commit'.",
               metavar="<message>")
@@ -216,67 +225,69 @@ def select_commit_type(config: GitConfig, suggested_type: CommitType) -> CommitT
 @click.option('-v', '--verbose', 
               is_flag=True, 
               help="Enable verbose output mode to show detailed debug information during execution.")
-def main(add: Optional[str], message: Optional[str], branch: Optional[str],
-         ollama: bool, interactive: bool, no_confirm: bool, commit_type: Optional[str],
-         verbose: bool, prompt_type: str) -> None:
-    """Automate git add, commit, and push operations with smart features.
+def commit(files_to_add: Optional[List[str]], message: Optional[str], branch: Optional[str],
+                   commit_type: Optional[str], ollama: bool, interactive: bool,
+                   prompt_type: Optional[str], no_confirm: bool, verbose: bool):
+    """Execute git add, commit, and push operations.
 
-    This tool streamlines your git workflow by combining add, commit, and push operations
-    with intelligent features like AI-powered commit messages and conventional commits support.
+    \b
+    This command combines three git operations:
+    1. Staging files (git add)
+    2. Creating a commit (git commit)
+    3. Pushing changes (git push)
 
     \b
     Features:
-    - Interactive file selection for staging
-    - AI-powered commit message generation
-    - Smart commit type classification
-    - Conventional commits format support
-    - Rich terminal output with progress indicators
-
-    \b
-    Options are grouped into:
-    - Git Operations: Commands for basic git workflow (-a, -m, -b, -t)
-    - AI Features: AI-powered commit message generation (-o, -i, -p)
-    - General: Program behavior control (-nc, -v)
-
+    - Interactive file selection
+    - AI-powered commit messages
+    - Smart commit type detection
+    - Conventional commits format
     """
     # Set up signal handler for graceful interruption
     setup_signal_handlers()
     
     try:
-        # If no files specified, show interactive selection
+        # Get changed files for selection if no files specified
+        if not files_to_add:
+            try:
+                changed_files = get_changed_files()
+                if not changed_files:
+                    rprint(Panel(
+                        "No changes detected in the repository.",
+                        title="No Changes",
+                        border_style="yellow"
+                    ))
+                    sys.exit(0)
+                
+                # Show interactive file selection
+                files_to_add = select_files(changed_files)
+                if not files_to_add:
+                    rprint(Panel(
+                        "No files selected for commit.",
+                        title="No Selection",
+                        border_style="yellow"
+                    ))
+                    sys.exit(0)
+            except GitError as e:
+                rprint(Panel(
+                    f"[{COLORS['error']}]Error getting changed files:[/{COLORS['error']}]\n{str(e)}\n\n"
+                    "Suggestion: Ensure you're in a git repository.",
+                    title="Git Status Failed",
+                    border_style="red"
+                ))
+                sys.exit(1)
+
+        # Initialize config with selected or specified files
         config = GitConfig(
-            files=add or ".",
+            files=" ".join(files_to_add),  # Join the files with spaces for git add
             message=message or "Automated commit",
             branch=branch,
             use_ollama=ollama,
             interactive=interactive,
             skip_confirmation=no_confirm,
             verbose=verbose,
-            prompt_type=prompt_type.lower()
+            prompt_type=prompt_type.lower() if prompt_type else "advanced"
         )
-
-        if add is None:
-            try:
-                changed_files = get_changed_files(config)
-                if not changed_files:
-                    raise GitError("No changes detected in the repository. Make some changes first.")
-                config.files = select_files(changed_files)
-            except GitError as e:
-                if "cancelled by user" in str(e).lower():
-                    unstage_files()
-                    rprint(Panel(
-                        "Operation cancelled by user.",
-                        title="Cancelled",
-                        border_style="yellow"
-                    ))
-                else:
-                    rprint(Panel(
-                        f"[{COLORS['error']}]Error selecting files:[/{COLORS['error']}]\n{str(e)}\n\n"
-                        "Suggestion: Make sure you're in a git repository with changes to commit.",
-                        title="File Selection Failed",
-                        border_style="red"
-                    ))
-                sys.exit(1)
 
         if not config.branch:
             try:
@@ -426,6 +437,9 @@ def main(add: Optional[str], message: Optional[str], branch: Optional[str],
             border_style="red bold"
         ))
         sys.exit(1)
+
+# Add the PR command to the CLI group
+main.add_command(pr)
 
 if __name__ == "__main__":
     main() 
