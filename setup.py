@@ -40,5 +40,6 @@ setup(
         "openai==1.59.3",
         "tqdm==4.67.1",
         "python-dotenv==1.0.1",
+        "requests==2.31.0",
     ],
 )
