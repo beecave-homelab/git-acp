@@ -2,6 +2,16 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.15.0] - 01-02-2025
+
+### Changed
+- refactor ♻️: Add main CLI entry point and update __init__.py (6b7ed52)
+- refactor ♻️: Add Git history and diff analysis, remote management, stash operations, and status tracking (4bd8052)
+- refactor ♻️: Add configuration loader and settings modules (c10535e)
+- refactor ♻️: Refactor CLI imports and add new formatting and helper functions (456e9be)
+- refactor ♻️: Refactor AI commit message generation to use new client and prompts (f25958f)
+- chore 📦: Bump version to 0.15.0 in README, init.py, and setup.py (a52f1f8)
+
 ## [0.14.2] - 30-01-2025
 
 ### Added
