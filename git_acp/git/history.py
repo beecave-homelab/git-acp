@@ -4,6 +4,7 @@ from collections import Counter
 from git_acp.git.runner import run_git_command, GitError
 from git_acp.config.settings import GIT_SETTINGS
 from git_acp.utils import debug_item
+from typing import List
 
 def get_recent_commits(num_commits: int = None, config=None) -> list:
     """Get recent commit history."""
@@ -57,4 +58,41 @@ def analyze_commit_patterns(commits: list, config=None) -> dict:
             scope = message[message.find('(') + 1:message.find(')')].strip()
             if scope:
                 patterns['scopes'][scope.lower()] += 1
-    return patterns 
+    return patterns
+
+def get_commit_messages(target: str, source: str) -> List[str]:
+    """Get commit messages between two branches.
+
+    Args:
+        target: Target branch name
+        source: Source branch name
+
+    Returns:
+        List of commit messages
+
+    Raises:
+        GitError: If getting commit messages fails
+    """
+    try:
+        output = run_git_command(f"git log --pretty=format:'%h - %s (%an)' --no-merges {target}...{source}")
+        return [msg.strip() for msg in output.split("\n") if msg.strip()]
+    except Exception as e:
+        raise GitError(f"Failed to get commit messages: {str(e)}") from e
+
+def get_diff_between_branches(target: str, source: str) -> str:
+    """Get diff between two branches.
+
+    Args:
+        target: Target branch name
+        source: Source branch name
+
+    Returns:
+        Diff text
+
+    Raises:
+        GitError: If getting diff fails
+    """
+    try:
+        return run_git_command(f"git --no-pager diff {target}...{source}")
+    except Exception as e:
+        raise GitError(f"Failed to get diff between branches: {str(e)}") from e 

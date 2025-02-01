@@ -1,7 +1,13 @@
-"""Git status operations: retrieving changed files and unstaging."""
-from git_acp.git.runner import run_git_command, GitError
+"""
+Git status operations and file tracking.
+"""
+
+from typing import Dict, List
+
+from git_acp.git.runner import GitError, run_git_command
 from git_acp.config.settings import GIT_SETTINGS
 from git_acp.utils import debug_item
+
 
 def get_changed_files(config=None) -> set:
     """Retrieve the set of changed files."""
@@ -19,9 +25,52 @@ def get_changed_files(config=None) -> set:
         files.add(path)
     return files
 
+
 def unstage_files(config=None) -> None:
     """Unstage all files."""
     try:
         run_git_command(["git", "reset", "HEAD"], config)
     except GitError as e:
-        raise GitError(f"Failed to unstage files: {str(e)}") from e 
+        raise GitError(f"Failed to unstage files: {str(e)}") from e
+
+
+def get_name_status_changes(target: str, source: str) -> Dict[str, List[str]]:
+    """Get name-status changes between two branches.
+
+    Args:
+        target: Target branch name
+        source: Source branch name
+
+    Returns:
+        Dictionary with keys 'added', 'modified', and 'deleted',
+        each containing a list of file paths
+
+    Raises:
+        GitError: If getting name-status changes fails
+    """
+    try:
+        output = run_git_command(f"git diff --name-status {target}...{source}")
+        changes = {
+            "added": [],
+            "modified": [],
+            "deleted": []
+        }
+        
+        for line in output.split("\n"):
+            if not line.strip():
+                continue
+                
+            status, file_path = line.split(maxsplit=1)
+            status = status.strip()
+            file_path = file_path.strip()
+            
+            if status == "A":
+                changes["added"].append(file_path)
+            elif status == "M":
+                changes["modified"].append(file_path)
+            elif status == "D":
+                changes["deleted"].append(file_path)
+                
+        return changes
+    except Exception as e:
+        raise GitError(f"Failed to get name-status changes: {str(e)}") from e 
