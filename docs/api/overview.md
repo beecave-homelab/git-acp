@@ -1,6 +1,6 @@
 # `git_acp` Package Documentation
 
-**Version**: `0.14.2`  
+**Version**: `0.15.0`  
 **Summary**: The `git_acp` package is a command-line utility and Python API for automating common Git workflows with enhanced features such as:
 
 - Interactive file selection
@@ -46,18 +46,32 @@ You can install the `git_acp` package by cloning the repository or adding it to 
 git_acp/
 ├── ai/
 │   ├── __init__.py
-│   └── ai_utils.py
+│   ├── generation.py
+│   ├── client.py
+│   └── prompts.py
 ├── cli/
 │   ├── __init__.py
-│   └── cli.py
+│   ├── main.py
+│   ├── helpers.py
+│   ├── prompts.py
+│   └── formatting.py
 ├── config/
 │   ├── __init__.py
 │   ├── constants.py
-│   └── env_config.py
+│   ├── env_config.py
+│   ├── loader.py
+│   └── settings.py
 ├── git/
 │   ├── __init__.py
-│   ├── git_operations.py
-│   └── classification.py
+│   ├── runner.py
+│   ├── branch.py
+│   ├── classification.py
+│   ├── commit.py
+│   ├── history.py
+│   ├── remote.py
+│   ├── stash.py
+│   ├── status.py
+│   └── tag.py
 ├── utils/
 │   ├── __init__.py
 │   ├── formatting.py
@@ -81,14 +95,14 @@ This is the root of the package. It defines the package's version and imports pu
 ```python
 import git_acp
 
-print(git_acp.__version__)  # "0.14.0"
+print(git_acp.__version__)  # "0.15.0"
 ```
 
 ---
 
 ## AI Subpackage (`git_acp.ai`)
 
-**Location**: `git_acp/ai/__init__.py` and `git_acp/ai/ai_utils.py`  
+**Location**: `git_acp/ai/__init__.py`, `git_acp/ai/generation.py`, `git_acp/ai/client.py`, and `git_acp/ai/prompts.py`
 
 This subpackage contains functionality for AI-powered commit message generation. It integrates with an AI backend (e.g., Ollama).
 
@@ -97,9 +111,9 @@ This subpackage contains functionality for AI-powered commit message generation.
 Exports public functions/classes from the AI subpackage.
 
 - `generate_commit_message(config: GitConfig) -> str`  
-  A convenience import that references `ai_utils.generate_commit_message`.
+  A convenience import that references `generation.py`.
 
-### `git_acp.ai.ai_utils`
+### `git_acp.ai.generation.py`
 
 Contains the core logic for generating commit messages with AI.
 
@@ -110,11 +124,15 @@ Contains the core logic for generating commit messages with AI.
   **Returns**:  
   - `str`: The AI-generated (and possibly user-edited) commit message.
 
+### `git_acp.ai.client.py`
+
 - **Class**: `AIClient`  
   A client for interacting with the AI model.  
   **Methods**:
   1. `__init__(self, config: OptionalConfig = None)`: Initializes the AI client with default or custom base URLs, API keys, etc.
   2. `chat_completion(self, messages: list, **kwargs) -> str`: Sends a chat-style request to the AI model and returns the response text.
+
+### `git_acp.ai.prompts.py`
 
 - **Function**: `create_advanced_commit_message_prompt(context: Dict[str, Any], config: OptionalConfig = None) -> str`  
   Creates a multi-context prompt for the AI to generate a more descriptive commit message.
@@ -132,46 +150,18 @@ Contains the core logic for generating commit messages with AI.
 
 ## CLI Subpackage (`git_acp.cli`)
 
-**Location**: `git_acp/cli/__init__.py` and `git_acp/cli/cli.py`  
+**Location**: `git_acp/cli/__init__.py`, `git_acp/cli/main.py`, `git_acp/cli/helpers.py`, `git_acp/cli/prompts.py`, and `git_acp/cli/formatting.py`
 
-This subpackage provides the command-line interface using [Click](https://palletsprojects.com/p/click/).
+This subpackage provides the command-line interface using Click decorators. It supports:
 
-### `git_acp.cli.__init__.py`
+- **Entry Point**:  
+  `main()` in `main.py` which orchestrates file selection, commit message generation (including AI features), commit type classification, and executing Git commands.
 
-Exports the main CLI entry function:
+- **Interactive Helpers**:  
+  `helpers.py` and `prompts.py` provide interactive file selection and commit type prompts.
 
-- `main()`: The primary CLI entry function (imported from `cli.py`).
-
-### `git_acp.cli.cli.py`
-
-Implements the `main` command via Click decorators and subcommands/options.
-
-- **Command**: `main`  
-  **Usage**:
-
-  ```bash
-  git-acp [OPTIONS]
-  ```
-
-  **Options**:
-  1. `-a, --add <file>`  
-     Specify which files to stage. If not provided, an interactive file selection is displayed.
-  2. `-m, --message <message>`  
-     Specify a commit message directly.
-  3. `-b, --branch <branch>`  
-     Specify a branch to push to. Defaults to current branch if not provided.
-  4. `-t, --type [feat|fix|docs|style|refactor|test|chore|revert]`  
-     Manually specify commit type.
-  5. `-o, --ollama`  
-     Toggle AI-based commit message generation.
-  6. `-i, --interactive`  
-     If set, allows editing the AI-generated commit message.
-  7. `-p, --prompt-type [simple|advanced]`  
-     Choose AI prompt style. Defaults to `advanced`.
-  8. `-nc, --no-confirm`  
-     Skip confirmations.
-  9. `-v, --verbose`  
-     Print debug info.
+- **Formatting**:  
+  `formatting.py` offers functions to format commit messages in a conventional style.
 
 **Primary Workflow**:
 
@@ -185,9 +175,9 @@ Implements the `main` command via Click decorators and subcommands/options.
 
 ## Configuration Subpackage (`git_acp.config`)
 
-**Location**: `git_acp/config/__init__.py`, `git_acp/config/constants.py`, `git_acp/config/env_config.py`  
+**Location**: `git_acp/config/__init__.py`, `git_acp/config/constants.py`, `git_acp/config/env_config.py`, `git_acp/config/loader.py`, and `git_acp/config/settings.py`
 
-Manages environment variables, configuration constants, and user-defined settings.
+This subpackage centralizes environment and configuration management.
 
 ### `git_acp.config.__init__.py`
 
@@ -227,183 +217,66 @@ Exports commonly used config objects and methods.
 
 Defines constants for AI configuration, Git workflow configuration, file-exclusion patterns, commit type patterns, formatting colors, and terminal widths. These are loaded from environment variables where possible, otherwise defaulting to hardcoded fallback values.
 
+### `git_acp.config.loader.py`
+
+- **Function**: `load_config(config_path: Path) -> dict`  
+  Loads configuration from a file and returns it as a dictionary.
+
+### `git_acp.config.settings.py`
+
+- **Grouped Configuration Settings**:  
+  - `AI_SETTINGS`: Settings related to AI operations.
+  - `GIT_SETTINGS`: Settings related to Git operations.
+  - `TERMINAL_SETTINGS`: Settings related to terminal output and formatting.
+
 ---
 
 ## Git Subpackage (`git_acp.git`)
 
-**Location**: `git_acp/git/__init__.py`, `git_acp/git/git_operations.py`, `git_acp/git/classification.py`  
+**Location**: Files under `git_acp/git/`
 
-Implements direct interaction with Git repositories (add, commit, push, logs, diffs, etc.) as well as commit type classification logic.
+The Git subpackage is responsible for all Git operations. It has been modularized into several files:
 
-### `git_acp.git.__init__.py`
+- **`runner.py`**:  
+  Executes low-level Git commands and handles errors.
 
-- **Exports**:
-  - `GitError`
-  - `run_git_command`
-  - `get_current_branch`
-  - `git_add`
-  - `git_commit`
-  - `git_push`
-  - `get_changed_files`
-  - `unstage_files`
-  - `get_diff`
-  - `get_recent_commits`
-  - `find_related_commits`
-  - `analyze_commit_patterns`
-  - `CommitType`
-  - `classify_commit_type`
-  - `setup_signal_handlers`
+- **`branch.py`**:  
+  Manages branch-related operations (e.g., retrieving the current branch, creating/deleting branches).
 
-### `git_acp.git.git_operations`
+- **`classification.py`**:  
+  Contains logic for commit type classification based on file changes and diff analysis.
 
-- **Class**: `GitError(Exception)`  
-  Custom exception type for Git-related errors.
+- **`commit.py`**:  
+  Handles the add, commit, and push workflow.
 
-- **Function**: `run_git_command(command: list[str], config: OptionalConfig = None) -> Tuple[str, str]`  
-  Runs a raw Git command using `subprocess.Popen` and returns `(stdout, stderr)` or raises `GitError`.
+- **`history.py`**:  
+  Retrieves recent commits and performs diff analysis for context.
 
-- **Function**: `get_current_branch(config: OptionalConfig = None) -> str`  
-  Returns the currently checked-out Git branch name.
+- **`remote.py`**:  
+  Supports operations for adding, removing, or updating remote repositories.
 
-- **Function**: `git_add(files: str, config: OptionalConfig = None) -> None`  
-  Stages specified files for commit. Accepts space-separated paths or `"."` for all.
+- **`stash.py`**:  
+  Implements Git stash functionalities.
 
-- **Function**: `git_commit(message: str, config: OptionalConfig = None) -> None`  
-  Commits staged changes with the provided commit message.
+- **`status.py`**:  
+  Fetches changed files and provides functionality to unstage files.
 
-- **Function**: `git_push(branch: str, config: OptionalConfig = None) -> None`  
-  Pushes the specified branch to the default remote (`origin`).
-
-- **Function**: `get_changed_files(config: OptionalConfig = None) -> Set[str]`  
-  Returns a set of changed file paths (staged or unstaged), filtering out excluded patterns.
-
-- **Function**: `unstage_files(config: OptionalConfig = None) -> None`  
-  Resets the staging area (equivalent to `git reset HEAD`).
-
-- **Function**: `get_recent_commits(num_commits: int = DEFAULT_NUM_RECENT_COMMITS, config: OptionalConfig = None) -> List[Dict[str, str]]`  
-  Fetches a specified number of recent commits in JSON-like form.
-
-- **Function**: `find_related_commits(diff_content: str, num_commits: int = DEFAULT_NUM_RECENT_COMMITS, config: OptionalConfig = None) -> List[Dict[str, str]]`  
-  Locates recently made commits that modified similar files/areas based on a diff.
-
-- **Function**: `get_diff(diff_type: DiffType = "staged", config: OptionalConfig = None) -> str`  
-  Retrieves the raw Git diff (staged or unstaged).
-
-- **Function**: `create_branch(branch_name: str, config: OptionalConfig = None) -> None`  
-  Creates and checks out a new branch.
-
-- **Function**: `delete_branch(branch_name: str, force: bool = False, config: OptionalConfig = None) -> None`  
-  Deletes a local branch. Use `force=True` to force-delete.
-
-- **Function**: `merge_branch(source_branch: str, config: OptionalConfig = None) -> None`  
-  Merges the specified source branch into the current branch.
-
-- **Function**: `manage_remote(operation: Literal["add", "remove", "set-url"], remote_name: str, url: Optional[str] = None, config: OptionalConfig = None) -> None`  
-  Adds, removes, or sets the URL of a Git remote.
-
-- **Function**: `manage_tags(operation: Literal["create", "delete", "push"], tag_name: str, message: Optional[str] = None, config: OptionalConfig = None) -> None`  
-  Creates, deletes, or pushes Git tags.
-
-- **Function**: `manage_stash(operation: Literal["save", "pop", "apply", "drop", "list"], message: Optional[str] = None, stash_id: Optional[str] = None, config: OptionalConfig = None) -> Optional[str]`  
-  Performs stash operations, returning the stash list for `list` operation.
-
-- **Function**: `analyze_commit_patterns(commits: List[Dict[str, str]], config: OptionalConfig = None) -> Dict[str, Dict[str, int]]`  
-  Analyzes commit messages to find frequent types and scopes (e.g., `feat`, `fix`).
-
-- **Function**: `setup_signal_handlers() -> None`  
-  Installs signal handlers to gracefully unstage files and exit on `CTRL+C`.
-
-### `git_acp.git.classification`
-
-- **Enum**: `CommitType(Enum)`  
-  Enumerates conventional commit types (FEAT, FIX, DOCS, etc.) with optional emojis.  
-  **Method**:
-  - `from_str(type_str: str) -> CommitType`: Converts a string to a `CommitType` or raises `GitError`.
-
-- **Function**: `classify_commit_type(config) -> CommitType`  
-  Examines the current diff and determines the most likely commit type based on patterns defined in `git_acp.config.constants.COMMIT_TYPE_PATTERNS`.
-
-- **Function**: `get_changes() -> str`  
-  Retrieves staged or unstaged changes as a diff string, throwing `GitError` if none exist.
+- **`tag.py`**:  
+  Manages Git tag operations.
 
 ---
 
 ## Utilities Subpackage (`git_acp.utils`)
 
-**Location**: `git_acp/utils/__init__.py`, `git_acp/utils/formatting.py`, `git_acp/utils/types.py`
+**Location**: `git_acp/utils/__init__.py`, `git_acp/utils/formatting.py`, and `git_acp/utils/types.py`
 
-General-purpose helper functions, formatting, and type definitions used throughout the package.
+This subpackage offers general utility functions and type definitions:
 
-### `git_acp.utils.__init__.py`
+- **Formatting Tools**:  
+  `formatting.py` provides styled output for terminal messages using the Rich library.
 
-Re-exports commonly used utility functions and type definitions:
-
-- `debug_header`
-- `debug_item`
-- `debug_json`
-- `debug_preview`
-- `status`
-- `success`
-- `warning`
-- `GitConfig`
-- `OptionalConfig`
-- `DiffType`
-- `PromptType`
-
-### `git_acp.utils.formatting`
-
-Provides functionality for printing styled debug and status messages using [Rich](https://github.com/Textualize/rich).
-
-- **Function**: `debug_header(message: str) -> None`  
-  Prints a debug header with special styling.
-
-- **Function**: `debug_item(label: str, value: str = None) -> None`  
-  Prints a label-value pair for debugging.
-
-- **Function**: `debug_json(data: dict, indent: int = 4) -> None`  
-  Prints JSON data in a styled format.
-
-- **Function**: `debug_preview(text: str, num_lines: int = 10) -> None`  
-  Prints the first `num_lines` of text.
-
-- **Function**: `success(message: str) -> None`  
-  Prints a success message with a checkmark.
-
-- **Function**: `warning(message: str) -> None`  
-  Prints a warning message.
-
-- **Function**: `status(message: str) -> Console.status`  
-  Creates a Rich console status context manager to show progress on long-running tasks.
-
-### `git_acp.utils.types`
-
-Defines custom data classes and type aliases used throughout `git_acp`.
-
-- **Dataclass**: `GitConfig`  
-  Holds settings for Git operations:
-
-  ```python
-  @dataclass
-  class GitConfig:
-      files: str = "."
-      message: str = "Automated commit"
-      branch: Optional['GitConfig'] = None
-      use_ollama: bool = False
-      interactive: bool = False
-      skip_confirmation: bool = False
-      verbose: bool = False
-      prompt_type: str = "advanced"
-  ```
-
-- **Type Aliases**:
-  - `OptionalConfig = Optional[GitConfig]`
-  - `DiffType = Literal["staged", "unstaged"]`
-  - `RemoteOperation = Literal["add", "remove", "set-url"]`
-  - `TagOperation = Literal["create", "delete", "push"]`
-  - `StashOperation = Literal["save", "pop", "apply", "drop", "list"]`
-  - `PromptType = Literal["simple", "advanced"]`
-  - `Message = Dict[str, str]`
-  - `CommitContext = Dict[str, Any]`
+- **Type and Data Definitions**:  
+  `types.py` defines custom types and the `GitConfig` dataclass used across the package.
 
 ---
 
@@ -411,13 +284,13 @@ Defines custom data classes and type aliases used throughout `git_acp`.
 
 **Location**: `git_acp/__main__.py`
 
-Provides a Python entry point so you can run:
+This file provides a Python entry point so the package can be executed from the command line:
 
 ```bash
 python -m git_acp
 ```
 
-which simply invokes the CLI (`git_acp.cli.main`).
+which directly invokes the CLI defined in `git_acp.cli.main`.
 
 ---
 

@@ -7,4 +7,11 @@ A command-line tool for automating Git operations with enhanced features:
 - Conventional commits support
 """
 
-__version__ = "0.14.2"
+from git_acp.cli import main  # Re-export the main CLI entry point
+
+__version__ = "0.15.0"
+
+__all__ = [
+    "__version__",
+    "main",
+]
