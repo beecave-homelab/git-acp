@@ -74,7 +74,12 @@ def get_commit_messages(target: str, source: str) -> List[str]:
         GitError: If getting commit messages fails
     """
     try:
-        output = run_git_command(f"git log --pretty=format:'%h - %s (%an)' --no-merges {target}...{source}")
+        output, _ = run_git_command([
+            "git", "log",
+            "--pretty=format:%h - %s (%an)",
+            "--no-merges",
+            f"{target}...{source}"
+        ])
         return [msg.strip() for msg in output.split("\n") if msg.strip()]
     except Exception as e:
         raise GitError(f"Failed to get commit messages: {str(e)}") from e
@@ -93,6 +98,10 @@ def get_diff_between_branches(target: str, source: str) -> str:
         GitError: If getting diff fails
     """
     try:
-        return run_git_command(f"git --no-pager diff {target}...{source}")
+        stdout, _ = run_git_command([
+            "git", "--no-pager", "diff",
+            f"{target}...{source}"
+        ])
+        return stdout
     except Exception as e:
         raise GitError(f"Failed to get diff between branches: {str(e)}") from e 

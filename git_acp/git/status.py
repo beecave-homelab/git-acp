@@ -49,7 +49,10 @@ def get_name_status_changes(target: str, source: str) -> Dict[str, List[str]]:
         GitError: If getting name-status changes fails
     """
     try:
-        output = run_git_command(f"git diff --name-status {target}...{source}")
+        output, _ = run_git_command([
+            "git", "diff", "--name-status",
+            f"{target}...{source}"
+        ], config=None)
         changes = {
             "added": [],
             "modified": [],
@@ -60,16 +63,19 @@ def get_name_status_changes(target: str, source: str) -> Dict[str, List[str]]:
             if not line.strip():
                 continue
                 
-            status, file_path = line.split(maxsplit=1)
-            status = status.strip()
-            file_path = file_path.strip()
-            
-            if status == "A":
-                changes["added"].append(file_path)
-            elif status == "M":
-                changes["modified"].append(file_path)
-            elif status == "D":
-                changes["deleted"].append(file_path)
+            try:
+                status, file_path = line.split(maxsplit=1)
+                status = status.strip()
+                file_path = file_path.strip()
+                
+                if status == "A":
+                    changes["added"].append(file_path)
+                elif status == "M":
+                    changes["modified"].append(file_path)
+                elif status == "D":
+                    changes["deleted"].append(file_path)
+            except ValueError:
+                continue  # Skip malformed lines
                 
         return changes
     except Exception as e:
