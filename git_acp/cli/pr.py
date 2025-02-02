@@ -32,7 +32,8 @@ from git_acp.pr.builder import (
     generate_test_plan,
     generate_additional_notes,
     generate_pr_simple,
-    review_final_pr
+    review_final_pr,
+    clean_markdown_formatting
 )
 from git_acp.pr.github import create_pull_request, list_pull_requests, delete_pull_request
 from git_acp.utils.formatting import debug_header, debug_item
@@ -346,13 +347,23 @@ def pr(source: Optional[str], target: str, ollama: bool, draft: bool, list_draft
                 if verbose:
                     debug_header("Generating PR Content in Simple Mode with AI")
                 try:
-                    # Generate simple PR markdown
-                    pr_markdown = generate_pr_simple(commit_messages_list, diff_text, added_files, modified_files, deleted_files, verbose)
+                    # Prepare git data for simple mode
+                    git_data = {
+                        "commit_messages": commit_messages_list,
+                        "diff": diff_text,
+                        "added_files": added_files,
+                        "modified_files": modified_files,
+                        "deleted_files": deleted_files,
+                        "model": DEFAULT_PR_AI_MODEL
+                    }
+                    
+                    # Generate simple PR markdown with title included
+                    pr_markdown = generate_pr_simple(git_data, verbose)
                     
                     # Clean up and extract title
-                    pr_markdown = review_final_pr(pr_markdown, verbose)
+                    pr_markdown = clean_markdown_formatting(pr_markdown)
                     
-                    # Extract title from the cleaned markdown
+                    # Extract title from the markdown
                     lines = pr_markdown.split('\n')
                     if lines and lines[0].startswith('#'):
                         title = lines[0].lstrip('#').strip()

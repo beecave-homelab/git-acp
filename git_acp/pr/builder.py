@@ -28,14 +28,25 @@ def generate_pr_title(git_data: Dict, config: Optional[Dict] = None, verbose: bo
     diff_text = git_data.get("diff", "")
     model = git_data.get("model", DEFAULT_PR_AI_MODEL)  # Get model from git_data or use PR default
     
-    prompt = f"""Based on the following commit messages and diff, generate a succinct and descriptive PR title.
-The title should be 5-10 words and describe the main changes concisely.
+    system_prompt = """You are a PR title generator. Follow these rules exactly:
+1. Output ONLY the title text, nothing else
+2. Use exactly 5-10 words
+3. Start with a verb in present tense
+4. Be specific about what changed
+5. NO formatting characters (#, `, ', ", etc.)
+6. NO prefixes like 'PR:', 'Title:', etc.
+7. NO explanatory text or meta-commentary
+8. NO conventional commit prefixes (feat:, fix:, etc.)"""
 
-Commit Messages:
+    prompt = f"""Generate a title that captures the main changes from this information:
+
+COMMIT MESSAGES:
 {'\n'.join(commit_messages)}
 
-Diff:
-{diff_text}"""
+CHANGES SUMMARY:
+{diff_text}
+
+Remember: Output only the title text, nothing else."""
 
     if verbose:
         debug_item("PR Title Prompt", prompt)
@@ -44,8 +55,6 @@ Diff:
     debug_header("Generating PR Title")
     client = AIClient(config, use_pr_model=True)  # Always use PR model
     client.model = model  # Override with specific model if provided
-    system_prompt = ("You are an AI that generates pull request titles. Output ONLY the title text, with no quotes, explanations, or formatting. "
-                    "The title should be 5-10 words and describe the main changes concisely.")
     messages = [
          {"role": "system", "content": system_prompt},
          {"role": "user", "content": prompt}
@@ -62,124 +71,201 @@ Diff:
 
 
 def generate_pr_summary(partial_pr_markdown: str, commit_messages: list, verbose: bool = False) -> str:
-    """
-    Generate a comprehensive summary for the PR based on partial markdown and commit messages.
-    """
+    """Generate a comprehensive summary for the PR based on partial markdown and commit messages."""
     context = {"partial_pr_markdown": partial_pr_markdown, "commit_messages": commit_messages}
-    prompt = (
-        f"Using the following partial PR markdown, generate a concise PR summary in 100-200 words.\n"
-        f"Important: Do not include detailed commit messages or file change data (these will be added later).\n"
-        f"Partial Markdown: {partial_pr_markdown}"
-    )
+    
+    system_prompt = """You are a PR summary generator. Follow these rules exactly:
+1. Output ONLY the summary text, nothing else
+2. Use exactly 100-150 words
+3. Focus on WHAT changed and WHY
+4. Include impact and scope of changes
+5. NO lists or bullet points
+6. NO section headers
+7. NO technical implementation details
+8. NO commit message references
+9. Write in present tense
+10. Use professional, clear language"""
+
+    prompt = f"""Generate a summary of these changes:
+
+CONTEXT:
+{partial_pr_markdown}
+
+Requirements:
+- Focus on business value and impact
+- Explain what problems this solves
+- Highlight key changes without technical details
+- Write as a cohesive paragraph"""
+
     if verbose:
-        from git_acp.utils.formatting import debug_item
         debug_item("PR Summary Prompt", prompt)
         debug_item("PR Summary Context", context)
     
-    system_prompt = "You are an AI that generates a pull request summary. Output only the summary in 100-200 words without any extra commentary."
+    client = AIClient(use_pr_model=True)
     messages = [
          {"role": "system", "content": system_prompt},
          {"role": "user", "content": prompt}
     ]
-    client = AIClient(use_pr_model=True)  # Use PR model by default
     result = client.chat_completion(messages)
     return result.strip()
 
 
 def generate_code_changes(diff_text: str, verbose: bool = False) -> str:
-    """
-    Generate a detailed description of the code changes from the diff.
-    """
-    prompt = (
-        f"Provide a concise description of the code changes shown in the diff below in 50-100 words.\n"
-        f"Focus on the main modifications without unnecessary details.\n"
-        f"Diff:\n{diff_text}"
-    )
+    """Generate a detailed description of the code changes from the diff."""
+    
+    system_prompt = """You are a code change summarizer. Follow these rules exactly:
+1. Output ONLY the description, nothing else
+2. Use exactly 75-100 words
+3. Focus on functional changes
+4. Group related changes together
+5. NO file paths or line numbers
+6. NO implementation details
+7. NO commit messages
+8. NO technical jargon unless essential
+9. Write in present tense
+10. Use clear, professional language"""
+
+    prompt = f"""Describe the functional changes in this diff:
+
+CHANGES:
+{diff_text}
+
+Focus on:
+- What functionality changed
+- User-facing impacts
+- System-level changes
+- Dependencies affected"""
+
     if verbose:
-        from git_acp.utils.formatting import debug_item
         debug_item("Code Changes Prompt", prompt)
         debug_item("Code Changes Context", {"diff_text": diff_text})
     
-    system_prompt = "You are an AI that summarizes code changes. Output only a concise description (50-100 words) with no additional notes."
+    client = AIClient(use_pr_model=True)
     messages = [
          {"role": "system", "content": system_prompt},
          {"role": "user", "content": prompt}
     ]
-    client = AIClient(use_pr_model=True)  # Use PR model by default
     result = client.chat_completion(messages)
     return result.strip()
 
 
 def generate_reason_for_changes(commit_messages: List[str], diff_text: str, verbose: bool = False) -> str:
-    """
-    Generate a clear explanation for the changes based on commit messages and diff.
-    """
+    """Generate a clear explanation for the changes based on commit messages and diff."""
     context = {"commit_messages": commit_messages, "diff_text": diff_text}
-    prompt = (
-        f"Based on the provided commit messages and diff, explain the main reasons for these changes in 50-100 words.\n"
-        f"Ensure your explanation is succinct and does not duplicate detailed commit data.\n"
-        f"Commit Messages: {commit_messages}\nDiff: {diff_text}"
-    )
+    
+    system_prompt = """You are a change rationale explainer. Follow these rules exactly:
+1. Output ONLY the explanation, nothing else
+2. Use exactly 75-100 words
+3. Focus on WHY changes were needed
+4. Include business context
+5. NO implementation details
+6. NO technical specifications
+7. NO commit message quotes
+8. Write in present tense
+9. Use business-focused language
+10. Explain benefits and impact"""
+
+    prompt = f"""Explain why these changes were necessary:
+
+CONTEXT:
+Commit Messages: {commit_messages}
+Changes: {diff_text}
+
+Focus on:
+- Business drivers
+- Problems being solved
+- Expected benefits
+- Strategic alignment"""
+
     if verbose:
-        from git_acp.utils.formatting import debug_item
         debug_item("Reason for Changes Prompt", prompt)
         debug_item("Reason for Changes Context", context)
     
-    system_prompt = "You are an AI that explains the reasons for changes concisely. Output only the explanation (50-100 words) with no further commentary."
+    client = AIClient(use_pr_model=True)
     messages = [
          {"role": "system", "content": system_prompt},
          {"role": "user", "content": prompt}
     ]
-    client = AIClient(use_pr_model=True)  # Use PR model by default
     result = client.chat_completion(messages)
     return result.strip()
 
 
 def generate_test_plan(diff_text: str, verbose: bool = False) -> str:
-    """
-    Generate a test plan for verifying the code changes.
-    """
-    prompt = (
-        f"Generate a concise test plan in 50-100 words for verifying the changes presented in the diff below.\n"
-        f"Focus on key testing steps and considerations.\n"
-        f"Diff:\n{diff_text}"
-    )
+    """Generate a test plan for verifying the code changes."""
+    
+    system_prompt = """You are a test plan generator. Follow these rules exactly:
+1. Output ONLY the test plan, nothing else
+2. Use exactly 75-100 words
+3. Focus on verification steps
+4. Include key test scenarios
+5. NO implementation details
+6. NO technical commands
+7. NO specific test data
+8. Write in imperative mood
+9. Use clear, actionable language
+10. Cover both happy and error paths"""
+
+    prompt = f"""Create a test plan for these changes:
+
+CHANGES:
+{diff_text}
+
+Include:
+- Key scenarios to verify
+- Important edge cases
+- Required test environments
+- Success criteria"""
+
     if verbose:
-        from git_acp.utils.formatting import debug_item
         debug_item("Test Plan Prompt", prompt)
         debug_item("Test Plan Context", {"diff_text": diff_text})
     
-    system_prompt = "You are an AI that produces a concise test plan. Output only the test plan (50-100 words) without extra commentary."
+    client = AIClient(use_pr_model=True)
     messages = [
          {"role": "system", "content": system_prompt},
          {"role": "user", "content": prompt}
     ]
-    client = AIClient(use_pr_model=True)  # Use PR model by default
     result = client.chat_completion(messages)
     return result.strip()
 
 
 def generate_additional_notes(commit_messages: List[str], diff_text: str, verbose: bool = False) -> str:
-    """
-    Generate any additional notes or comments for the PR.
-    """
+    """Generate any additional notes or comments for the PR."""
     context = {"commit_messages": commit_messages, "diff_text": diff_text}
-    prompt = (
-        f"Generate additional notes or comments for this PR in up to 50 words.\n"
-        f"Focus on essential information that has not been covered in other sections.\n"
-        f"Commit Messages: {commit_messages}\nDiff: {diff_text}"
-    )
+    
+    system_prompt = """You are a PR notes generator. Follow these rules exactly:
+1. Output ONLY the notes, nothing else
+2. Use exactly 25-50 words
+3. Focus on important information not covered elsewhere
+4. Include deployment considerations
+5. NO duplicate information
+6. NO implementation details
+7. NO commit references
+8. Write in present tense
+9. Use clear, concise language
+10. Only include if truly needed"""
+
+    prompt = f"""Add any important notes not covered in other sections:
+
+CONTEXT:
+Commits: {commit_messages}
+Changes: {diff_text}
+
+Consider:
+- Breaking changes
+- Migration steps
+- Dependencies
+- Known limitations"""
+
     if verbose:
-        from git_acp.utils.formatting import debug_item
         debug_item("Additional Notes Prompt", prompt)
         debug_item("Additional Notes Context", context)
     
-    system_prompt = "You are an AI that generates additional notes for a pull request. Output only the notes (up to 50 words) without any extra comments."
+    client = AIClient(use_pr_model=True)
     messages = [
          {"role": "system", "content": system_prompt},
          {"role": "user", "content": prompt}
     ]
-    client = AIClient(use_pr_model=True)  # Use PR model by default
     result = client.chat_completion(messages)
     return result.strip()
 
@@ -247,72 +333,77 @@ def clean_markdown_formatting(markdown: str) -> str:
     return result.strip()
 
 
-def generate_pr_simple(commit_messages: list, diff_text: str, added_files: str, modified_files: str, deleted_files: str, verbose: bool = False) -> str:
-    """Generate a compact pull request description in Markdown format using a single AI request.
-
-    This prompt instructs the AI to generate a concise PR markdown that excludes commit messages and file change data,
-    as these values will be loaded directly from git commands later.
+def generate_pr_simple(git_data: Dict, verbose: bool = False) -> str:
+    """Generate a compact pull request description in markdown format using a single AI request.
+    
+    This function generates the entire PR description including title in a single AI call.
+    The output is automatically formatted and cleaned up.
+    
+    Args:
+        git_data: Dictionary containing commit messages, diff, file changes, and model name
+        verbose: Whether to log debug information
+        
+    Returns:
+        Complete PR description in markdown format with title
     """
-    # Limit the diff text to prevent overly large context
-    limited_diff = diff_text if len(diff_text) <= 10000 else diff_text[:10000] + "\n...[truncated diff]"
+    commit_messages = git_data.get("commit_messages", [])
+    diff_text = git_data.get("diff", "")
+    added_files = git_data.get("added_files", "")
+    modified_files = git_data.get("modified_files", "")
+    deleted_files = git_data.get("deleted_files", "")
+    model = git_data.get("model", DEFAULT_PR_AI_MODEL)
     
-    # Updated prompt with strict formatting requirements
-    prompt = f"""Generate a pull request description in the following format:
-# <title>
+    system_prompt = """You are a PR description generator. Follow these rules exactly:
+1. Output ONLY markdown-formatted text
+2. Use exactly 200-300 words total
+3. Include these sections in order:
+   - Title: Start with '# ' followed by 5-10 words that summarize the changes
+   - Summary: A paragraph describing what changed and why (75-100 words)
+   - Changes: Key functional changes and their impact (50-75 words)
+   - Testing: Verification steps and test scenarios (25-50 words)
+4. NO technical implementation details
+5. NO file paths or line numbers
+6. NO commit message quotes
+7. NO lists of files or changes
+8. Write in present tense
+9. Use clear, business-focused language
+10. Focus on value and impact, not technical details"""
 
-## Summary
-<brief overview>
+    # Analyze commit messages for key themes
+    commit_themes = "\n".join([f"- {msg}" for msg in commit_messages])
 
-## Code Changes
-<brief description of key changes>
+    prompt = f"""Create a concise pull request description that focuses on business value:
 
-## Reason for Changes
-<why the changes were made>
+COMMIT MESSAGES:
+{commit_themes}
 
-## Test Plan
-<brief testing overview>
+CHANGES OVERVIEW:
+{diff_text[:5000] if len(diff_text) > 5000 else diff_text}
 
-## Additional Notes
-<any other important information>
+FILES CHANGED:
+Added: {len(added_files.split('\n')) if added_files else 0} files
+Modified: {len(modified_files.split('\n')) if modified_files else 0} files
+Deleted: {len(deleted_files.split('\n')) if deleted_files else 0} files
 
-Use the following diff to generate the content:
-{limited_diff}
+Requirements:
+1. Start with a clear title that captures the main purpose of these changes
+2. Explain the business value and impact of these changes
+3. Describe key functional changes without technical details
+4. Include specific verification steps
+5. Keep the content professional and focused"""
 
-Important:
-- Output ONLY the markdown content
-- Do not include explanatory text or meta-commentary
-- Do not use nested code blocks
-- Keep sections concise and focused
-- Title should be 5-10 words
-- Summary should be 100-200 words
-- Other sections should be 50-100 words each"""
-    
     if verbose:
-        debug_item("Simple Mode Prompt", prompt)
-    
-    system_prompt = """You are a PR description generator. Generate a pull request description following these rules:
-1. Use the exact section structure provided
-2. Output only the markdown content
-3. No explanatory text or meta-commentary
-4. No nested code blocks
-5. Keep sections concise and focused
-6. Use clear, professional language"""
+        debug_item("Simple PR Prompt", prompt)
+        debug_item("Simple PR Context", git_data)
     
     client = AIClient(use_pr_model=True)
+    client.model = model  # Use the model from git_data
     messages = [
-        {"role": "system", "content": system_prompt},
-        {"role": "user", "content": prompt}
+         {"role": "system", "content": system_prompt},
+         {"role": "user", "content": prompt}
     ]
     result = client.chat_completion(messages)
-    
-    # Clean up the formatting
-    cleaned_result = clean_markdown_formatting(result)
-    
-    if verbose:
-        debug_item("Generated PR (Before Cleaning)", result)
-        debug_item("Generated PR (After Cleaning)", cleaned_result)
-    
-    return cleaned_result
+    return clean_markdown_formatting(result.strip())
 
 
 def extract_clean_title(content: str, verbose: bool = False) -> str:
@@ -439,81 +530,44 @@ def build_pr_markdown(
     return clean_markdown_formatting(markdown)
 
 
-def review_final_pr(pr_markdown: str, verbose: bool = False) -> str:
-    """Review and clean up the final PR markdown.
+def review_final_pr(markdown: str, verbose: bool = False) -> str:
+    """Review and clean up the final PR markdown to remove duplicate or redundant information."""
     
-    1. Remove duplicate information between sections
-    2. Ensure consistent formatting
-    3. Clean up any markdown issues
-    
-    Args:
-        pr_markdown: The PR markdown to review
-        verbose: Whether to log debug information
-        
-    Returns:
-        Cleaned and reviewed PR markdown
-    """
-    if verbose:
-        debug_header("Reviewing Final PR")
-        debug_item("Original PR", pr_markdown)
-    
-    # First clean up the formatting
-    cleaned_markdown = clean_markdown_formatting(pr_markdown)
-    
-    # Extract a clean title from the entire content
-    new_title = extract_clean_title(cleaned_markdown, verbose)
-    
-    # Replace the original title with the clean one
-    lines = cleaned_markdown.split('\n')
-    if lines and lines[0].startswith('#'):
-        lines[0] = f"# {new_title}"
-        cleaned_markdown = '\n'.join(lines)
-    
-    system_prompt = """You are a PR formatting engine. Your task is to:
-1. Remove any duplicate information between sections
-2. Ensure each section is concise and focused
-3. Maintain the exact section structure:
-   # Title (already cleaned up - do not modify)
-   ## Summary
-   ## Commits
-   ## Files Changed
-   ## Code Changes
-   ## Reason for Changes
-   ## Test Plan
-   ## Additional Notes
-4. Remove any explanatory text or meta-commentary
-5. Fix any markdown formatting issues
-6. Keep the content professional and clear
-7. Output only the cleaned markdown with no additional text"""
-    
-    prompt = f"""Review and clean up this PR markdown, following the system instructions.
-Remove any duplicate information between sections while maintaining the key content.
-Keep the sections focused and concise.
-Do not modify the title as it has already been cleaned up.
+    system_prompt = """You are a PR review specialist. Follow these rules exactly:
+1. Output ONLY the cleaned markdown
+2. Keep the existing structure and sections
+3. Remove duplicate information
+4. Remove redundant context
+5. Ensure consistent formatting
+6. Keep section headers unchanged
+7. NO meta-commentary or explanations
+8. NO additional sections
+9. NO reformatting of existing content
+10. Preserve the original title"""
 
-PR Markdown to clean:
-{cleaned_markdown}"""
-    
+    prompt = f"""Review and clean this PR description:
+
+{markdown}
+
+Requirements:
+- Remove any duplicate information
+- Keep all section headers
+- Maintain existing formatting
+- Preserve the original title
+- Only remove truly redundant content"""
+
     if verbose:
-        debug_item("Review Prompt", prompt)
+        debug_item("PR Review Prompt", prompt)
+        debug_item("PR Review Context", {"markdown": markdown})
     
     client = AIClient(use_pr_model=True)
     messages = [
-        {"role": "system", "content": system_prompt},
-        {"role": "user", "content": prompt}
+         {"role": "system", "content": system_prompt},
+         {"role": "user", "content": prompt}
     ]
-    
     try:
         result = client.chat_completion(messages)
-        final_result = clean_markdown_formatting(result)
-        
-        if verbose:
-            debug_item("AI Review Result", result)
-            debug_item("Final Cleaned PR", final_result)
-        
-        return final_result
+        return clean_markdown_formatting(result.strip())
     except Exception as e:
-        if verbose:
-            debug_item("Review Error", str(e))
-        # If review fails, return the cleaned markdown
-        return cleaned_markdown 
+        # If review fails, return the original markdown after cleaning
+        return clean_markdown_formatting(markdown) 
