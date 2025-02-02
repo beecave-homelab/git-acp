@@ -17,11 +17,13 @@
 !git_acp/git/
 !git_acp/utils/
 !git_acp/config/
+!git_acp/pr/
 !git_acp/ai/*.py
 !git_acp/cli/*.py
 !git_acp/git/*.py
 !git_acp/utils/*.py
 !git_acp/config/*.py
+!git_acp/pr/*.py
 !git_acp/*.py
 !git_acp/__init__.py
 
