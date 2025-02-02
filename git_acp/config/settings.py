@@ -2,6 +2,7 @@
 from git_acp.config.env_config import get_env
 from git_acp.config.constants import (
     DEFAULT_AI_MODEL,
+    DEFAULT_PR_AI_MODEL,
     DEFAULT_TEMPERATURE,
     DEFAULT_BASE_URL,
     DEFAULT_API_KEY,
@@ -22,6 +23,7 @@ from git_acp.config.constants import (
 
 AI_SETTINGS = {
     "model": DEFAULT_AI_MODEL,
+    "pr_model": DEFAULT_PR_AI_MODEL,
     "temperature": DEFAULT_TEMPERATURE,
     "base_url": DEFAULT_BASE_URL,
     "api_key": DEFAULT_API_KEY,
