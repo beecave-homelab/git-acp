@@ -31,7 +31,8 @@ from git_acp.pr.builder import (
     generate_reason_for_changes,
     generate_test_plan,
     generate_additional_notes,
-    generate_pr_simple
+    generate_pr_simple,
+    review_final_pr
 )
 from git_acp.pr.github import create_pull_request, list_pull_requests, delete_pull_request
 from git_acp.utils.formatting import debug_header, debug_item
@@ -279,10 +280,7 @@ def pr(source: Optional[str], target: str, ollama: bool, draft: bool, list_draft
                     "model": DEFAULT_PR_AI_MODEL
                 }
                 try:
-                    title = generate_pr_title(git_data, verbose)
-                    if verbose:
-                        debug_item("Generated PR Title", title)
-                    
+                    # First generate all sections except title
                     code_changes = generate_code_changes(diff_text, verbose)
                     if verbose:
                         debug_item("Generated Code Changes", code_changes)
@@ -299,10 +297,10 @@ def pr(source: Optional[str], target: str, ollama: bool, draft: bool, list_draft
                     if verbose:
                         debug_item("Generated Additional Notes", additional_notes)
                     
-                    # Build a partial PR markdown to use as context for summary generation.
+                    # Build a partial PR markdown to use as context for summary generation
                     partial_pr_markdown = build_pr_markdown(
-                        title=title,
-                        summary="",  # leave summary empty for now
+                        title="",  # Leave empty for now
+                        summary="",  # Leave empty for now
                         commit_messages=commit_messages,
                         added_files=added_files,
                         modified_files=modified_files,
@@ -312,11 +310,15 @@ def pr(source: Optional[str], target: str, ollama: bool, draft: bool, list_draft
                         test_plan=test_plan,
                         additional_notes=additional_notes
                     )
+                    
+                    # Generate summary using the partial markdown
                     summary = generate_pr_summary(partial_pr_markdown, commit_messages_list, verbose)
                     if verbose:
                         debug_item("Generated PR Summary", summary)
+                    
+                    # Build complete markdown
                     pr_markdown = build_pr_markdown(
-                        title=title,
+                        title="Pull Request",  # Temporary title
                         summary=summary,
                         commit_messages=commit_messages,
                         added_files=added_files,
@@ -327,32 +329,51 @@ def pr(source: Optional[str], target: str, ollama: bool, draft: bool, list_draft
                         test_plan=test_plan,
                         additional_notes=additional_notes
                     )
+                    
+                    # Final review and title extraction
+                    pr_markdown = review_final_pr(pr_markdown, verbose)
+                    
+                    # Extract title from the final markdown
+                    lines = pr_markdown.split('\n')
+                    if lines and lines[0].startswith('#'):
+                        title = lines[0].lstrip('#').strip()
+                    else:
+                        title = "Pull Request"  # Fallback
+                        
                 except Exception as e:
                     raise e
             elif prompt_type == "simple":
                 if verbose:
                     debug_header("Generating PR Content in Simple Mode with AI")
                 try:
+                    # Generate simple PR markdown
                     pr_markdown = generate_pr_simple(commit_messages_list, diff_text, added_files, modified_files, deleted_files, verbose)
+                    
+                    # Clean up and extract title
+                    pr_markdown = review_final_pr(pr_markdown, verbose)
+                    
+                    # Extract title from the cleaned markdown
+                    lines = pr_markdown.split('\n')
+                    if lines and lines[0].startswith('#'):
+                        title = lines[0].lstrip('#').strip()
+                    else:
+                        title = "Pull Request"  # Fallback
                 except Exception as e:
                     raise e
-                # Extract title from the generated markdown: assume the first line with '#' is the title
-                lines = pr_markdown.splitlines()
-                if lines and lines[0].startswith('#'):
-                    title = lines[0][1:].strip()
-                else:
-                    title = "Pull Request"
         else:
             if verbose:
                 debug_header("Using Basic PR Content")
-            title = f"PR: {commit_messages_list[0]}" if commit_messages_list else "Pull Request"
+            # Use first commit message as initial title
+            initial_title = f"PR: {commit_messages_list[0]}" if commit_messages_list else "Pull Request"
             summary = "Summary derived from commit messages."
             code_changes = diff_text[:500] + "\n...[diff excerpt]"
             reason = "Reason derived from commit messages."
             test_plan = "Describe your test plan here..."
             additional_notes = "Additional notes here..."
+            
+            # Build initial markdown
             pr_markdown = build_pr_markdown(
-                title=title,
+                title=initial_title,
                 summary=summary,
                 commit_messages=commit_messages,
                 added_files=added_files,
@@ -363,6 +384,14 @@ def pr(source: Optional[str], target: str, ollama: bool, draft: bool, list_draft
                 test_plan=test_plan,
                 additional_notes=additional_notes
             )
+            
+            # Clean up and extract final title
+            pr_markdown = review_final_pr(pr_markdown, verbose)
+            lines = pr_markdown.split('\n')
+            if lines and lines[0].startswith('#'):
+                title = lines[0].lstrip('#').strip()
+            else:
+                title = initial_title
 
         # 3. Preview and confirmation
         if verbose:
