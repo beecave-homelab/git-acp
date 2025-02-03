@@ -1,6 +1,6 @@
 """Overall commit message generation logic using AI."""
 from git_acp.ai.client import AIClient
-from git_acp.ai.prompts import create_advanced_commit_message_prompt, create_simple_commit_message_prompt
+from git_acp.ai.commit_prompts import create_advanced_commit_message_prompt, create_simple_commit_message_prompt
 from git_acp.git import (
     get_diff,
     get_recent_commits,

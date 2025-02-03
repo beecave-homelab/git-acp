@@ -48,7 +48,7 @@ git_acp/
 │   ├── __init__.py
 │   ├── generation.py
 │   ├── client.py
-│   └── prompts.py
+│   └── commit_prompts.py
 ├── cli/
 │   ├── __init__.py
 │   ├── cli.py
@@ -102,7 +102,7 @@ print(git_acp.__version__)  # "0.15.0"
 
 ## AI Subpackage (`git_acp.ai`)
 
-**Location**: `git_acp/ai/__init__.py`, `git_acp/ai/generation.py`, `git_acp/ai/client.py`, and `git_acp/ai/prompts.py`
+**Location**: `git_acp/ai/__init__.py`, `git_acp/ai/generation.py`, `git_acp/ai/client.py`, and `git_acp/ai/commit_prompts.py`
 
 This subpackage contains functionality for AI-powered commit message generation. It integrates with an AI backend (e.g., Ollama).
 
@@ -132,7 +132,7 @@ Contains the core logic for generating commit messages with AI.
   1. `__init__(self, config: OptionalConfig = None)`: Initializes the AI client with default or custom base URLs, API keys, etc.
   2. `chat_completion(self, messages: list, **kwargs) -> str`: Sends a chat-style request to the AI model and returns the response text.
 
-### `git_acp.ai.prompts.py`
+### `git_acp.ai.commit_prompts.py`
 
 - **Function**: `create_advanced_commit_message_prompt(context: Dict[str, Any], config: OptionalConfig = None) -> str`  
   Creates a multi-context prompt for the AI to generate a more descriptive commit message.
