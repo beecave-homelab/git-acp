@@ -252,8 +252,8 @@ def pr(source: Optional[str], target: str, ollama: bool, draft: bool, list_draft
 
         # 1. Gather git data
         try:
-            commit_messages_list = get_commit_messages(target, source)
-            commit_messages = "\n".join(f"- {msg}" for msg in commit_messages_list)
+            commit_messages_data = get_commit_messages(target, source)
+            commit_messages = "\n".join(f"- {msg}" for msg in commit_messages_data["messages_with_details"])
             diff_text = get_diff_between_branches(target, source)
             changes = get_name_status_changes(target, source)
         except KeyboardInterrupt:
@@ -276,17 +276,22 @@ def pr(source: Optional[str], target: str, ollama: bool, draft: bool, list_draft
                 if verbose:
                     debug_header("Generating PR Content with AI (Advanced Mode)")
                 git_data = {
-                    "commit_messages": commit_messages_list,
+                    "commit_messages": commit_messages_data["messages"],  # Clean messages for title
                     "diff": diff_text,
                     "model": DEFAULT_PR_AI_MODEL
                 }
                 try:
-                    # First generate all sections except title
+                    # First generate title
+                    title = generate_pr_title(git_data, verbose=verbose)
+                    if verbose:
+                        debug_item("Generated Title", title)
+                    
+                    # Generate all sections
                     code_changes = generate_code_changes(diff_text, verbose)
                     if verbose:
                         debug_item("Generated Code Changes", code_changes)
                     
-                    reason = generate_reason_for_changes(commit_messages_list, diff_text, verbose)
+                    reason = generate_reason_for_changes(commit_messages_data["messages"], diff_text, verbose)
                     if verbose:
                         debug_item("Generated Reason for Changes", reason)
                     
@@ -294,32 +299,37 @@ def pr(source: Optional[str], target: str, ollama: bool, draft: bool, list_draft
                     if verbose:
                         debug_item("Generated Test Plan", test_plan)
                     
-                    additional_notes = generate_additional_notes(commit_messages_list, diff_text, verbose)
+                    additional_notes = generate_additional_notes(commit_messages_data["messages"], diff_text, verbose)
                     if verbose:
                         debug_item("Generated Additional Notes", additional_notes)
                     
                     # Build a partial PR markdown to use as context for summary generation
-                    partial_pr_markdown = build_pr_markdown(
-                        title="",  # Leave empty for now
-                        summary="",  # Leave empty for now
-                        commit_messages=commit_messages,
-                        added_files=added_files,
-                        modified_files=modified_files,
-                        deleted_files=deleted_files,
-                        code_changes=code_changes,
-                        reason_for_changes=reason,
-                        test_plan=test_plan,
-                        additional_notes=additional_notes
-                    )
+                    partial_pr_markdown = f"""# {title}
+
+## Files Changed
+### Added
+{added_files if added_files else "None"}
+
+### Modified
+{modified_files if modified_files else "None"}
+
+### Deleted
+{deleted_files if deleted_files else "None"}
+
+## Code Changes
+{code_changes}
+
+## Reason for Changes
+{reason}"""
                     
                     # Generate summary using the partial markdown
-                    summary = generate_pr_summary(partial_pr_markdown, commit_messages_list, verbose)
+                    summary = generate_pr_summary(partial_pr_markdown, commit_messages_data["messages"], verbose)
                     if verbose:
                         debug_item("Generated PR Summary", summary)
                     
                     # Build complete markdown
                     pr_markdown = build_pr_markdown(
-                        title="Pull Request",  # Temporary title
+                        title=title,
                         summary=summary,
                         commit_messages=commit_messages,
                         added_files=added_files,
@@ -331,16 +341,9 @@ def pr(source: Optional[str], target: str, ollama: bool, draft: bool, list_draft
                         additional_notes=additional_notes
                     )
                     
-                    # Final review and title extraction
-                    pr_markdown = review_final_pr(pr_markdown, verbose)
+                    # Final review to remove any remaining duplicates
+                    # pr_markdown = review_final_pr(pr_markdown, verbose)
                     
-                    # Extract title from the final markdown
-                    lines = pr_markdown.split('\n')
-                    if lines and lines[0].startswith('#'):
-                        title = lines[0].lstrip('#').strip()
-                    else:
-                        title = "Pull Request"  # Fallback
-                        
                 except Exception as e:
                     raise e
             elif prompt_type == "simple":
@@ -349,7 +352,7 @@ def pr(source: Optional[str], target: str, ollama: bool, draft: bool, list_draft
                 try:
                     # Prepare git data for simple mode
                     git_data = {
-                        "commit_messages": commit_messages_list,
+                        "commit_messages": commit_messages_data["messages"],
                         "diff": diff_text,
                         "added_files": added_files,
                         "modified_files": modified_files,
@@ -375,7 +378,7 @@ def pr(source: Optional[str], target: str, ollama: bool, draft: bool, list_draft
             if verbose:
                 debug_header("Using Basic PR Content")
             # Use first commit message as initial title
-            initial_title = f"PR: {commit_messages_list[0]}" if commit_messages_list else "Pull Request"
+            initial_title = f"PR: {commit_messages_data['messages_with_details'][0]}" if commit_messages_data['messages_with_details'] else "Pull Request"
             summary = "Summary derived from commit messages."
             code_changes = diff_text[:500] + "\n...[diff excerpt]"
             reason = "Reason derived from commit messages."
