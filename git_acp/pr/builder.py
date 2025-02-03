@@ -8,6 +8,25 @@ from git_acp.ai.client import AIClient
 from git_acp.git.runner import GitError
 from git_acp.utils.formatting import debug_header, debug_item
 from git_acp.config.constants import DEFAULT_PR_AI_MODEL
+from git_acp.ai.pr_prompts import (
+    PR_TITLE_SYSTEM_PROMPT,
+    PR_TITLE_USER_PROMPT,
+    PR_SUMMARY_SYSTEM_PROMPT,
+    PR_SUMMARY_USER_PROMPT,
+    CODE_CHANGES_SYSTEM_PROMPT,
+    CODE_CHANGES_USER_PROMPT,
+    REASON_CHANGES_SYSTEM_PROMPT,
+    REASON_CHANGES_USER_PROMPT,
+    TEST_PLAN_SYSTEM_PROMPT,
+    TEST_PLAN_USER_PROMPT,
+    ADDITIONAL_NOTES_SYSTEM_PROMPT,
+    ADDITIONAL_NOTES_USER_PROMPT,
+    SIMPLE_PR_SYSTEM_PROMPT,
+    TITLE_EXTRACTION_SYSTEM_PROMPT,
+    TITLE_EXTRACTION_USER_PROMPT,
+    PR_REVIEW_SYSTEM_PROMPT,
+    PR_REVIEW_USER_PROMPT
+)
 
 
 def generate_pr_title(git_data: Dict, config: Optional[Dict] = None, verbose: bool = False) -> str:
@@ -34,34 +53,12 @@ def generate_pr_title(git_data: Dict, config: Optional[Dict] = None, verbose: bo
         debug_item("First commit message", commit_messages[0] if commit_messages else "None")
         debug_item("Diff length", len(diff_text))
         debug_item("Model", model)
-    
-    system_prompt = """You are a PR title generator. Follow these rules exactly:
-1. Output ONLY the title text, nothing else
-2. Use exactly 5-10 words
-3. Start with a verb in present tense
-4. Be specific about what changed
-5. NO formatting characters (#, `, ', ", etc.)
-6. NO prefixes like 'PR:', 'Title:', etc.
-7. NO explanatory text or meta-commentary
-8. NO conventional commit prefixes (feat:, fix:, etc.)
-9. Focus on the overall theme of changes, not individual commits
-10. Be descriptive and meaningful"""
 
-    prompt = f"""Generate a title that captures the main changes from this information:
-
-COMMIT MESSAGES:
-{'\n'.join(commit_messages)}
-
-CHANGES SUMMARY:
-{diff_text[:2000] if len(diff_text) > 2000 else diff_text}
-
-Focus on:
-- The overall theme or purpose of these changes
-- What problem is being solved
-- The main feature or improvement being added
-- The area of the codebase being changed
-
-Remember: Output only the title text, nothing else."""
+    # Format the user prompt with the actual data
+    prompt = PR_TITLE_USER_PROMPT.format(
+        commit_messages='\n'.join(commit_messages),
+        diff_text=diff_text[:2000] if len(diff_text) > 2000 else diff_text
+    )
 
     if verbose:
         debug_item("PR Title Prompt", prompt)
@@ -71,7 +68,7 @@ Remember: Output only the title text, nothing else."""
     client = AIClient(config, use_pr_model=True)  # Always use PR model
     client.model = model  # Override with specific model if provided
     messages = [
-         {"role": "system", "content": system_prompt},
+         {"role": "system", "content": PR_TITLE_SYSTEM_PROMPT},
          {"role": "user", "content": prompt}
     ]
     try:
@@ -91,28 +88,7 @@ def generate_pr_summary(partial_pr_markdown: str, commit_messages: list, verbose
     """Generate a comprehensive summary for the PR based on partial markdown and commit messages."""
     context = {"partial_pr_markdown": partial_pr_markdown, "commit_messages": commit_messages}
     
-    system_prompt = """You are a PR summary generator. Follow these rules exactly:
-1. Output ONLY the summary text, nothing else
-2. Use exactly 100-150 words
-3. Focus on WHAT changed and WHY
-4. Include impact and scope of changes
-5. NO lists or bullet points
-6. NO section headers
-7. NO technical implementation details
-8. NO commit message references
-9. Write in present tense
-10. Use professional, clear language"""
-
-    prompt = f"""Generate a summary of these changes:
-
-CONTEXT:
-{partial_pr_markdown}
-
-Requirements:
-- Focus on business value and impact
-- Explain what problems this solves
-- Highlight key changes without technical details
-- Write as a cohesive paragraph"""
+    prompt = PR_SUMMARY_USER_PROMPT.format(partial_pr_markdown=partial_pr_markdown)
 
     if verbose:
         debug_item("PR Summary Prompt", prompt)
@@ -120,7 +96,7 @@ Requirements:
     
     client = AIClient(use_pr_model=True)
     messages = [
-         {"role": "system", "content": system_prompt},
+         {"role": "system", "content": PR_SUMMARY_SYSTEM_PROMPT},
          {"role": "user", "content": prompt}
     ]
     result = client.chat_completion(messages)
@@ -130,20 +106,7 @@ Requirements:
 def generate_code_changes(diff_text: str, verbose: bool = False) -> str:
     """Generate a detailed description of the code changes from the diff."""
     
-    system_prompt = """You are a code change analyst. Follow these rules:
-1. Focus on specific changes in the diff
-2. Reference actual filenames from changes
-3. Group related file changes together
-4. Use simple concrete examples
-5. Avoid technical jargon"""
-
-    prompt = f"""Describe these code changes in 3-5 bullet points:
-{diff_text}
-
-Format as:
-- Updated [filename] to [specific change]
-- Added [feature] in [filename]
-- Fixed [issue] in [filepath]"""
+    prompt = CODE_CHANGES_USER_PROMPT.format(diff_text=diff_text)
 
     if verbose:
         debug_item("Code Changes Prompt", prompt)
@@ -151,7 +114,7 @@ Format as:
     
     client = AIClient(use_pr_model=True)
     messages = [
-         {"role": "system", "content": system_prompt},
+         {"role": "system", "content": CODE_CHANGES_SYSTEM_PROMPT},
          {"role": "user", "content": prompt}
     ]
     result = client.chat_completion(messages)
@@ -162,18 +125,10 @@ def generate_reason_for_changes(commit_messages: List, diff_text: str, verbose: 
     """Generate a clear explanation for the changes based on commit messages and diff."""
     context = {"commit_messages": commit_messages, "diff_text": diff_text}
     
-    system_prompt = """Explain change reasons in 2-3 points:
-1. Connect commits to user benefits
-2. Reference specific commit types (feat/fix/chore)
-3. Use simple cause-effect format"""
-
-    prompt = f"""Why were these changes made?
-Commit Types: {[msg.split(':')[0] for msg in commit_messages]}
-Diff Summary: {diff_text[:1000]}
-
-Format as:
-1. [Commit type] changes to [achieve X]
-2. [Commit type] updates to [solve Y]"""
+    prompt = REASON_CHANGES_USER_PROMPT.format(
+        commit_types=[msg.split(':')[0] for msg in commit_messages],
+        diff_text=diff_text[:1000]
+    )
 
     if verbose:
         debug_item("Reason for Changes Prompt", prompt)
@@ -181,7 +136,7 @@ Format as:
     
     client = AIClient(use_pr_model=True)
     messages = [
-         {"role": "system", "content": system_prompt},
+         {"role": "system", "content": REASON_CHANGES_SYSTEM_PROMPT},
          {"role": "user", "content": prompt}
     ]
     result = client.chat_completion(messages)
@@ -191,17 +146,7 @@ Format as:
 def generate_test_plan(diff_text: str, verbose: bool = False) -> str:
     """Generate a test plan for verifying the code changes."""
     
-    system_prompt = """Create test scenarios that:
-1. Map to actual code changes
-2. Use real filenames from diff
-3. Test specific added/modified features"""
-
-    prompt = f"""Suggest test cases for:
-{diff_text}
-
-Examples:
-- Verify [feature] in [filename] by [action]
-- Check [scenario] using [modified component]"""
+    prompt = TEST_PLAN_USER_PROMPT.format(diff_text=diff_text)
 
     if verbose:
         debug_item("Test Plan Prompt", prompt)
@@ -209,7 +154,7 @@ Examples:
     
     client = AIClient(use_pr_model=True)
     messages = [
-         {"role": "system", "content": system_prompt},
+         {"role": "system", "content": TEST_PLAN_SYSTEM_PROMPT},
          {"role": "user", "content": prompt}
     ]
     result = client.chat_completion(messages)
@@ -220,17 +165,7 @@ def generate_additional_notes(commit_messages: List, diff_text: str, verbose: bo
     """Generate any additional notes or comments for the PR."""
     context = {"commit_messages": commit_messages, "diff_text": diff_text}
     
-    system_prompt = """List critical notes:
-1. Focus on dependency changes
-2. Warn about breaking changes
-3. Mention required config updates"""
-
-    prompt = f"""Important notes for these changes:
-{commit_messages}
-
-Examples:
-❗ Update dependencies with 'pip install -r requirements.txt'
-❗ Configuration change required in [file]"""
+    prompt = ADDITIONAL_NOTES_USER_PROMPT.format(commit_messages=commit_messages)
 
     if verbose:
         debug_item("Additional Notes Prompt", prompt)
@@ -238,7 +173,7 @@ Examples:
     
     client = AIClient(use_pr_model=True)
     messages = [
-         {"role": "system", "content": system_prompt},
+         {"role": "system", "content": ADDITIONAL_NOTES_SYSTEM_PROMPT},
          {"role": "user", "content": prompt}
     ]
     result = client.chat_completion(messages)
@@ -265,39 +200,6 @@ def generate_pr_simple(git_data: Dict, verbose: bool = False) -> str:
     deleted_files = git_data.get("deleted_files", "")
     model = git_data.get("model", DEFAULT_PR_AI_MODEL)
     
-    system_prompt = """You are an expert developer, so you know how to read all kinds of code syntax.
-    Write a PR description with title using this markdown template: 
-    
-    ```markdown
-    # {{ Title (5-10 words) }}
-
-    ## Summary
-
-    {{ A paragraph describing what changed and why (200-250 words) }}
-
-    ## Key Changes
-
-    ### Added
-
-    {{ Key functional changes and their impact (200-250 words) }}
-
-    ### Modified
-
-    {{ Key functional changes and their impact (200-250 words) }}
-
-    ### Deleted
-
-    {{ Key functional changes and their impact (200-250 words) }}
-
-    ## Additional Notes
-
-    {{ Any additional notes to concludes the PR message (100-200 words) }}
-
-    ---
-
-    ```
-    """
-
     # Analyze commit messages for key themes
     commit_themes = "\n".join([f"- {msg}" for msg in commit_messages])
 
@@ -309,38 +211,7 @@ def generate_pr_simple(git_data: Dict, verbose: bool = False) -> str:
 
 {f'''## Overview of changes to analyze
 
-{diff_text[:10000] if len(diff_text) > 10000 else diff_text}''' if diff_text else '# Note: No diff information provided for analysis'}
-
-## Output format to use
-
-```markdown
-# {{ Title that summarizes the changes (5-10 words) }}
-
-## Summary
-
-{{ A paragraph describing what changed and why (200-250 words) }}
-
-## Key Changes
-
-### Added
-
-{{ Key functional changes and their impact (200-250 words) }}
-
-### Modified
-
-{{ Key functional changes and their impact (200-250 words) }}
-
-### Deleted
-
-{{ Key functional changes and their impact (200-250 words) }}
-
-## Additional Notes
-
-{{ Any additional notes to concludes the PR message (100-200 words) }}
-
----
-```
-"""
+{diff_text[:10000] if len(diff_text) > 10000 else diff_text}''' if diff_text else '# Note: No diff information provided for analysis'}"""
 
     if verbose:
         debug_item("Simple PR Prompt", prompt)
@@ -349,7 +220,7 @@ def generate_pr_simple(git_data: Dict, verbose: bool = False) -> str:
     client = AIClient(use_pr_model=True)
     client.model = model  # Use the model from git_data
     messages = [
-         {"role": "system", "content": system_prompt},
+         {"role": "system", "content": SIMPLE_PR_SYSTEM_PROMPT},
          {"role": "user", "content": prompt}
     ]
     result = client.chat_completion(messages)
@@ -370,29 +241,14 @@ def extract_clean_title(content: str, verbose: bool = False) -> str:
         debug_header("Extracting Clean Title")
         debug_item("Original Content", content)
     
-    system_prompt = """You are a PR title writer. Your task is to:
-1. Extract the most important information from the PR content
-2. Create a concise title (5-10 words) that summarizes the main changes
-3. Output ONLY the title text with no formatting, quotes, or extra text
-4. Focus on what changed, not how it changed
-5. Be specific but brief"""
-
-    prompt = f"""Based on this PR content, generate a concise title that captures the main changes:
-
-{content}
-
-Important:
-- Output only the title text
-- No quotes, formatting, or explanations
-- 5-10 words maximum
-- Focus on what changed"""
+    prompt = TITLE_EXTRACTION_USER_PROMPT.format(content=content)
 
     if verbose:
         debug_item("Title Extraction Prompt", prompt)
 
     client = AIClient(use_pr_model=True)
     messages = [
-        {"role": "system", "content": system_prompt},
+        {"role": "system", "content": TITLE_EXTRACTION_SYSTEM_PROMPT},
         {"role": "user", "content": prompt}
     ]
     
@@ -484,34 +340,7 @@ def build_pr_markdown(
 def review_final_pr(markdown: str, verbose: bool = False) -> str:
     """Review and clean up the final PR markdown to remove duplicate or redundant information."""
     
-    system_prompt = """You are a PR quality assurance specialist. Follow these rules exactly:
-1. Remove duplicate information across sections
-2. Eliminate redundant commit message references
-3. Consolidate similar technical details
-4. Remove generic statements without concrete examples
-5. Preserve all unique file references
-6. Maintain the original section structure
-7. Keep specific testing scenarios
-8. Remove empty sections
-9. Ensure each commit is only referenced once
-10. Remove meta-commentary about the PR process"""
-
-    prompt = f"""Clean this PR description by:
-1. Removing duplicate file mentions (e.g., .env.example mentioned in multiple sections)
-2. Consolidating similar technical changes
-3. Removing generic statements like "No dependencies affected"
-4. Keeping only one reference per commit hash
-5. Preserving specific examples and test cases
-
-PR Content:
-{markdown}
-
-Formatting Rules:
-- Keep actual filenames from the diff
-- Preserve specific test scenarios
-- Remove empty bullet points
-- Consolidate similar configuration changes
-- Remove redundant explanations about the PR process"""
+    prompt = PR_REVIEW_USER_PROMPT.format(markdown=markdown)
 
     if verbose:
         debug_item("PR Review Prompt", prompt)
@@ -519,7 +348,7 @@ Formatting Rules:
     
     client = AIClient(use_pr_model=True)
     messages = [
-         {"role": "system", "content": system_prompt},
+         {"role": "system", "content": PR_REVIEW_SYSTEM_PROMPT},
          {"role": "user", "content": prompt}
     ]
     try:
