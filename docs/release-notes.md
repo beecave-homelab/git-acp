@@ -25,7 +25,7 @@ This release introduces significant architectural improvements and refactoring a
 
 - Enhanced CLI structure with better separation of concerns:
   - `cli.py`: Streamlined command orchestration
-  - `prompts.py`: User interaction management
+  - `interactive_selection.py`: User interaction management
   - `helpers.py`: CLI utility functions
   - `formatting.py`: Terminal output formatting
 
