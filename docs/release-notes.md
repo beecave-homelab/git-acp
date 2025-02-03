@@ -24,7 +24,7 @@ This release introduces significant architectural improvements and refactoring a
 ### Command Line Interface 🖥️
 
 - Enhanced CLI structure with better separation of concerns:
-  - `main.py`: Streamlined command orchestration
+  - `cli.py`: Streamlined command orchestration
   - `prompts.py`: User interaction management
   - `helpers.py`: CLI utility functions
   - `formatting.py`: Terminal output formatting

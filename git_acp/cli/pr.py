@@ -112,7 +112,7 @@ def pr(source: Optional[str], target: str, ollama: bool, draft: bool, list_draft
     This command helps you create and manage pull requests with optional AI-assisted description generation.
     """
 
-    # Create config object to match main.py pattern
+    # Create config object to match cli.py pattern
     config = GitConfig(
         files="",  # Not used in PR command
         message="",  # Not used in PR command
