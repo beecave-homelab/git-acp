@@ -122,6 +122,66 @@ class AIClient:
             # Verify the new model is available
             self._verify_model()
 
+    def is_reasoning_llm(self, text: str) -> bool:
+        """Check if the AI model is a reasoning LLM by looking for thinking tags.
+        
+        Args:
+            text: The text to check for thinking tags
+            
+        Returns:
+            True if thinking tags are found, indicating a reasoning LLM
+        """
+        return "<think>" in text.lower() and "</think>" in text.lower()
+
+    def extract_thinking_blocks(self, text: str) -> list[tuple[str, str]]:
+        """Extract thinking blocks from text while preserving their positions.
+        
+        Args:
+            text: The text to extract thinking blocks from
+            
+        Returns:
+            List of tuples containing (thinking content, position in text)
+            where position is 'before', 'middle', or 'after' the main content
+        """
+        thinking_blocks = []
+        cleaned_text = text
+        
+        while "<think>" in cleaned_text.lower() and "</think>" in cleaned_text.lower():
+            start = cleaned_text.lower().find("<think>")
+            end = cleaned_text.lower().find("</think>") + len("</think>")
+            
+            # Extract the thinking block with tags
+            thinking_block = cleaned_text[start:end]
+            
+            # Determine position based on location in text
+            if start == 0:
+                position = "before"
+            elif end == len(cleaned_text):
+                position = "after"
+            else:
+                position = "middle"
+            
+            thinking_blocks.append((thinking_block, position))
+            cleaned_text = cleaned_text[:start] + cleaned_text[end:]
+        
+        return thinking_blocks
+
+    def clean_thinking_tags(self, text: str) -> str:
+        """Remove thinking tags and their content from the text.
+        
+        Args:
+            text: The text to clean
+            
+        Returns:
+            Text with thinking tags and their content removed
+        """
+        cleaned_text = text
+        while "<think>" in cleaned_text.lower() and "</think>" in cleaned_text.lower():
+            start = cleaned_text.lower().find("<think>")
+            end = cleaned_text.lower().find("</think>") + len("</think>")
+            cleaned_text = cleaned_text[:start] + cleaned_text[end:]
+        return cleaned_text.strip()
+
     def chat_completion(self, messages: list, **kwargs) -> str:
         try:
             if self.config and getattr(self.config, 'verbose', False):
@@ -174,7 +234,30 @@ class AIClient:
                         context="AI Response Error"
                     )
                     
-                return response.choices[0].message.content
+                content = response.choices[0].message.content
+                
+                # Check if this is a reasoning LLM
+                if self.is_reasoning_llm(content):
+                    if self.config and getattr(self.config, 'verbose', False):
+                        debug_header("Reasoning LLM detected")
+                        debug_item("Original response", content)
+                        
+                        # Extract and display thinking blocks in verbose mode
+                        thinking_blocks = self.extract_thinking_blocks(content)
+                        if thinking_blocks:
+                            debug_header("Thinking Process")
+                            for block, position in thinking_blocks:
+                                # Extract the actual thinking content without tags
+                                thinking_content = block[block.lower().find("<think>") + 7:block.lower().find("</think>")].strip()
+                                debug_item(f"Thinking ({position})", thinking_content)
+                
+                    # Clean the content for actual use
+                    content = self.clean_thinking_tags(content)
+                    
+                    if self.config and getattr(self.config, 'verbose', False):
+                        debug_item("Cleaned response", content)
+                
+                return content
                 
         except TimeoutError:
             if self.config and getattr(self.config, 'verbose', False):
