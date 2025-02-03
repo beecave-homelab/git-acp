@@ -51,7 +51,7 @@ git_acp/
 │   └── commit_prompts.py
 ├── cli/
 │   ├── __init__.py
-│   ├── cli.py
+│   ├── commit.py
 │   ├── helpers.py
 │   ├── interactive_selection.py
 │   └── formatting.py
@@ -150,12 +150,12 @@ Contains the core logic for generating commit messages with AI.
 
 ## CLI Subpackage (`git_acp.cli`)
 
-**Location**: `git_acp/cli/__init__.py`, `git_acp/cli/cli.py`, `git_acp/cli/helpers.py`, `git_acp/cli/interactive_selection.py`, and `git_acp/cli/formatting.py`
+**Location**: `git_acp/cli/__init__.py`, `git_acp/cli/commit.py`, `git_acp/cli/helpers.py`, `git_acp/cli/interactive_selection.py`, and `git_acp/cli/formatting.py`
 
 This subpackage provides the command-line interface using Click decorators. It supports:
 
 - **Entry Point**:  
-  `main()` in `cli.py` which orchestrates file selection, commit message generation (including AI features), commit type classification, and executing Git commands.
+  `main()` in `commit.py` which orchestrates file selection, commit message generation (including AI features), commit type classification, and executing Git commands.
 
 - **Interactive Helpers**:  
   `helpers.py` and `interactive_selection.py` provide interactive file selection and commit type prompts.
@@ -290,7 +290,7 @@ This file provides a Python entry point so the package can be executed from the 
 python -m git_acp
 ```
 
-which directly invokes the CLI defined in `git_acp.cli.cli`.
+which directly invokes the CLI defined in `git_acp.cli.commit`.
 
 ---
 
