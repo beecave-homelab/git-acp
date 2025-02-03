@@ -70,7 +70,7 @@ def get_commit_messages(target: str, source: str) -> dict:
     Returns:
         Dictionary containing:
             - messages: List of clean commit messages for title generation
-            - messages_with_details: List of detailed commit messages for display
+            - messages_with_details: List of detailed commit messages including body for display
 
     Raises:
         GitError: If getting commit messages fails
@@ -79,28 +79,41 @@ def get_commit_messages(target: str, source: str) -> dict:
         # First get just the messages for title generation
         output, _ = run_git_command([
             "git", "log",
-            "--pretty=format:%B",  # Full commit message body
+            "--pretty=format:%s",  # Subject line only
             "--no-merges",
             f"{target}...{source}"
         ])
         # Clean up the messages for title generation
         messages = []
-        for msg in output.split("\n\n"):  # Split on double newline to separate commits
+        for msg in output.splitlines():  # Split on newlines since we only have subject lines
             if msg.strip():
-                # Take first line and remove any conventional commit prefixes
-                first_line = msg.split('\n')[0].strip()
-                if ': ' in first_line:
-                    first_line = first_line.split(': ', 1)[1]
-                messages.append(first_line)
+                # Remove any conventional commit prefixes
+                if ': ' in msg:
+                    msg = msg.split(': ', 1)[1]
+                messages.append(msg)
         
-        # Then get the full format for display
+        # Then get the full format for display, including commit body
         output_with_details, _ = run_git_command([
             "git", "log",
-            "--pretty=format:%h - %s (%an)",  # Full format with hash and author
+            "--pretty=format:%h - %B",  # Full format with hash and full message (including body)
             "--no-merges",
             f"{target}...{source}"
         ])
-        messages_with_details = [msg.strip() for msg in output_with_details.split("\n") if msg.strip()]
+        messages_with_details = []
+        current_message = []
+        
+        # Process the detailed output to handle multi-line commit messages
+        for line in output_with_details.split("\n"):
+            if line.startswith(tuple("0123456789abcdef")):  # New commit starts
+                if current_message:  # Save previous message if exists
+                    messages_with_details.append("\n".join(current_message))
+                current_message = [line.strip()]
+            elif line.strip():  # Add non-empty lines to current message
+                current_message.append(line.strip())
+        
+        # Add the last message
+        if current_message:
+            messages_with_details.append("\n".join(current_message))
         
         # Store both versions
         return {

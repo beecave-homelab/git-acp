@@ -307,9 +307,9 @@ def generate_pr_simple(git_data: Dict, verbose: bool = False) -> str:
 
 {commit_themes}
 
-## Overview of changes to analyze
+{f'''## Overview of changes to analyze
 
-{diff_text[:10000] if len(diff_text) > 10000 else diff_text}
+{diff_text[:10000] if len(diff_text) > 10000 else diff_text}''' if diff_text else '# Note: No diff information provided for analysis'}
 
 ## Output format to use
 

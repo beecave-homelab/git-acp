@@ -18,7 +18,8 @@ from git_acp.config.constants import (
     QUESTIONARY_STYLE,
     COLORS,
     TERMINAL_WIDTH,
-    DEFAULT_BRANCH
+    DEFAULT_BRANCH,
+    DEFAULT_PR_AI_CONTEXT_TYPE
 )
 from git_acp.git.history import get_commit_messages, get_diff_between_branches
 from git_acp.git.status import get_name_status_changes
@@ -98,7 +99,14 @@ console = Console(width=TERMINAL_WIDTH)
     show_default=True,
     help="Select prompt type for PR generation: 'simple' (single AI request) or 'advanced' (multiple AI requests)."
 )
-def pr(source: Optional[str], target: str, ollama: bool, draft: bool, list_drafts: bool, remove_draft: bool, no_confirm: bool, verbose: bool, prompt_type: str) -> None:
+@click.option(
+    "-ct",
+    "--context-type",
+    type=click.Choice(["commits", "diffs", "both"]),
+    default=DEFAULT_PR_AI_CONTEXT_TYPE,
+    help="Specify which context to include in simple PR generation mode (commits and/or diffs)"
+)
+def pr(source: Optional[str], target: str, ollama: bool, draft: bool, list_drafts: bool, remove_draft: bool, no_confirm: bool, verbose: bool, prompt_type: str, context_type: str) -> None:
     """Create or manage pull requests.
     
     This command helps you create and manage pull requests with optional AI-assisted description generation.
@@ -350,15 +358,20 @@ def pr(source: Optional[str], target: str, ollama: bool, draft: bool, list_draft
                 if verbose:
                     debug_header("Generating PR Content in Simple Mode with AI")
                 try:
-                    # Prepare git data for simple mode
+                    # Prepare git data for simple mode based on context_type
                     git_data = {
-                        "commit_messages": commit_messages_data["messages"],
-                        "diff": diff_text,
+                        "commit_messages": commit_messages_data["messages_with_details"] if context_type in ["commits", "both"] else commit_messages_data["messages"],
+                        "diff": diff_text if context_type in ["diffs", "both"] else "",
                         "added_files": added_files,
                         "modified_files": modified_files,
                         "deleted_files": deleted_files,
                         "model": DEFAULT_PR_AI_MODEL
                     }
+                    
+                    if verbose:
+                        debug_item("Context Type Mode", context_type)
+                        debug_item("Using Full Commit Messages", str(context_type in ["commits", "both"]))
+                        debug_item("Including Diffs", str(context_type in ["diffs", "both"]))
                     
                     # Generate simple PR markdown with title included
                     pr_markdown = generate_pr_simple(git_data, verbose)
