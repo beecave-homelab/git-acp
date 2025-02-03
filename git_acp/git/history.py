@@ -60,7 +60,7 @@ def analyze_commit_patterns(commits: list, config=None) -> dict:
                 patterns['scopes'][scope.lower()] += 1
     return patterns
 
-def get_commit_messages(target: str, source: str) -> List[str]:
+def get_commit_messages(target: str, source: str) -> dict:
     """Get commit messages between two branches.
 
     Args:
@@ -68,19 +68,45 @@ def get_commit_messages(target: str, source: str) -> List[str]:
         source: Source branch name
 
     Returns:
-        List of commit messages
+        Dictionary containing:
+            - messages: List of clean commit messages for title generation
+            - messages_with_details: List of detailed commit messages for display
 
     Raises:
         GitError: If getting commit messages fails
     """
     try:
+        # First get just the messages for title generation
         output, _ = run_git_command([
             "git", "log",
-            "--pretty=format:%h - %s (%an)",
+            "--pretty=format:%B",  # Full commit message body
             "--no-merges",
             f"{target}...{source}"
         ])
-        return [msg.strip() for msg in output.split("\n") if msg.strip()]
+        # Clean up the messages for title generation
+        messages = []
+        for msg in output.split("\n\n"):  # Split on double newline to separate commits
+            if msg.strip():
+                # Take first line and remove any conventional commit prefixes
+                first_line = msg.split('\n')[0].strip()
+                if ': ' in first_line:
+                    first_line = first_line.split(': ', 1)[1]
+                messages.append(first_line)
+        
+        # Then get the full format for display
+        output_with_details, _ = run_git_command([
+            "git", "log",
+            "--pretty=format:%h - %s (%an)",  # Full format with hash and author
+            "--no-merges",
+            f"{target}...{source}"
+        ])
+        messages_with_details = [msg.strip() for msg in output_with_details.split("\n") if msg.strip()]
+        
+        # Store both versions
+        return {
+            "messages": messages,  # Clean messages for title generation
+            "messages_with_details": messages_with_details  # Detailed messages for display
+        }
     except Exception as e:
         raise GitError(f"Failed to get commit messages: {str(e)}") from e
 
