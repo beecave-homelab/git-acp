@@ -28,6 +28,13 @@ def generate_pr_title(git_data: Dict, config: Optional[Dict] = None, verbose: bo
     diff_text = git_data.get("diff", "")
     model = git_data.get("model", DEFAULT_PR_AI_MODEL)  # Get model from git_data or use PR default
     
+    if verbose:
+        debug_header("Title Generation Input")
+        debug_item("Number of commit messages", len(commit_messages))
+        debug_item("First commit message", commit_messages[0] if commit_messages else "None")
+        debug_item("Diff length", len(diff_text))
+        debug_item("Model", model)
+    
     system_prompt = """You are a PR title generator. Follow these rules exactly:
 1. Output ONLY the title text, nothing else
 2. Use exactly 5-10 words
@@ -36,7 +43,9 @@ def generate_pr_title(git_data: Dict, config: Optional[Dict] = None, verbose: bo
 5. NO formatting characters (#, `, ', ", etc.)
 6. NO prefixes like 'PR:', 'Title:', etc.
 7. NO explanatory text or meta-commentary
-8. NO conventional commit prefixes (feat:, fix:, etc.)"""
+8. NO conventional commit prefixes (feat:, fix:, etc.)
+9. Focus on the overall theme of changes, not individual commits
+10. Be descriptive and meaningful"""
 
     prompt = f"""Generate a title that captures the main changes from this information:
 
@@ -44,7 +53,13 @@ COMMIT MESSAGES:
 {'\n'.join(commit_messages)}
 
 CHANGES SUMMARY:
-{diff_text}
+{diff_text[:2000] if len(diff_text) > 2000 else diff_text}
+
+Focus on:
+- The overall theme or purpose of these changes
+- What problem is being solved
+- The main feature or improvement being added
+- The area of the codebase being changed
 
 Remember: Output only the title text, nothing else."""
 
@@ -65,6 +80,8 @@ Remember: Output only the title text, nothing else."""
         title = title.replace('#', '').replace('`', '').replace('"', '').replace("'", '').strip()
         # Ensure it's a single line
         title = title.split('\n')[0].strip()
+        if verbose:
+            debug_item("Generated Raw Title", title)
         return title
     except Exception as e:
         raise GitError(f"Failed to generate PR title: {str(e)}") from e
@@ -113,28 +130,20 @@ Requirements:
 def generate_code_changes(diff_text: str, verbose: bool = False) -> str:
     """Generate a detailed description of the code changes from the diff."""
     
-    system_prompt = """You are a code change summarizer. Follow these rules exactly:
-1. Output ONLY the description, nothing else
-2. Use exactly 75-100 words
-3. Focus on functional changes
-4. Group related changes together
-5. NO file paths or line numbers
-6. NO implementation details
-7. NO commit messages
-8. NO technical jargon unless essential
-9. Write in present tense
-10. Use clear, professional language"""
+    system_prompt = """You are a code change analyst. Follow these rules:
+1. Focus on specific changes in the diff
+2. Reference actual filenames from changes
+3. Group related file changes together
+4. Use simple concrete examples
+5. Avoid technical jargon"""
 
-    prompt = f"""Describe the functional changes in this diff:
-
-CHANGES:
+    prompt = f"""Describe these code changes in 3-5 bullet points:
 {diff_text}
 
-Focus on:
-- What functionality changed
-- User-facing impacts
-- System-level changes
-- Dependencies affected"""
+Format as:
+- Updated [filename] to [specific change]
+- Added [feature] in [filename]
+- Fixed [issue] in [filepath]"""
 
     if verbose:
         debug_item("Code Changes Prompt", prompt)
@@ -149,33 +158,22 @@ Focus on:
     return result.strip()
 
 
-def generate_reason_for_changes(commit_messages: List[str], diff_text: str, verbose: bool = False) -> str:
+def generate_reason_for_changes(commit_messages: List, diff_text: str, verbose: bool = False) -> str:
     """Generate a clear explanation for the changes based on commit messages and diff."""
     context = {"commit_messages": commit_messages, "diff_text": diff_text}
     
-    system_prompt = """You are a change rationale explainer. Follow these rules exactly:
-1. Output ONLY the explanation, nothing else
-2. Use exactly 75-100 words
-3. Focus on WHY changes were needed
-4. Include business context
-5. NO implementation details
-6. NO technical specifications
-7. NO commit message quotes
-8. Write in present tense
-9. Use business-focused language
-10. Explain benefits and impact"""
+    system_prompt = """Explain change reasons in 2-3 points:
+1. Connect commits to user benefits
+2. Reference specific commit types (feat/fix/chore)
+3. Use simple cause-effect format"""
 
-    prompt = f"""Explain why these changes were necessary:
+    prompt = f"""Why were these changes made?
+Commit Types: {[msg.split(':')[0] for msg in commit_messages]}
+Diff Summary: {diff_text[:1000]}
 
-CONTEXT:
-Commit Messages: {commit_messages}
-Changes: {diff_text}
-
-Focus on:
-- Business drivers
-- Problems being solved
-- Expected benefits
-- Strategic alignment"""
+Format as:
+1. [Commit type] changes to [achieve X]
+2. [Commit type] updates to [solve Y]"""
 
     if verbose:
         debug_item("Reason for Changes Prompt", prompt)
@@ -193,28 +191,17 @@ Focus on:
 def generate_test_plan(diff_text: str, verbose: bool = False) -> str:
     """Generate a test plan for verifying the code changes."""
     
-    system_prompt = """You are a test plan generator. Follow these rules exactly:
-1. Output ONLY the test plan, nothing else
-2. Use exactly 75-100 words
-3. Focus on verification steps
-4. Include key test scenarios
-5. NO implementation details
-6. NO technical commands
-7. NO specific test data
-8. Write in imperative mood
-9. Use clear, actionable language
-10. Cover both happy and error paths"""
+    system_prompt = """Create test scenarios that:
+1. Map to actual code changes
+2. Use real filenames from diff
+3. Test specific added/modified features"""
 
-    prompt = f"""Create a test plan for these changes:
-
-CHANGES:
+    prompt = f"""Suggest test cases for:
 {diff_text}
 
-Include:
-- Key scenarios to verify
-- Important edge cases
-- Required test environments
-- Success criteria"""
+Examples:
+- Verify [feature] in [filename] by [action]
+- Check [scenario] using [modified component]"""
 
     if verbose:
         debug_item("Test Plan Prompt", prompt)
@@ -229,33 +216,21 @@ Include:
     return result.strip()
 
 
-def generate_additional_notes(commit_messages: List[str], diff_text: str, verbose: bool = False) -> str:
+def generate_additional_notes(commit_messages: List, diff_text: str, verbose: bool = False) -> str:
     """Generate any additional notes or comments for the PR."""
     context = {"commit_messages": commit_messages, "diff_text": diff_text}
     
-    system_prompt = """You are a PR notes generator. Follow these rules exactly:
-1. Output ONLY the notes, nothing else
-2. Use exactly 25-50 words
-3. Focus on important information not covered elsewhere
-4. Include deployment considerations
-5. NO duplicate information
-6. NO implementation details
-7. NO commit references
-8. Write in present tense
-9. Use clear, concise language
-10. Only include if truly needed"""
+    system_prompt = """List critical notes:
+1. Focus on dependency changes
+2. Warn about breaking changes
+3. Mention required config updates"""
 
-    prompt = f"""Add any important notes not covered in other sections:
+    prompt = f"""Important notes for these changes:
+{commit_messages}
 
-CONTEXT:
-Commits: {commit_messages}
-Changes: {diff_text}
-
-Consider:
-- Breaking changes
-- Migration steps
-- Dependencies
-- Known limitations"""
+Examples:
+❗ Update dependencies with 'pip install -r requirements.txt'
+❗ Configuration change required in [file]"""
 
     if verbose:
         debug_item("Additional Notes Prompt", prompt)
@@ -267,69 +242,6 @@ Consider:
          {"role": "user", "content": prompt}
     ]
     result = client.chat_completion(messages)
-    return result.strip()
-
-
-def clean_markdown_formatting(markdown: str) -> str:
-    """Clean up markdown formatting issues.
-    
-    - Remove nested code blocks
-    - Ensure consistent header formatting
-    - Remove explanatory/meta text
-    - Fix spacing between sections
-    
-    Args:
-        markdown: The markdown text to clean
-        
-    Returns:
-        Cleaned markdown text
-    """
-    # Split into lines for processing
-    lines = markdown.strip().split('\n')
-    cleaned_lines = []
-    in_code_block = False
-    last_was_header = False
-    
-    for line in lines:
-        # Skip empty lines after headers
-        if last_was_header and not line.strip():
-            continue
-            
-        # Track code block state
-        if line.strip().startswith('```'):
-            in_code_block = not in_code_block
-            continue
-            
-        # Clean up header formatting
-        if line.strip().startswith('#'):
-            # Add spacing before headers (except first)
-            if cleaned_lines and not cleaned_lines[-1].strip() == '':
-                cleaned_lines.append('')
-            # Normalize header format
-            header_level = len(line.split()[0])  # Count #s
-            header_text = ' '.join(line.split()[1:])
-            line = f"{'#' * header_level} {header_text}"
-            last_was_header = True
-        else:
-            last_was_header = False
-            
-        # Skip lines that look like explanatory text
-        if any(skip in line.lower() for skip in [
-            'please output', 'generate', 'following format', 'important:', 
-            'note:', 'instructions:', 'example:', 'template:'
-        ]):
-            continue
-            
-        # Add the cleaned line
-        if line.strip() or (cleaned_lines and cleaned_lines[-1].strip()):
-            cleaned_lines.append(line)
-    
-    # Ensure single newline between sections
-    result = '\n'.join(cleaned_lines)
-    # Remove multiple consecutive newlines
-    while '\n\n\n' in result:
-        result = result.replace('\n\n\n', '\n\n')
-    
     return result.strip()
 
 
@@ -353,44 +265,82 @@ def generate_pr_simple(git_data: Dict, verbose: bool = False) -> str:
     deleted_files = git_data.get("deleted_files", "")
     model = git_data.get("model", DEFAULT_PR_AI_MODEL)
     
-    system_prompt = """You are a PR description generator. Follow these rules exactly:
-1. Output ONLY markdown-formatted text
-2. Use exactly 200-300 words total
-3. Include these sections in order:
-   - Title: Start with '# ' followed by 5-10 words that summarize the changes
-   - Summary: A paragraph describing what changed and why (75-100 words)
-   - Changes: Key functional changes and their impact (50-75 words)
-   - Testing: Verification steps and test scenarios (25-50 words)
-4. NO technical implementation details
-5. NO file paths or line numbers
-6. NO commit message quotes
-7. NO lists of files or changes
-8. Write in present tense
-9. Use clear, business-focused language
-10. Focus on value and impact, not technical details"""
+    system_prompt = """You are an expert developer, so you know how to read all kinds of code syntax.
+    Write a PR description with title using this markdown template: 
+    
+    ```markdown
+    # {{ Title (5-10 words) }}
+
+    ## Summary
+
+    {{ A paragraph describing what changed and why (200-250 words) }}
+
+    ## Key Changes
+
+    ### Added
+
+    {{ Key functional changes and their impact (200-250 words) }}
+
+    ### Modified
+
+    {{ Key functional changes and their impact (200-250 words) }}
+
+    ### Deleted
+
+    {{ Key functional changes and their impact (200-250 words) }}
+
+    ## Additional Notes
+
+    {{ Any additional notes to concludes the PR message (100-200 words) }}
+
+    ---
+
+    ```
+    """
 
     # Analyze commit messages for key themes
     commit_themes = "\n".join([f"- {msg}" for msg in commit_messages])
 
-    prompt = f"""Create a concise pull request description that focuses on business value:
+    prompt = f"""Create a concise pull request description by analyzing the below information:
 
-COMMIT MESSAGES:
+## Commit messages to analyze
+
 {commit_themes}
 
-CHANGES OVERVIEW:
-{diff_text[:5000] if len(diff_text) > 5000 else diff_text}
+## Overview of changes to analyze
 
-FILES CHANGED:
-Added: {len(added_files.split('\n')) if added_files else 0} files
-Modified: {len(modified_files.split('\n')) if modified_files else 0} files
-Deleted: {len(deleted_files.split('\n')) if deleted_files else 0} files
+{diff_text[:10000] if len(diff_text) > 10000 else diff_text}
 
-Requirements:
-1. Start with a clear title that captures the main purpose of these changes
-2. Explain the business value and impact of these changes
-3. Describe key functional changes without technical details
-4. Include specific verification steps
-5. Keep the content professional and focused"""
+## Output format to use
+
+```markdown
+# {{ Title that summarizes the changes (5-10 words) }}
+
+## Summary
+
+{{ A paragraph describing what changed and why (200-250 words) }}
+
+## Key Changes
+
+### Added
+
+{{ Key functional changes and their impact (200-250 words) }}
+
+### Modified
+
+{{ Key functional changes and their impact (200-250 words) }}
+
+### Deleted
+
+{{ Key functional changes and their impact (200-250 words) }}
+
+## Additional Notes
+
+{{ Any additional notes to concludes the PR message (100-200 words) }}
+
+---
+```
+"""
 
     if verbose:
         debug_item("Simple PR Prompt", prompt)
@@ -420,7 +370,7 @@ def extract_clean_title(content: str, verbose: bool = False) -> str:
         debug_header("Extracting Clean Title")
         debug_item("Original Content", content)
     
-    system_prompt = """You are a PR title extractor. Your task is to:
+    system_prompt = """You are a PR title writer. Your task is to:
 1. Extract the most important information from the PR content
 2. Create a concise title (5-10 words) that summarizes the main changes
 3. Output ONLY the title text with no formatting, quotes, or extra text
@@ -497,7 +447,8 @@ def build_pr_markdown(
     Returns:
         Complete PR description in Markdown format
     """
-    markdown = f"""# {title}
+    markdown = f"""
+# {title}
 
 ## Summary
 {summary}
@@ -533,28 +484,34 @@ def build_pr_markdown(
 def review_final_pr(markdown: str, verbose: bool = False) -> str:
     """Review and clean up the final PR markdown to remove duplicate or redundant information."""
     
-    system_prompt = """You are a PR review specialist. Follow these rules exactly:
-1. Output ONLY the cleaned markdown
-2. Keep the existing structure and sections
-3. Remove duplicate information
-4. Remove redundant context
-5. Ensure consistent formatting
-6. Keep section headers unchanged
-7. NO meta-commentary or explanations
-8. NO additional sections
-9. NO reformatting of existing content
-10. Preserve the original title"""
+    system_prompt = """You are a PR quality assurance specialist. Follow these rules exactly:
+1. Remove duplicate information across sections
+2. Eliminate redundant commit message references
+3. Consolidate similar technical details
+4. Remove generic statements without concrete examples
+5. Preserve all unique file references
+6. Maintain the original section structure
+7. Keep specific testing scenarios
+8. Remove empty sections
+9. Ensure each commit is only referenced once
+10. Remove meta-commentary about the PR process"""
 
-    prompt = f"""Review and clean this PR description:
+    prompt = f"""Clean this PR description by:
+1. Removing duplicate file mentions (e.g., .env.example mentioned in multiple sections)
+2. Consolidating similar technical changes
+3. Removing generic statements like "No dependencies affected"
+4. Keeping only one reference per commit hash
+5. Preserving specific examples and test cases
 
+PR Content:
 {markdown}
 
-Requirements:
-- Remove any duplicate information
-- Keep all section headers
-- Maintain existing formatting
-- Preserve the original title
-- Only remove truly redundant content"""
+Formatting Rules:
+- Keep actual filenames from the diff
+- Preserve specific test scenarios
+- Remove empty bullet points
+- Consolidate similar configuration changes
+- Remove redundant explanations about the PR process"""
 
     if verbose:
         debug_item("PR Review Prompt", prompt)
@@ -570,4 +527,67 @@ Requirements:
         return clean_markdown_formatting(result.strip())
     except Exception as e:
         # If review fails, return the original markdown after cleaning
-        return clean_markdown_formatting(markdown) 
+        return clean_markdown_formatting(markdown)
+
+
+def clean_markdown_formatting(markdown: str) -> str:
+    """Clean up markdown formatting issues.
+    
+    - Remove nested code blocks
+    - Ensure consistent header formatting
+    - Remove explanatory/meta text
+    - Fix spacing between sections
+    
+    Args:
+        markdown: The markdown text to clean
+        
+    Returns:
+        Cleaned markdown text
+    """
+    # Split into lines for processing
+    lines = markdown.strip().split('\n')
+    cleaned_lines = []
+    in_code_block = False
+    last_was_header = False
+    
+    for line in lines:
+        # Skip empty lines after headers
+        if last_was_header and not line.strip():
+            continue
+            
+        # Track code block state
+        if line.strip().startswith('```'):
+            in_code_block = not in_code_block
+            continue
+            
+        # Clean up header formatting
+        if line.strip().startswith('#'):
+            # Add spacing before headers (except first)
+            if cleaned_lines and not cleaned_lines[-1].strip() == '':
+                cleaned_lines.append('')
+            # Normalize header format
+            header_level = len(line.split()[0])  # Count #s
+            header_text = ' '.join(line.split()[1:])
+            line = f"{'#' * header_level} {header_text}"
+            last_was_header = True
+        else:
+            last_was_header = False
+            
+        # Skip lines that look like explanatory text
+        if any(skip in line.lower() for skip in [
+            'please output', 'generate', 'following format', 'important:', 
+            'note:', 'instructions:', 'example:', 'template:'
+        ]):
+            continue
+            
+        # Add the cleaned line
+        if line.strip() or (cleaned_lines and cleaned_lines[-1].strip()):
+            cleaned_lines.append(line)
+    
+    # Ensure single newline between sections
+    result = '\n'.join(cleaned_lines)
+    # Remove multiple consecutive newlines
+    while '\n\n\n' in result:
+        result = result.replace('\n\n\n', '\n\n')
+    
+    return result.strip() 
