@@ -376,9 +376,6 @@ def pr(source: Optional[str], target: str, ollama: bool, draft: bool, list_draft
                     # Generate simple PR markdown with title included
                     pr_markdown = generate_pr_simple(git_data, verbose)
                     
-                    # Clean up and extract title
-                    pr_markdown = clean_markdown_formatting(pr_markdown)
-                    
                     # Extract title from the markdown
                     lines = pr_markdown.split('\n')
                     if lines and lines[0].startswith('#'):

@@ -9,21 +9,22 @@ from git_acp.git.runner import GitError
 from git_acp.utils.formatting import debug_header, debug_item
 from git_acp.config.constants import DEFAULT_PR_AI_MODEL
 from git_acp.ai.pr_prompts import (
-    PR_TITLE_SYSTEM_PROMPT,
-    PR_TITLE_USER_PROMPT,
-    PR_SUMMARY_SYSTEM_PROMPT,
-    PR_SUMMARY_USER_PROMPT,
-    CODE_CHANGES_SYSTEM_PROMPT,
-    CODE_CHANGES_USER_PROMPT,
-    REASON_CHANGES_SYSTEM_PROMPT,
-    REASON_CHANGES_USER_PROMPT,
-    TEST_PLAN_SYSTEM_PROMPT,
-    TEST_PLAN_USER_PROMPT,
-    ADDITIONAL_NOTES_SYSTEM_PROMPT,
-    ADDITIONAL_NOTES_USER_PROMPT,
+    ADVANCED_PR_TITLE_SYSTEM_PROMPT,
+    ADVANCED_PR_TITLE_USER_PROMPT,
+    ADVANCED_PR_SUMMARY_SYSTEM_PROMPT,
+    ADVANCED_PR_SUMMARY_USER_PROMPT,
+    ADVANCED_CODE_CHANGES_SYSTEM_PROMPT,
+    ADVANCED_CODE_CHANGES_USER_PROMPT,
+    ADVANCED_REASON_CHANGES_SYSTEM_PROMPT,
+    ADVANCED_REASON_CHANGES_USER_PROMPT,
+    ADVANCED_TEST_PLAN_SYSTEM_PROMPT,
+    ADVANCED_TEST_PLAN_USER_PROMPT,
+    ADVANCED_ADDITIONAL_NOTES_SYSTEM_PROMPT,
+    ADVANCED_ADDITIONAL_NOTES_USER_PROMPT,
     SIMPLE_PR_SYSTEM_PROMPT,
-    TITLE_EXTRACTION_SYSTEM_PROMPT,
-    TITLE_EXTRACTION_USER_PROMPT,
+    SIMPLE_PR_USER_PROMPT,
+    SIMPLE_TITLE_EXTRACTION_SYSTEM_PROMPT,
+    SIMPLE_TITLE_EXTRACTION_USER_PROMPT,
     PR_REVIEW_SYSTEM_PROMPT,
     PR_REVIEW_USER_PROMPT
 )
@@ -55,7 +56,7 @@ def generate_pr_title(git_data: Dict, config: Optional[Dict] = None, verbose: bo
         debug_item("Model", model)
 
     # Format the user prompt with the actual data
-    prompt = PR_TITLE_USER_PROMPT.format(
+    prompt = ADVANCED_PR_TITLE_USER_PROMPT.format(
         commit_messages='\n'.join(commit_messages),
         diff_text=diff_text[:2000] if len(diff_text) > 2000 else diff_text
     )
@@ -68,7 +69,7 @@ def generate_pr_title(git_data: Dict, config: Optional[Dict] = None, verbose: bo
     client = AIClient(config, use_pr_model=True)  # Always use PR model
     client.model = model  # Override with specific model if provided
     messages = [
-         {"role": "system", "content": PR_TITLE_SYSTEM_PROMPT},
+         {"role": "system", "content": ADVANCED_PR_TITLE_SYSTEM_PROMPT},
          {"role": "user", "content": prompt}
     ]
     try:
@@ -88,7 +89,7 @@ def generate_pr_summary(partial_pr_markdown: str, commit_messages: list, verbose
     """Generate a comprehensive summary for the PR based on partial markdown and commit messages."""
     context = {"partial_pr_markdown": partial_pr_markdown, "commit_messages": commit_messages}
     
-    prompt = PR_SUMMARY_USER_PROMPT.format(partial_pr_markdown=partial_pr_markdown)
+    prompt = ADVANCED_PR_SUMMARY_USER_PROMPT.format(partial_pr_markdown=partial_pr_markdown)
 
     if verbose:
         debug_item("PR Summary Prompt", prompt)
@@ -96,7 +97,7 @@ def generate_pr_summary(partial_pr_markdown: str, commit_messages: list, verbose
     
     client = AIClient(use_pr_model=True)
     messages = [
-         {"role": "system", "content": PR_SUMMARY_SYSTEM_PROMPT},
+         {"role": "system", "content": ADVANCED_PR_SUMMARY_SYSTEM_PROMPT},
          {"role": "user", "content": prompt}
     ]
     result = client.chat_completion(messages)
@@ -106,7 +107,7 @@ def generate_pr_summary(partial_pr_markdown: str, commit_messages: list, verbose
 def generate_code_changes(diff_text: str, verbose: bool = False) -> str:
     """Generate a detailed description of the code changes from the diff."""
     
-    prompt = CODE_CHANGES_USER_PROMPT.format(diff_text=diff_text)
+    prompt = ADVANCED_CODE_CHANGES_USER_PROMPT.format(diff_text=diff_text)
 
     if verbose:
         debug_item("Code Changes Prompt", prompt)
@@ -114,7 +115,7 @@ def generate_code_changes(diff_text: str, verbose: bool = False) -> str:
     
     client = AIClient(use_pr_model=True)
     messages = [
-         {"role": "system", "content": CODE_CHANGES_SYSTEM_PROMPT},
+         {"role": "system", "content": ADVANCED_CODE_CHANGES_SYSTEM_PROMPT},
          {"role": "user", "content": prompt}
     ]
     result = client.chat_completion(messages)
@@ -125,7 +126,7 @@ def generate_reason_for_changes(commit_messages: List, diff_text: str, verbose: 
     """Generate a clear explanation for the changes based on commit messages and diff."""
     context = {"commit_messages": commit_messages, "diff_text": diff_text}
     
-    prompt = REASON_CHANGES_USER_PROMPT.format(
+    prompt = ADVANCED_REASON_CHANGES_USER_PROMPT.format(
         commit_types=[msg.split(':')[0] for msg in commit_messages],
         diff_text=diff_text[:1000]
     )
@@ -136,7 +137,7 @@ def generate_reason_for_changes(commit_messages: List, diff_text: str, verbose: 
     
     client = AIClient(use_pr_model=True)
     messages = [
-         {"role": "system", "content": REASON_CHANGES_SYSTEM_PROMPT},
+         {"role": "system", "content": ADVANCED_REASON_CHANGES_SYSTEM_PROMPT},
          {"role": "user", "content": prompt}
     ]
     result = client.chat_completion(messages)
@@ -146,7 +147,7 @@ def generate_reason_for_changes(commit_messages: List, diff_text: str, verbose: 
 def generate_test_plan(diff_text: str, verbose: bool = False) -> str:
     """Generate a test plan for verifying the code changes."""
     
-    prompt = TEST_PLAN_USER_PROMPT.format(diff_text=diff_text)
+    prompt = ADVANCED_TEST_PLAN_USER_PROMPT.format(diff_text=diff_text)
 
     if verbose:
         debug_item("Test Plan Prompt", prompt)
@@ -154,7 +155,7 @@ def generate_test_plan(diff_text: str, verbose: bool = False) -> str:
     
     client = AIClient(use_pr_model=True)
     messages = [
-         {"role": "system", "content": TEST_PLAN_SYSTEM_PROMPT},
+         {"role": "system", "content": ADVANCED_TEST_PLAN_SYSTEM_PROMPT},
          {"role": "user", "content": prompt}
     ]
     result = client.chat_completion(messages)
@@ -165,7 +166,7 @@ def generate_additional_notes(commit_messages: List, diff_text: str, verbose: bo
     """Generate any additional notes or comments for the PR."""
     context = {"commit_messages": commit_messages, "diff_text": diff_text}
     
-    prompt = ADDITIONAL_NOTES_USER_PROMPT.format(commit_messages=commit_messages)
+    prompt = ADVANCED_ADDITIONAL_NOTES_USER_PROMPT.format(commit_messages=commit_messages)
 
     if verbose:
         debug_item("Additional Notes Prompt", prompt)
@@ -173,7 +174,7 @@ def generate_additional_notes(commit_messages: List, diff_text: str, verbose: bo
     
     client = AIClient(use_pr_model=True)
     messages = [
-         {"role": "system", "content": ADDITIONAL_NOTES_SYSTEM_PROMPT},
+         {"role": "system", "content": ADVANCED_ADDITIONAL_NOTES_SYSTEM_PROMPT},
          {"role": "user", "content": prompt}
     ]
     result = client.chat_completion(messages)
@@ -202,16 +203,14 @@ def generate_pr_simple(git_data: Dict, verbose: bool = False) -> str:
     
     # Analyze commit messages for key themes
     commit_themes = "\n".join([f"- {msg}" for msg in commit_messages])
-
-    prompt = f"""Create a concise pull request description by analyzing the below information:
-
-## Commit messages to analyze
-
-{commit_themes}
-
-{f'''## Overview of changes to analyze
-
-{diff_text[:10000] if len(diff_text) > 10000 else diff_text}''' if diff_text else '# Note: No diff information provided for analysis'}"""
+    
+    # Prepare changes overview
+    changes_overview = f'''## Overview of changes to analyze\n\n{diff_text[:10000] if len(diff_text) > 10000 else diff_text}''' if diff_text else '# Note: No diff information provided for analysis'
+    
+    prompt = SIMPLE_PR_USER_PROMPT.format(
+        commit_themes=commit_themes,
+        changes_overview=changes_overview
+    )
 
     if verbose:
         debug_item("Simple PR Prompt", prompt)
@@ -225,6 +224,7 @@ def generate_pr_simple(git_data: Dict, verbose: bool = False) -> str:
     ]
     result = client.chat_completion(messages)
     return clean_markdown_formatting(result.strip())
+    # return result
 
 
 def extract_clean_title(content: str, verbose: bool = False) -> str:
@@ -234,44 +234,25 @@ def extract_clean_title(content: str, verbose: bool = False) -> str:
         content: The PR content containing a title
         verbose: Whether to log debug information
         
-    Returns:
+    Returns:n
         A clean, single-line title
     """
     if verbose:
         debug_header("Extracting Clean Title")
         debug_item("Original Content", content)
     
-    prompt = TITLE_EXTRACTION_USER_PROMPT.format(content=content)
+    prompt = SIMPLE_TITLE_EXTRACTION_USER_PROMPT.format(content=content)
 
     if verbose:
         debug_item("Title Extraction Prompt", prompt)
 
     client = AIClient(use_pr_model=True)
     messages = [
-        {"role": "system", "content": TITLE_EXTRACTION_SYSTEM_PROMPT},
-        {"role": "user", "content": prompt}
+         {"role": "system", "content": SIMPLE_TITLE_EXTRACTION_SYSTEM_PROMPT},
+         {"role": "user", "content": prompt}
     ]
-    
-    try:
-        title = client.chat_completion(messages).strip()
-        # Clean up any formatting
-        title = title.replace('#', '').replace('`', '').replace('"', '').replace("'", '').strip()
-        # Ensure single line
-        title = title.split('\n')[0].strip()
-        
-        if verbose:
-            debug_item("Extracted Title", title)
-        
-        return title
-    except Exception as e:
-        if verbose:
-            debug_item("Title Extraction Error", str(e))
-        # Fallback to first line of content that looks like a title
-        for line in content.split('\n'):
-            line = line.strip()
-            if line and not line.startswith('#') and len(line.split()) <= 10:
-                return line
-        return "Pull Request"  # Last resort fallback
+    result = client.chat_completion(messages)
+    return result.strip()
 
 
 def build_pr_markdown(
