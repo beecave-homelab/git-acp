@@ -209,7 +209,10 @@ def generate_pr_simple(git_data: Dict, verbose: bool = False) -> str:
     
     prompt = SIMPLE_PR_USER_PROMPT.format(
         commit_themes=commit_themes,
-        changes_overview=changes_overview
+        changes_overview=changes_overview,
+        added_files=added_files if added_files else "None",
+        modified_files=modified_files if modified_files else "None",
+        deleted_files=deleted_files if deleted_files else "None"
     )
 
     if verbose:

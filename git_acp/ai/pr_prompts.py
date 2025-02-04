@@ -167,13 +167,19 @@ Remember to use the below template and adjust the placeholder accordingly:
 
 {{ Key functional changes and their impact (200-250 words) }}
 
+{added_files}
+
 ### Modified
 
 {{ Key functional changes and their impact (200-250 words) }}
 
+{modified_files}
+
 ### Deleted
 
 {{ Key functional changes and their impact (200-250 words) }}
+
+{deleted_files}
 
 ## Additional Notes
 
