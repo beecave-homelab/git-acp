@@ -226,8 +226,8 @@ def generate_pr_simple(git_data: Dict, verbose: bool = False) -> str:
          {"role": "user", "content": prompt}
     ]
     result = client.chat_completion(messages)
-    return clean_markdown_formatting(result.strip())
-    # return result
+    # return clean_markdown_formatting(result.strip())
+    return result
 
 
 def extract_clean_title(content: str, verbose: bool = False) -> str:
