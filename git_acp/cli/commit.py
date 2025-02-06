@@ -2,7 +2,8 @@
 
 """Command-line interface for Git Add-Commit-Push automation.
 
-This module provides a command-line interface for automating Git operations with enhanced features:
+This module provides a command-line interface for automating
+Git operations with enhanced features:
 - Interactive file selection for staging
 - AI-powered commit message generation using Ollama
 - Smart commit type classification
@@ -11,7 +12,9 @@ This module provides a command-line interface for automating Git operations with
 """
 
 import sys
-from typing import List, Set, Optional
+from typing import List, Optional
+from dataclasses import dataclass, field
+
 import click
 import questionary
 from rich.console import Console
@@ -20,16 +23,24 @@ from rich.prompt import Confirm
 from rich import print as rprint
 
 from git_acp.git import (
-    GitError, run_git_command, get_current_branch, git_add,
-    git_commit, git_push, get_changed_files, unstage_files,
-    CommitType, classify_commit_type, setup_signal_handlers
+    GitError,
+    get_current_branch,
+    git_add,
+    git_commit,
+    git_push,
+    get_changed_files,
+    unstage_files,
+    CommitType,
+    classify_commit_type,
+    setup_signal_handlers,
 )
 from git_acp.ai import generate_commit_message
 from git_acp.config import COLORS, QUESTIONARY_STYLE
-from git_acp.utils import GitConfig, OptionalConfig
+from git_acp.utils import GitConfig
 from git_acp.cli.pr import pr
 
 console = Console()
+
 
 def debug_print(config: GitConfig, message: str) -> None:
     """Print a debug message if verbose mode is enabled.
@@ -41,72 +52,79 @@ def debug_print(config: GitConfig, message: str) -> None:
     if config.verbose:
         rprint(f"[{COLORS['warning']}]Debug: {message}[/{COLORS['warning']}]")
 
+
 def format_commit_message(commit_type: CommitType, message: str) -> str:
     """Format a commit message according to conventional commits specification.
 
     Args:
         commit_type: The type of commit
         message: The commit message
-        
+
     Returns:
         str: The formatted commit message
     """
-    lines = message.split('\n')
+    lines = message.split("\n")
     title = lines[0]
-    description = '\n'.join(lines[1:])
+    description = "\n".join(lines[1:])
     return f"{commit_type.value}: {title}\n\n{description}".strip()
+
 
 def select_files(changed_files: List[str]) -> List[str]:
     """Present an interactive selection menu for changed files.
-    
+
     Args:
         changed_files: List of files that have changes
-        
+
     Returns:
         List[str]: Selected files for staging
-        
+
     Raises:
         GitError: If no files are selected
     """
     # Add "All files" option at the top
-    choices = [
-        {'name': "All files", 'value': changed_files, 'checked': False}
-    ]
-    
+    choices = [{"name": "All files", "value": changed_files, "checked": False}]
+
     # Add individual files
-    choices.extend([
-        {'name': f, 'value': [f], 'checked': False}
-        for f in changed_files
-    ])
-    
+    choices.extend([{"name": f, "value": [f], "checked": False} for f in changed_files])
+
     selected = questionary.checkbox(
         "Select files to stage (space to select, enter to confirm):",
         choices=choices,
-        style=questionary.Style(QUESTIONARY_STYLE)
+        style=questionary.Style(QUESTIONARY_STYLE),
     ).ask()
-    
+
     if selected is None:  # User cancelled
         raise GitError("Operation cancelled by user")
-        
+
     # Flatten the list of selected files
     return [item for sublist in selected for item in sublist]
+
 
 def select_commit_type(config: GitConfig, suggested_type: CommitType) -> CommitType:
     """
     Present an interactive selection menu for commit types.
     If no_confirm is True, automatically selects the suggested type.
-    
+
     Args:
         config: GitConfig instance containing configuration options
         suggested_type: The suggested commit type based on changes
-        
+
     Returns:
         CommitType: The selected commit type
-        
+
     Raises:
         GitError: If no commit type is selected
     """
-    if config.skip_confirmation or suggested_type.value in ['feat', 'fix', 'docs', 'style', 'refactor', 'test', 'chore', 'revert']:
+    if config.skip_confirmation or suggested_type.value in [
+        "feat",
+        "fix",
+        "docs",
+        "style",
+        "refactor",
+        "test",
+        "chore",
+        "revert",
+    ]:
         if config.verbose:
             debug_print(config, f"Auto-selecting commit type: {suggested_type.value}")
         return suggested_type
@@ -115,29 +133,31 @@ def select_commit_type(config: GitConfig, suggested_type: CommitType) -> CommitT
     commit_type_choices = []
     for commit_type in CommitType:
         # Add (suggested) tag for the suggested type
-        name = (f"{commit_type.value} (suggested)" 
-               if commit_type == suggested_type 
-               else commit_type.value)
+        name = (
+            f"{commit_type.value} (suggested)"
+            if commit_type == suggested_type
+            else commit_type.value
+        )
         choice = {
-            'name': name,
-            'value': commit_type,
-            'checked': False  # Don't pre-select any option
+            "name": name,
+            "value": commit_type,
+            "checked": False,  # Don't pre-select any option
         }
         if commit_type == suggested_type:
             commit_type_choices.insert(0, choice)  # Put suggested type at the top
         else:
             commit_type_choices.append(choice)
-    
+
     if config.verbose:
         debug_print(config, f"Suggested commit type: {suggested_type.value}")
 
     def validate_single_selection(selected_types: List[CommitType]) -> str | bool:
         """
         Validate that exactly one commit type is selected.
-        
+
         Args:
             selected_types: List of selected commit types
-            
+
         Returns:
             str | bool: True if valid, error message string if invalid
         """
@@ -150,24 +170,114 @@ def select_commit_type(config: GitConfig, suggested_type: CommitType) -> CommitT
         choices=commit_type_choices,
         style=questionary.Style(QUESTIONARY_STYLE),
         instruction=" (suggested type marked)",
-        validate=validate_single_selection
+        validate=validate_single_selection,
     ).ask()
-    
+
     if selected_types is None:  # User cancelled
         raise GitError("Operation cancelled by user.")
     elif not selected_types or len(selected_types) != 1:  # No selection made
         raise GitError("No commit type selected.")
-        
+
     return selected_types[0]
+
+
+def handle_file_selection(config: GitConfig) -> List[str]:
+    """Handle the file selection process.
+
+    Args:
+        config: GitConfig instance containing configuration options
+
+    Returns:
+        List[str]: Selected files for staging
+
+    Raises:
+        GitError: If no files are selected or available
+    """
+    if config.files:
+        return config.files.split()
+
+    changed_files = get_changed_files()
+    if not changed_files:
+        rprint(
+            Panel(
+                "No changes detected in the repository.",
+                title="No Changes",
+                border_style="yellow",
+            )
+        )
+        sys.exit(0)
+
+    selected_files = select_files(changed_files)
+    if not selected_files:
+        rprint(
+            Panel(
+                "No files selected for commit.",
+                title="No Selection",
+                border_style="yellow",
+            )
+        )
+        sys.exit(0)
+
+    return selected_files
+
+
+def handle_commit_type(config: GitConfig, specified_type: Optional[str]) -> CommitType:
+    """Handle commit type selection.
+
+    Args:
+        config: GitConfig instance containing configuration options
+        specified_type: Optional manually specified commit type
+
+    Returns:
+        CommitType: Selected commit type
+    """
+    if specified_type:
+        return CommitType.from_str(specified_type)
+
+    suggested_type = classify_commit_type(config)
+    rprint(
+        f"[{COLORS['bold']}]🤖 Analyzing changes to suggest commit type..."
+        f"[/{COLORS['bold']}]"
+    )
+
+    if specified_type:
+        rprint(
+            f"[{COLORS['success']}]✓ Using specified commit type: "
+            f"{suggested_type.value}[/{COLORS['success']}]"
+        )
+        return suggested_type
+
+    selected_type = select_commit_type(config, suggested_type)
+    rprint(
+        f"[{COLORS['success']}]✓ Commit type selected successfully"
+        f"[/{COLORS['success']}]"
+    )
+    return selected_type
+
+
+@dataclass
+class CommitOptions:
+    """Options for the commit command."""
+
+    files: Optional[List[str]] = None
+    message: Optional[str] = None
+    branch: Optional[str] = None
+    commit_type: Optional[str] = None
+    ai_options: dict = field(
+        default_factory=lambda: {
+            "use_ollama": False,
+            "interactive": False,
+            "prompt_type": "advanced",
+        }
+    )
+    no_confirm: bool = False
+    verbose: bool = False
+
 
 @click.group()
 @click.version_option()
 def main():
     """Automate git add, commit, and push operations with smart features.
-
-    This tool streamlines your git workflow by combining add, commit, and push
-    operations with intelligent features like AI-powered commit messages and
-    conventional commits support.
 
     \b
     Features:
@@ -183,7 +293,7 @@ def main():
     - commit: Basic git workflow (add, commit, push)
     - pr: Create pull requests with AI-generated descriptions
     """
-    pass
+
 
 @main.command(name="commit")
 @click.option(
@@ -191,43 +301,93 @@ def main():
     "--add",
     "files_to_add",
     multiple=True,
-    help="Specify files to stage for commit. If not provided, shows an interactive file selection menu.",
+    help=(
+        "Specify files to stage for commit. If not provided, shows an interactive file "
+        "selection menu."
+    ),
 )
-@click.option('-m', '--message', 
-              help="Custom commit message. If not provided with --ollama, defaults to 'Automated commit'.",
-              metavar="<message>")
-@click.option('-b', '--branch', 
-              help="Target branch for push operation. If not specified, uses the current active branch.",
-              metavar="<branch>")
-@click.option('-t', '--type', 'commit_type',
-              type=click.Choice(['feat', 'fix', 'docs', 'style', 'refactor', 'test', 'chore', 'revert'],
-                              case_sensitive=False),
-              help="Manually specify the commit type instead of using automatic detection.",
-              metavar="<type>")
+@click.option(
+    "-m",
+    "--message",
+    help=(
+        "Custom commit message. If not provided with --ollama, defaults to 'Automated "
+        "commit'."
+    ),
+    metavar="<message>",
+)
+@click.option(
+    "-b",
+    "--branch",
+    help=(
+        "Target branch for push operation. If not specified, uses the current active "
+        "branch."
+    ),
+    metavar="<branch>",
+)
+@click.option(
+    "-t",
+    "--type",
+    "commit_type",
+    type=click.Choice(
+        ["feat", "fix", "docs", "style", "refactor", "test", "chore", "revert"],
+        case_sensitive=False,
+    ),
+    help="Manually specify the commit type instead of using automatic detection.",
+    metavar="<type>",
+)
 
 # AI Features Group
-@click.option('-o', '--ollama', 
-              is_flag=True, 
-              help="Use Ollama AI to generate a descriptive commit message based on your changes.")
-@click.option('-i', '--interactive', 
-              is_flag=True, 
-              help="Enable interactive mode to review and edit the AI-generated commit message. Only works with --ollama.")
-@click.option('-p', '--prompt-type',
-              type=click.Choice(['simple', 'advanced'], case_sensitive=False),
-              default='advanced',
-              help="Select AI prompt complexity for commit message generation. 'simple' for basic messages, 'advanced' for detailed analysis.",
-              metavar="<type>")
+@click.option(
+    "-o",
+    "--ollama",
+    is_flag=True,
+    help="Use Ollama AI to generate a commit message based on your changes.",
+)
+@click.option(
+    "-i",
+    "--interactive",
+    is_flag=True,
+    help=(
+        "Enable interactive mode to review and edit the AI-generated commit message. "
+        "Only works with --ollama."
+    ),
+)
+@click.option(
+    "-p",
+    "--prompt-type",
+    type=click.Choice(["simple", "advanced"], case_sensitive=False),
+    default="advanced",
+    help=(
+        "Select AI prompt complexity for commit message generation. 'simple' for basic "
+        "messages, 'advanced' for detailed analysis."
+    ),
+    metavar="<type>",
+)
 
 # General Options Group
-@click.option('-nc', '--no-confirm', 
-              is_flag=True, 
-              help="Skip all confirmation prompts and proceed automatically with suggested values.")
-@click.option('-v', '--verbose', 
-              is_flag=True, 
-              help="Enable verbose output mode to show detailed debug information during execution.")
-def commit(files_to_add: Optional[List[str]], message: Optional[str], branch: Optional[str],
-                   commit_type: Optional[str], ollama: bool, interactive: bool,
-                   prompt_type: Optional[str], no_confirm: bool, verbose: bool):
+@click.option(
+    "-nc",
+    "--no-confirm",
+    is_flag=True,
+    help="Skip all confirmation prompts and proceed automatically.",
+)
+@click.option(
+    "-v",
+    "--verbose",
+    is_flag=True,
+    help="Enable verbose output mode to show debugging information during execution.",
+)
+def commit_cmd(
+    files_to_add,
+    message,
+    branch,
+    commit_type,
+    ollama,
+    interactive,
+    prompt_type,
+    no_confirm,
+    verbose,
+):
     """Execute git add, commit, and push operations.
 
     \b
@@ -243,203 +403,168 @@ def commit(files_to_add: Optional[List[str]], message: Optional[str], branch: Op
     - Smart commit type detection
     - Conventional commits format
     """
-    # Set up signal handler for graceful interruption
-    setup_signal_handlers()
-    
-    try:
-        # Get changed files for selection if no files specified
-        if not files_to_add:
-            try:
-                changed_files = get_changed_files()
-                if not changed_files:
-                    rprint(Panel(
-                        "No changes detected in the repository.",
-                        title="No Changes",
-                        border_style="yellow"
-                    ))
-                    sys.exit(0)
-                
-                # Show interactive file selection
-                files_to_add = select_files(changed_files)
-                if not files_to_add:
-                    rprint(Panel(
-                        "No files selected for commit.",
-                        title="No Selection",
-                        border_style="yellow"
-                    ))
-                    sys.exit(0)
-            except GitError as e:
-                rprint(Panel(
-                    f"[{COLORS['error']}]Error getting changed files:[/{COLORS['error']}]\n{str(e)}\n\n"
-                    "Suggestion: Ensure you're in a git repository.",
-                    title="Git Status Failed",
-                    border_style="red"
-                ))
-                sys.exit(1)
+    options = CommitOptions(
+        files=list(files_to_add) if files_to_add else None,
+        message=message,
+        branch=branch,
+        commit_type=commit_type,
+        ai_options={
+            "use_ollama": ollama,
+            "interactive": interactive,
+            "prompt_type": prompt_type,
+        },
+        no_confirm=no_confirm,
+        verbose=verbose,
+    )
+    commit(options)
 
-        # Initialize config with selected or specified files
+
+def commit(options: CommitOptions):
+    """Internal function to handle the commit logic."""
+    setup_signal_handlers()
+
+    try:
         config = GitConfig(
-            files=" ".join(files_to_add),  # Join the files with spaces for git add
-            message=message or "Automated commit",
-            branch=branch,
-            use_ollama=ollama,
-            interactive=interactive,
-            skip_confirmation=no_confirm,
-            verbose=verbose,
-            prompt_type=prompt_type.lower() if prompt_type else "advanced"
+            files=" ".join(options.files) if options.files else "",
+            message=options.message or "Automated commit",
+            branch=options.branch or get_current_branch(),
+            use_ollama=options.ai_options["use_ollama"],
+            interactive=options.ai_options["interactive"],
+            skip_confirmation=options.no_confirm,
+            verbose=options.verbose,
+            prompt_type=options.ai_options["prompt_type"].lower(),
         )
 
-        if not config.branch:
+        selected_files = handle_file_selection(config)
+        git_add(" ".join(selected_files))
+
+        if config.use_ollama:
             try:
-                config.branch = get_current_branch()
-            except GitError as e:
-                rprint(Panel(
-                    f"[{COLORS['error']}]Error getting current branch:[/{COLORS['error']}]\n{str(e)}\n\n"
-                    "Suggestion: Ensure you're in a git repository and have a valid branch.",
-                    title="Branch Detection Failed",
-                    border_style="red"
-                ))
-                sys.exit(1)
-
-        # Add files first
-        try:
-            git_add(config.files)
-        except GitError as e:
-            rprint(Panel(
-                f"[{COLORS['error']}]Error adding files:[/{COLORS['error']}]\n{str(e)}\n\n"
-                "Suggestion: Check file paths and repository permissions.",
-                title="Git Add Failed",
-                border_style="red"
-            ))
-            sys.exit(1)
-
-        try:
-            if config.use_ollama:
-                try:
-                    # Add interruptible section around AI generation
-                    config.message = generate_commit_message(config)
-                except KeyboardInterrupt:
-                    unstage_files()
-                    rprint(Panel(
+                config.message = generate_commit_message(config)
+            except KeyboardInterrupt:
+                unstage_files()
+                rprint(
+                    Panel(
                         "AI generation cancelled by user",
                         title="Cancelled",
-                        border_style="yellow"
-                    ))
-                    sys.exit(0)
-                except GitError as e:
-                    rprint(Panel(
-                        f"[{COLORS['error']}]AI commit message generation failed:[/{COLORS['error']}]\n{str(e)}\n\n"
-                        "Suggestion: Check Ollama server status and configuration.",
-                        title="AI Generation Failed",
-                        border_style="red"
-                    ))
-                    if not Confirm.ask("Would you like to continue with a manual commit message?"):
-                        unstage_files()
-                        sys.exit(1)
-
-            if not config.message:
-                raise GitError("No commit message provided. Please specify a message with -m or use --ollama.")
-
-            # Get suggested commit type
-            try:
-                suggested_type = (CommitType.from_str(commit_type) if commit_type 
-                                else classify_commit_type(config))
+                        border_style="yellow",
+                    )
+                )
+                sys.exit(0)
             except GitError as e:
-                rprint(Panel(
-                    f"[{COLORS['error']}]Error determining commit type:[/{COLORS['error']}]\n{str(e)}\n\n"
-                    "Suggestion: Check your changes or specify a commit type with -t.",
-                    title="Commit Type Error",
-                    border_style="red"
-                ))
-                sys.exit(1)
-            
-            # Let user select commit type, unless it was specified with -t flag
-            rprint(f"[{COLORS['bold']}]🤖 Analyzing changes to suggest commit type...[/{COLORS['bold']}]")
-            if commit_type:
-                selected_type = suggested_type
-                rprint(f"[{COLORS['success']}]✓ Using specified commit type: {selected_type.value}[/{COLORS['success']}]")
-            else:
-                try:
-                    selected_type = select_commit_type(config, suggested_type)
-                    rprint(f"[{COLORS['success']}]✓ Commit type selected successfully[/{COLORS['success']}]")
-                except GitError as e:
-                    if "cancelled by user" in str(e).lower():
-                        rprint(Panel(
-                            "Operation cancelled by user.",
+                unstage_files()
+                if isinstance(e, KeyboardInterrupt):
+                    rprint(
+                        Panel(
+                            "AI generation cancelled by user",
                             title="Cancelled",
-                            border_style="yellow"
-                        ))
-                    else:
-                        rprint(Panel(
-                            f"[{COLORS['error']}]Error selecting commit type:[/{COLORS['error']}]\n{str(e)}\n\n"
-                            "Suggestion: Try again or specify a commit type with -t.",
-                            title="Commit Type Selection Failed",
-                            border_style="red"
-                        ))
+                            border_style="yellow",
+                        )
+                    )
+                    sys.exit(0)
+                if not Confirm.ask(
+                    "Would you like to continue with a manual commit message?"
+                ):
                     unstage_files()
                     sys.exit(1)
 
-            formatted_message = format_commit_message(selected_type, config.message)
+        if not config.message:
+            raise GitError(
+                "No commit message provided. Please specify a message with -m or use "
+                "--ollama."
+            )
 
-            if not config.skip_confirmation:
-                rprint(Panel.fit(
+        selected_type = handle_commit_type(config, options.commit_type)
+        formatted_message = format_commit_message(selected_type, config.message)
+
+        if not config.skip_confirmation:
+            header = COLORS["ai_message_header"]
+            title = f"[{header}]Commit Message[/{header}]"
+            rprint(
+                Panel.fit(
                     formatted_message,
-                    title=f"[{COLORS['ai_message_header']}]Commit Message[/{COLORS['ai_message_header']}]",
-                    border_style=COLORS['ai_message_border']
-                ))
-                if not Confirm.ask("Do you want to proceed?"):
-                    unstage_files()
-                    rprint(Panel("Operation cancelled by user.", title="Cancelled", border_style="yellow"))
-                    sys.exit(0)
-            else:
-                rprint(Panel.fit(
-                    formatted_message,
-                    title=f"[{COLORS['ai_message_header']}]Auto-committing with message[/{COLORS['ai_message_header']}]",
-                    border_style=COLORS['ai_message_border']
-                ))
+                    title=title,
+                    border_style=COLORS["ai_message_border"],
+                )
+            )
+            if not Confirm.ask("Do you want to proceed?"):
+                unstage_files()
+                sys.exit(0)
 
-            try:
-                git_commit(formatted_message)
-            except GitError as e:
-                rprint(Panel(
-                    f"[{COLORS['error']}]Error committing changes:[/{COLORS['error']}]\n{str(e)}\n\n"
-                    "Suggestion: Check if there are changes to commit and try again.",
-                    title="Commit Failed",
-                    border_style="red"
-                ))
-                sys.exit(1)
+        git_commit(formatted_message)
+        git_push(config.branch)
 
-            try:
-                git_push(config.branch)
-            except GitError as e:
-                rprint(Panel(
-                    f"[{COLORS['error']}]Error pushing changes:[/{COLORS['error']}]\n{str(e)}\n\n"
-                    "Suggestion: Pull latest changes, resolve conflicts if any, and try again.",
-                    title="Push Failed",
-                    border_style="red"
-                ))
-                sys.exit(1)
-
-        except KeyboardInterrupt:
-            unstage_files()
-            rprint(Panel(
-                "Operation cancelled by user",
-                title="Cancelled",
-                border_style="yellow"
-            ))
-            sys.exit(0)
-
-    except Exception as e:
-        rprint(Panel(
-            f"[{COLORS['error']}]Critical error:[/{COLORS['error']}]\n{str(e)}\n\n"
-            "Suggestion: Please check your git repository and configuration.",
-            title="Critical Error",
-            border_style="red bold"
-        ))
+    except KeyboardInterrupt:
+        unstage_files()
+        rprint(
+            Panel(
+                "Operation cancelled by user", title="Cancelled", border_style="yellow"
+            )
+        )
+        sys.exit(0)
+    except GitError as e:
+        # Handle git-related errors
+        rprint(
+            Panel(
+                (
+                    f"[{COLORS['error']}]Git operation failed:[/{COLORS['error']}]\n"
+                    f"{str(e)}\n\n"
+                    "Suggestion: Please check your git repository and configuration."
+                ),
+                title="Git Error",
+                border_style="red",
+            )
+        )
         sys.exit(1)
+    except (EOFError, KeyError) as e:
+        # Handle questionary/prompt toolkit errors
+        unstage_files()
+        rprint(
+            Panel(
+                (
+                    f"[{COLORS['error']}]User interface error:[/{COLORS['error']}]\n"
+                    f"{str(e)}\n\n"
+                    "Suggestion: Try running the command again in a different terminal."
+                ),
+                title="UI Error",
+                border_style="red",
+            )
+        )
+        sys.exit(1)
+    except (OSError, IOError) as e:
+        # Handle system and I/O errors
+        unstage_files()
+        rprint(
+            Panel(
+                (
+                    f"[{COLORS['error']}]System or I/O error:[/{COLORS['error']}]\n"
+                    f"{str(e)}\n\n"
+                    "Suggestion: Check file permissions and system resources."
+                ),
+                title="System Error",
+                border_style="red",
+            )
+        )
+        sys.exit(1)
+    except ValueError as e:
+        # Handle value/parsing errors
+        unstage_files()
+        rprint(
+            Panel(
+                (
+                    f"[{COLORS['error']}]Invalid value or format:[/{COLORS['error']}]\n"
+                    f"{str(e)}\n\n"
+                    "Suggestion: Check your input values and configuration."
+                ),
+                title="Value Error",
+                border_style="red",
+            )
+        )
+        sys.exit(1)
+
 
 # Add the PR command to the CLI group
 main.add_command(pr)
 
 if __name__ == "__main__":
-    main() 
+    main()
