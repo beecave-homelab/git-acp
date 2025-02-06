@@ -1,10 +1,14 @@
 """Manage git tag operations."""
+
 from git_acp.git.runner import run_git_command, GitError
 
-def manage_tags(operation: str, tag_name: str, message: str = None, config=None) -> None:
+
+def manage_tags(
+    operation: str, tag_name: str, message: str = None, config=None
+) -> None:
     """
     Manage tags: create, delete, or push.
-    
+
     Args:
         operation: "create", "delete", or "push".
         tag_name: The name of the tag.
@@ -18,4 +22,4 @@ def manage_tags(operation: str, tag_name: str, message: str = None, config=None)
     elif operation == "delete":
         run_git_command(["git", "tag", "-d", tag_name], config)
     elif operation == "push":
-        run_git_command(["git", "push", "origin", tag_name], config) 
+        run_git_command(["git", "push", "origin", tag_name], config)
