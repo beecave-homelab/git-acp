@@ -7,25 +7,20 @@ from git_acp.utils.formatting import (
     debug_preview,
     status,
     success,
-    warning
+    warning,
 )
-from git_acp.utils.types import (
-    GitConfig,
-    OptionalConfig,
-    DiffType,
-    PromptType
-)
+from git_acp.utils.types import GitConfig, OptionalConfig, DiffType, PromptType
 
 __all__ = [
-    'debug_header',
-    'debug_item',
-    'debug_json',
-    'debug_preview',
-    'status',
-    'success',
-    'warning',
-    'GitConfig',
-    'OptionalConfig',
-    'DiffType',
-    'PromptType'
+    "debug_header",
+    "debug_item",
+    "debug_json",
+    "debug_preview",
+    "status",
+    "success",
+    "warning",
+    "GitConfig",
+    "OptionalConfig",
+    "DiffType",
+    "PromptType",
 ]

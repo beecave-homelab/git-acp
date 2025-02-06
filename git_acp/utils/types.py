@@ -7,6 +7,7 @@ including configuration types, git operation types, and AI-related types.
 from typing import Dict, Optional, Any, Literal
 from dataclasses import dataclass
 
+
 # Configuration type
 @dataclass
 class GitConfig:
@@ -22,14 +23,16 @@ class GitConfig:
         verbose: Whether to show debug information.
         prompt_type: Type of prompt to use for AI commit message generation.
     """
+
     files: str = "."
     message: str = "Automated commit"
-    branch: Optional['GitConfig'] = None
+    branch: Optional["GitConfig"] = None
     use_ollama: bool = False
     interactive: bool = False
     skip_confirmation: bool = False
     verbose: bool = False
     prompt_type: str = "advanced"  # Default to advanced prompt type
+
 
 # Git operations types
 CommitDict = Dict[str, str]
@@ -44,4 +47,4 @@ Message = Dict[str, str]
 CommitContext = Dict[str, Any]
 
 # Common type aliases
-OptionalConfig = Optional[GitConfig] 
+OptionalConfig = Optional[GitConfig]
