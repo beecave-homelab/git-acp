@@ -2,16 +2,14 @@
 
 from threading import Thread, Event
 from time import sleep
-import time
 
 import openai
 from rich.progress import Progress, SpinnerColumn, TextColumn, TimeElapsedColumn
 from git_acp.git import GitError
-from git_acp.config.settings import AI_SETTINGS
+from git_acp.config import AI_SETTINGS
 from git_acp.utils import (
     debug_header,
     debug_item,
-    warning,
 )
 
 try:
@@ -27,43 +25,69 @@ MAX_RETRIES = 3
 # Delay between retries (in seconds)
 RETRY_DELAY = 2
 
+
 class AIClient:
     """Client for interacting with AI models via OpenAI's API.
-    
-    Handles model initialization, verification, and chat completions with proper 
-    error handling and progress tracking. Supports both commit message and PR 
+
+    Handles model initialization, verification, and chat completions with proper
+    error handling and progress tracking. Supports both commit message and PR
     generation models.
     """
 
     def __init__(self, config=None, use_pr_model=False):
+        """Initialize the AI client.
+
+        Args:
+            config: GitConfig object containing AI configuration
+            use_pr_model: Whether to use the PR model instead of commit model
+        """
         self.config = config
-        # Initialize with PR model if requested, otherwise use default model
-        self._model = AI_SETTINGS["pr_model"] if use_pr_model else AI_SETTINGS["model"]
+        # Use model from config if available, otherwise use default
+        self._model = (
+            config.ai_config.model
+            if config and config.ai_config and config.ai_config.model
+            else (AI_SETTINGS["pr_model"] if use_pr_model else AI_SETTINGS["model"])
+        )
 
         if config and getattr(config, "verbose", False):
             debug_header("Initializing AI client")
-            debug_item("Base URL", AI_SETTINGS["base_url"])
-            debug_item("Model", self._model)
-            debug_item("Model Type", "PR" if use_pr_model else "Commit")
-            debug_item("Temperature", str(AI_SETTINGS["temperature"]))
-            debug_item("Timeout", str(AI_SETTINGS["timeout"]))
+            debug_item(config, "Base URL", AI_SETTINGS["base_url"])
+            debug_item(config, "Model", self._model)
+            debug_item(
+                config,
+                "Model Source",
+                (
+                    "User override"
+                    if config.ai_config.model
+                    else ("Default PR" if use_pr_model else "Default commit")
+                ),
+            )
+            debug_item(config, "Temperature", str(AI_SETTINGS["temperature"]))
+            debug_item(config, "Timeout", str(AI_SETTINGS["timeout"]))
+
         try:
+            # Use the configuration from AIConfig if available
+            timeout = (
+                config.ai_config.timeout
+                if config and hasattr(config, "ai_config")
+                else AI_SETTINGS["timeout"]
+            )
             self.client = OpenAI(
                 base_url=AI_SETTINGS["base_url"],
                 api_key=AI_SETTINGS["api_key"],
-                timeout=AI_SETTINGS["timeout"],
+                timeout=timeout,
             )
             # Verify model availability immediately
             if config and getattr(self.config, "verbose", False):
                 debug_header("Verifying model availability")
-                debug_item("Model", self._model)
+                debug_item(config, "Model", self._model)
             self._verify_model()
         except ValueError as e:
             if "Invalid URL" in str(e):
                 raise GitError(
                     "Invalid Ollama server URL.",
                     suggestion="Check your configuration and ensure the URL"
-                                "is correct.",
+                    "is correct.",
                     context="AI Configuration Error",
                 ) from e
             raise GitError(
@@ -76,11 +100,11 @@ class AIClient:
                 "Could not connect to Ollama server.",
                 suggestion=(
                     "1. Ensure Ollama is running (run 'ollama serve')\n"
-                    "2. Check if server is responsive"
-                    "(try 'curl http://localhost:11434/api/tags')\n"
+                    "2. Check if server is responsive "
+                    "(curl http://localhost:11434/api/tags)\n"
                     "3. Verify your network connection"
                 ),
-                context="AI Connection Error"
+                context="AI Connection Error",
             ) from None
         except Exception as e:
             if "model" in str(e).lower() and "not found" in str(e).lower():
@@ -111,35 +135,30 @@ class AIClient:
                 messages=[{"role": "user", "content": "test"}],
                 temperature=0,
                 max_tokens=1,
-                timeout=5,  # Short timeout for verification
+                timeout=AI_SETTINGS["timeout"],
             )
         except openai.APIConnectionError as e:
             raise GitError(
                 "Could not connect to Ollama server.",
                 suggestion=(
                     "1. Ensure Ollama is running (run 'ollama serve')\n"
-                    "2. Check if server is responsive"
-                    "(try 'curl http://localhost:11434/api/tags')\n"
+                    "2. Check if server is responsive "
+                    "(curl http://localhost:11434/api/tags)\n"
                     "3. Verify your network connection"
                 ),
-                context="AI Connection Error"
+                context="AI Connection Error",
             ) from e
         except openai.NotFoundError as e:
-            model_type = (
-                "PR" if self._model == AI_SETTINGS["pr_model"] else "commit message"
-            )
             raise GitError(
-                f"The {model_type} model '{self._model}' is not available in Ollama.",
-                suggestion=(
-                    f"Run 'ollama pull {self._model}' to install the required model",
-                ),
+                f"The model '{self._model}' is not available in Ollama.",
+                suggestion=f"Run 'ollama pull {self._model}' to install it",
                 context="AI Model Error",
             ) from e
         except openai.APIError as e:
             raise GitError(
-                f"Failed to verify model availability: {str(e)}",
-                suggestion="Check Ollama server logs for more details",
-                context="AI Model Verification Error",
+                f"Model verification failed: {str(e)}",
+                suggestion="Check Ollama server logs",
+                context="AI Model Error",
             ) from e
 
     @property
@@ -154,7 +173,7 @@ class AIClient:
             self._model = value
             if self.config and getattr(self.config, "verbose", False):
                 debug_header("Model changed")
-                debug_item("New model", value)
+                debug_item(self.config, "New model", value)
             # Verify the new model is available
             self._verify_model()
 
@@ -218,7 +237,126 @@ class AIClient:
             cleaned_text = cleaned_text[:start] + cleaned_text[end:]
         return cleaned_text.strip()
 
-    def chat_completion(self, messages: list, **kwargs) -> str:
+    def _handle_ai_request(self, messages: list, **kwargs) -> dict:
+        """Handle the actual AI request in a separate thread.
+
+        Args:
+            messages: List of message dictionaries
+            **kwargs: Additional arguments for the API
+
+        Returns:
+            dict: Response data containing either response or error
+        """
+        response_data = {"response": None, "error": None}
+        try:
+            # Use the configuration from AIConfig if available
+            temperature = (
+                self.config.ai_config.temperature
+                if self.config and hasattr(self.config, "ai_config")
+                else AI_SETTINGS["temperature"]
+            )
+            timeout = (
+                self.config.ai_config.timeout
+                if self.config and hasattr(self.config, "ai_config")
+                else AI_SETTINGS["timeout"]
+            )
+            # Set a slightly shorter timeout for the API call
+            api_timeout = max(5, timeout - 5)
+            if self.config and getattr(self.config, "verbose", False):
+                debug_item(self.config, "API timeout", f"{api_timeout}s")
+                debug_item(self.config, "Total timeout", f"{timeout}s")
+            response_data["response"] = self.client.chat.completions.create(
+                model=self._model,
+                messages=messages,
+                temperature=temperature,
+                timeout=api_timeout,
+                **kwargs,
+            )
+        except openai.APITimeoutError as e:
+            if self.config and getattr(self.config, "verbose", False):
+                debug_item(self.config, "Error", "API timeout")
+                debug_item(self.config, "Details", str(e))
+            response_data["error"] = GitError(
+                "AI request timed out.",
+                suggestion=(
+                    "1. Check network connection to Ollama server\n"
+                    "2. Try increasing timeout in ~/.config/git-acp/.env\n"
+                    "3. Consider using --context-type commits for faster processing"
+                ),
+                context="AI Timeout Error",
+            )
+        except (openai.APIError, openai.BadRequestError, openai.NotFoundError) as e:
+            if self.config and getattr(self.config, "verbose", False):
+                debug_item(self.config, "Error", str(type(e).__name__))
+                debug_item(self.config, "Details", str(e))
+            response_data["error"] = GitError(str(e), context="AI API Error")
+        return response_data
+
+    def _handle_response_error(self, response_data: dict) -> None:
+        """Handle response errors by raising appropriate exceptions.
+
+        Args:
+            response_data: Dictionary containing response and error information
+
+        Raises:
+            GitError: With appropriate context based on the error type
+        """
+        if response_data.get("error"):
+            error = response_data["error"]
+            if isinstance(error, GitError):
+                raise error
+            raise GitError(str(error))
+
+    def _handle_retry_logic(self, e: Exception, retries: int) -> bool:
+        """Handle retry logic for transient errors.
+
+        Args:
+            e: The exception that occurred
+            retries: Current number of retries
+
+        Returns:
+            bool: True if should retry, False otherwise
+
+        Raises:
+            GitError: If max retries reached
+        """
+        # Early return for non-retryable errors
+        if not isinstance(
+            e, (openai.APIError, openai.APIConnectionError, TimeoutError)
+        ):
+            return False
+
+        # Return True if we should retry
+        if retries < MAX_RETRIES:
+            sleep(RETRY_DELAY)
+            return True
+
+        # At this point, we've exhausted retries, raise appropriate error
+        error_msg = (
+            f"Failed to get AI response after {MAX_RETRIES} retries: " f"{str(e)}"
+            if isinstance(e, (openai.APIError, openai.APIConnectionError))
+            else (f"AI request timed out after " f"{AI_SETTINGS['timeout']} seconds")
+        )
+        suggestion = (
+            "Check your network connection and Ollama server status"
+            if isinstance(e, (openai.APIError, openai.APIConnectionError))
+            else "Try again or adjust the timeout in your configuration"
+        )
+        context = (
+            "AI Communication Error"
+            if isinstance(e, (openai.APIError, openai.APIConnectionError))
+            else "AI Timeout Error"
+        )
+
+        raise GitError(
+            error_msg,
+            suggestion=suggestion,
+            context=context,
+        ) from (
+            e if isinstance(e, (openai.APIError, openai.APIConnectionError)) else None
+        )
+
+    def chat_completion(self, messages: list[dict[str, str]], **kwargs) -> str:
         """Generate a chat completion response from the AI model.
 
         Args:
@@ -234,15 +372,19 @@ class AIClient:
         """
         if self.config and getattr(self.config, "verbose", False):
             debug_header("Sending chat completion request")
-            debug_item("Messages count", str(len(messages)))
+            debug_item(self.config, "Messages count", str(len(messages)))
             debug_item(
-                "First message preview", messages[0]["content"][:100] + "..."
+                self.config,
+                "First message preview",
+                messages[0]["content"][:100] + "...",
             )
-            debug_item("Model", self._model)
-            debug_item("Timeout", f"{AI_SETTINGS['timeout']}s")
+            debug_item(self.config, "Model", self._model)
+            debug_item(self.config, "Timeout", f"{AI_SETTINGS['timeout']}s")
 
-        retries = 0
-        while retries < MAX_RETRIES:
+        response_event = Event()
+        response_data: dict = {"response": None, "error": None}
+
+        for retry_count in range(MAX_RETRIES):
             try:
                 with Progress(
                     SpinnerColumn(),
@@ -251,232 +393,96 @@ class AIClient:
                     transient=True,
                 ) as progress:
                     progress.add_task(
-                        description="Waiting for AI response...",
-                        total=None
+                        description="Waiting for AI response...", total=None
                     )
-                    response_event = Event()
-                    response_data = {"response": None, "error": None}
 
-                    def make_request():
-                        try:
-                            # Set a slightly shorter timeout for the API call
-                            api_timeout = max(1, AI_SETTINGS["timeout"] - 2)
-                            response_data["response"] = (
-                                self.client.chat.completions.create(
-                                    model=self._model,
-                                    messages=messages,
-                                    temperature=AI_SETTINGS["temperature"],
-                                    timeout=api_timeout,
-                                    **kwargs,
-                                )
-                            )
-                        except (
-                            openai.APIError,
-                            openai.APIConnectionError,
-                            openai.APITimeoutError,
-                            openai.BadRequestError,
-                            openai.NotFoundError,
-                            ValueError,
-                        ) as e:
-                            response_data["error"] = e
-                        finally:
-                            response_event.set()
+                    def make_request() -> None:
+                        nonlocal response_data
+                        response_data = self._handle_ai_request(messages, **kwargs)
+                        response_event.set()
 
-                    thread = Thread(target=make_request)
-                    thread.daemon = True
-                    start_time = time.time()
-                    thread.start()
+                    # Start request in a separate thread
+                    request_thread = Thread(target=make_request)
+                    request_thread.start()
 
-                    while not response_event.is_set():
-                        elapsed = time.time() - start_time
-                        if elapsed >= AI_SETTINGS["timeout"]:
-                            warning(
-                                f"Request taking longer than expected "
-                                f"({int(elapsed)}s)..."
-                            )
-                            # Continue waiting for a bit longer before giving up
-                            if elapsed >= AI_SETTINGS["timeout"] * 1.5:
-                                raise TimeoutError(
-                                    f"Request timed out after {int(elapsed)} seconds"
-                                )
-                        sleep(0.1)
+                    # Wait for response or timeout
+                    if not response_event.wait(timeout=AI_SETTINGS["timeout"]):
+                        raise TimeoutError("Request timed out")
 
-                    error = response_data["error"]
-                    if error is not None:
-                        raise error
+                    # Handle any errors from the request
+                    self._handle_response_error(response_data)
 
-                    response = response_data["response"]
+                    response = response_data.get("response")
                     if not response or not response.choices:
-                        raise GitError(
-                            "AI model returned an empty response",
-                            suggestion=(
-                                "Try the request again or check if the model is "
-                                "functioning correctly. If this persists, try:\n"
-                                "1. Restarting the Ollama server\n"
-                                "2. Reducing the complexity of your request\n"
-                                "3. Checking system resources"
-                            ),
-                            context="AI Response Error",
+                        raise GitError("Empty response from AI model")
+
+                    return response.choices[0].message.content.strip()
+
+            except (openai.APIError, openai.APIConnectionError, TimeoutError) as e:
+                # On last retry, raise the error
+                if retry_count == MAX_RETRIES - 1:
+                    error_msg = (
+                        f"Failed to get AI response after {MAX_RETRIES} retries: "
+                        f"{str(e)}"
+                        if isinstance(e, (openai.APIError, openai.APIConnectionError))
+                        else (
+                            f"AI request timed out after "
+                            f"{AI_SETTINGS['timeout']} seconds"
                         )
-
-                    content = response.choices[0].message.content
-
-                    # Handle reasoning LLM responses
-                    if self.is_reasoning_llm(content):
-                        if self.config and getattr(self.config, "verbose", False):
-                            debug_header("Reasoning LLM detected")
-                            # Store long response in variable for better readability
-                            original_response = content
-                            debug_item("Original response", original_response)
-
-                            thinking_blocks = self.extract_thinking_blocks(content)
-                            if thinking_blocks:
-                                debug_header("Thinking Process")
-                                for block, position in thinking_blocks:
-                                    # Extract thinking content with clear variable names
-                                    start_pos = block.lower().find("<think>") + 7
-                                    end_pos = block.lower().find("</think>")
-                                    thinking_content = block[start_pos:end_pos].strip()
-                                    label = f"Thinking ({position})"
-                                    debug_item(label, thinking_content)
-
-                        content = self.clean_thinking_tags(content)
-
-                        if self.config and getattr(self.config, "verbose", False):
-                            debug_item("Cleaned response", content)
-
-                    return content
-
-            except TimeoutError:
-                if retries < MAX_RETRIES - 1:
-                    warning(
-                        f"Request timed out (attempt {retries + 1}/{MAX_RETRIES}). "
-                        f"Retrying in {RETRY_DELAY} seconds..."
                     )
-                    sleep(RETRY_DELAY)
-                    retries += 1
-                    continue
-                else:
-                    if self.config and getattr(self.config, "verbose", False):
-                        debug_header("AI Request Timeout")
-                        debug_item("Timeout Value", str(AI_SETTINGS["timeout"]))
+                    suggestion = (
+                        "Check your network connection and Ollama server status"
+                        if isinstance(e, (openai.APIError, openai.APIConnectionError))
+                        else "Try again or adjust the timeout in your configuration"
+                    )
+                    context = (
+                        "AI Communication Error"
+                        if isinstance(e, (openai.APIError, openai.APIConnectionError))
+                        else "AI Timeout Error"
+                    )
                     raise GitError(
-                        f"AI request timed out after {MAX_RETRIES} attempts.",
-                        suggestion=(
-                            "1. Check if Ollama server is responsive\n"
-                            "2. Try to increase the timeout value in your .env file\n"
-                            "3. Consider reducing the complexity of your request\n"
-                            "4. Ensure your system has sufficient resources"
-                        ),
-                        context="AI Timeout Error",
-                    ) from None
+                        error_msg,
+                        suggestion=suggestion,
+                        context=context,
+                    ) from e
+                # Otherwise sleep and continue to next retry
+                sleep(RETRY_DELAY)
+                continue
 
-            except (
-                openai.APIError,
-                openai.APIConnectionError,
-                openai.APITimeoutError,
-                openai.BadRequestError,
-                openai.NotFoundError,
-                ValueError,
-                RuntimeError,
-            ) as e:
+            except ValueError as e:
                 if self.config and getattr(self.config, "verbose", False):
-                    debug_header("AI Request Failed")
-                    debug_item("Error Type", e.__class__.__name__)
-                    debug_item("Error Message", str(e))
-                    if hasattr(e, "response"):
-                        debug_item(
-                            "Response Status",
-                            str(getattr(e.response, "status_code", "N/A")),
-                        )
-                        debug_item(
-                            "Response Text",
-                            str(getattr(e.response, "text", "N/A")),
-                        )
-
-                # Handle connection errors
-                if isinstance(e, openai.APIConnectionError):
-                    if retries < MAX_RETRIES - 1:
-                        warning(
-                            f"Connection error (attempt {retries + 1}/{MAX_RETRIES}). "
-                            f"Retrying in {RETRY_DELAY} seconds..."
-                        )
-                        sleep(RETRY_DELAY)
-                        retries += 1
-                        continue
-                    if self.config and getattr(self.config, "verbose", False):
-                        debug_header("AI Connection Failed")
-                        debug_item("Base URL", AI_SETTINGS["base_url"])
-                        debug_item("Model", self._model)
-                    raise GitError(
-                        "Could not connect to Ollama server after multiple attempts.",
-                        suggestion=(
-                            "1. Ensure Ollama is running (run 'ollama serve')\n"
-                            "2. Check if server is responsive "
-                            "(try 'curl http://localhost:11434/api/tags')\n"
-                            "3. Verify your network connection"
-                        ),
-                        context="AI Connection Error",
-                    ) from e
-
-                # Handle parameter validation errors
-                if isinstance(e, ValueError):
-                    if self.config and getattr(self.config, "verbose", False):
-                        debug_header("AI Request Parameter Error")
-                        debug_item("Error Message", str(e))
-                    if "model" in str(e).lower():
-                        model_type = (
-                            "PR" if self._model == AI_SETTINGS["pr_model"]
-                            else "commit message"
-                        )
-                        raise GitError(
-                            f"{model_type} model '{self._model}' is not available "
-                            "in Ollama.",
-                            suggestion=(
-                                f"Run 'ollama pull {self._model}' to install the "
-                                "required model"
-                            ),
-                            context="AI Model Error",
-                        ) from e
-                    raise GitError(
-                        f"Invalid AI request parameters: {str(e)}",
-                        suggestion="Check your configuration settings",
-                        context="AI Parameter Error",
-                    ) from e
-
-                # Handle model not found errors
-                if isinstance(e, openai.NotFoundError):
+                    debug_header("AI Request Parameter Error")
+                    debug_item(self.config, "Error Message", str(e))
+                if "model" in str(e).lower():
                     model_type = (
-                        "PR" if self._model == AI_SETTINGS["pr_model"]
+                        "PR"
+                        if self._model == AI_SETTINGS["pr_model"]
                         else "commit message"
                     )
                     raise GitError(
-                        f"The {model_type} model '{self._model}' "
-                        "is not available in Ollama.",
+                        f"{model_type} model '{self._model}' is not available "
+                        "in Ollama.",
                         suggestion=(
-                            f"Run 'ollama pull {self._model}' "
-                            "to install the required model"
+                            f"Run 'ollama pull {self._model}' to install the "
+                            "required model"
                         ),
                         context="AI Model Error",
                     ) from e
+                raise GitError(
+                    f"Invalid AI request parameters: {str(e)}",
+                    suggestion="Check your configuration settings",
+                    context="AI Parameter Error",
+                ) from e
+            except Exception as e:
+                raise GitError(
+                    f"Failed to generate AI response: {str(e)}",
+                    suggestion="Check your configuration and try again",
+                    context="AI Generation Error",
+                ) from e
 
-                # Handle other API errors with retry
-                if retries < MAX_RETRIES - 1:
-                    warning(
-                        f"Request failed (attempt {retries + 1}/{MAX_RETRIES}). "
-                        f"Retrying in {RETRY_DELAY} seconds..."
-                    )
-                    sleep(RETRY_DELAY)
-                    retries += 1
-                    continue
-                else:
-                    raise GitError(
-                        "AI request failed after multiple attempts.",
-                        suggestion=(
-                            "1. Ensure Ollama server is running and responsive\n"
-                            "2. Verify the required model is installed\n"
-                            "3. Check your network connection\n"
-                            "4. Try restarting the Ollama server"
-                        ),
-                        context="AI Request Error",
-                    ) from e
+        # This line should never be reached due to the error handling above
+        raise GitError(
+            "Failed to get AI response after exhausting all retries",
+            suggestion="Check your network connection and try again",
+            context="AI Communication Error",
+        )

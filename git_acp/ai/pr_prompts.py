@@ -2,13 +2,28 @@
 Prompts used for generating pull request content.
 """
 
+ADVANCED_PR_SYSTEM_PROMPT = """
+You are a PR description generator. Follow these rules exactly:
+1. Generate a complete PR description in markdown format
+2. Include all relevant sections based on the context
+3. Focus on clarity and completeness
+4. Use professional language
+5. Include specific examples from the changes
+6. Reference actual files and changes
+7. Explain both what changed and why
+8. Include testing considerations
+9. Note any breaking changes or dependencies
+10. Keep the format consistent"""
+
 # Advanced PR generation prompts
 ADVANCED_PR_TITLE_SYSTEM_PROMPT = """
 You are a PR title generator. Follow these rules exactly:
 1. Output ONLY the title text, nothing else
 2. Use exactly 5-10 words
 3. Start with a verb in present tense
-4. Be specific about what changed
+4. Consider these patterns from the changes:
+   - Most common commit type: {commit_type}
+   - Key modified files: {hot_files}
 5. NO formatting characters (#, `, ', ", etc.)
 6. NO prefixes like 'PR:', 'Title:', etc.
 7. NO explanatory text or meta-commentary
@@ -17,21 +32,8 @@ You are a PR title generator. Follow these rules exactly:
 10. Be descriptive and meaningful"""
 
 ADVANCED_PR_TITLE_USER_PROMPT = """
-Generate a title that captures the main changes from this information:
-
-COMMIT MESSAGES:
-{commit_messages}
-
-CHANGES SUMMARY:
-{diff_text}
-
-Focus on:
-- The overall theme or purpose of these changes
-- What problem is being solved
-- The main feature or improvement being added
-- The area of the codebase being changed
-
-Remember: Output only the title text, nothing else."""
+COMMIT TYPES: {commit_types}
+CODE HOTSPOTS: {hot_files}"""
 
 ADVANCED_PR_SUMMARY_SYSTEM_PROMPT = """
 You are a PR summary generator. Follow these rules exactly:
@@ -101,8 +103,8 @@ Suggest test cases for:
 {diff_text}
 
 Examples:
-- Verify [feature] in [filename] by [action]
-- Check [scenario] using [modified component]"""
+- Verify <feature> in <filename> by <action>.
+- Check <scenario> using [modified component]."""
 
 ADVANCED_ADDITIONAL_NOTES_SYSTEM_PROMPT = """
 List critical notes:
@@ -124,6 +126,8 @@ Examples:
 SIMPLE_PR_SYSTEM_PROMPT = """
 You are an expert developer, so you know how to read all
 kinds of code syntax. Write a PR description with title using this markdown template: 
+
+## TEMPLATE
 
 ```markdown
 # {{ Title (5-10 words) }}
@@ -166,40 +170,7 @@ Create a concise pull request description by analyzing the below information:
 
 ## Output format to use
 
-Remember to use the below template and adjust the placeholder accordingly:
-
-```markdown
-# {{ Title (5-10 words) }}
-
-## Summary
-
-{{ A paragraph describing what changed and why (200-250 words) }}
-
-## Key Changes
-
-### Added
-
-{{ Key functional changes and their impact (200-250 words) }}
-
-{added_files}
-
-### Modified
-
-{{ Key functional changes and their impact (200-250 words) }}
-
-{modified_files}
-
-### Deleted
-
-{{ Key functional changes and their impact (200-250 words) }}
-
-{deleted_files}
-
-## Additional Notes
-
-{{ Any additional notes to concludes the PR message (100-200 words) }}
-
----
+Remember to use the TEMPLATE and adjust the placeholder accordingly:
 
 ```
 """
