@@ -37,6 +37,12 @@ from git_acp.git import (
 from git_acp.ai import generate_commit_message
 from git_acp.config import COLORS, QUESTIONARY_STYLE
 from git_acp.utils import GitConfig
+from git_acp.utils.types import AIConfig
+from git_acp.utils.formatting import (
+    success,
+    status,
+    ai_border_message,
+)
 from git_acp.cli.pr import pr
 
 console = Console()
@@ -115,16 +121,8 @@ def select_commit_type(config: GitConfig, suggested_type: CommitType) -> CommitT
     Raises:
         GitError: If no commit type is selected
     """
-    if config.skip_confirmation or suggested_type.value in [
-        "feat",
-        "fix",
-        "docs",
-        "style",
-        "refactor",
-        "test",
-        "chore",
-        "revert",
-    ]:
+
+    if config.skip_confirmation:
         if config.verbose:
             debug_print(config, f"Auto-selecting commit type: {suggested_type.value}")
         return suggested_type
@@ -174,8 +172,10 @@ def select_commit_type(config: GitConfig, suggested_type: CommitType) -> CommitT
     ).ask()
 
     if selected_types is None:  # User cancelled
+        unstage_files()  # Unstage files before raising error
         raise GitError("Operation cancelled by user.")
     elif not selected_types or len(selected_types) != 1:  # No selection made
+        unstage_files()  # Unstage files before raising error
         raise GitError("No commit type selected.")
 
     return selected_types[0]
@@ -235,23 +235,14 @@ def handle_commit_type(config: GitConfig, specified_type: Optional[str]) -> Comm
         return CommitType.from_str(specified_type)
 
     suggested_type = classify_commit_type(config)
-    rprint(
-        f"[{COLORS['bold']}]🤖 Analyzing changes to suggest commit type..."
-        f"[/{COLORS['bold']}]"
-    )
+    status("Analyzing changes to suggest commit type")
 
     if specified_type:
-        rprint(
-            f"[{COLORS['success']}]✓ Using specified commit type: "
-            f"{suggested_type.value}[/{COLORS['success']}]"
-        )
+        status(f"Using specified commit type: {suggested_type.value}")
         return suggested_type
 
     selected_type = select_commit_type(config, suggested_type)
-    rprint(
-        f"[{COLORS['success']}]✓ Commit type selected successfully"
-        f"[/{COLORS['success']}]"
-    )
+    success("Commit type selected successfully")
     return selected_type
 
 
@@ -424,25 +415,32 @@ def commit(options: CommitOptions):
     setup_signal_handlers()
 
     try:
+        # Create AIConfig first
+        ai_config = AIConfig(
+            use_ollama=options.ai_options["use_ollama"],
+            interactive=options.ai_options["interactive"],
+            prompt_type=options.ai_options["prompt_type"].lower(),
+            verbose=options.verbose,
+        )
+
+        # Then create GitConfig with the AIConfig
         config = GitConfig(
             files=" ".join(options.files) if options.files else "",
             message=options.message or "Automated commit",
             branch=options.branch or get_current_branch(),
-            use_ollama=options.ai_options["use_ollama"],
-            interactive=options.ai_options["interactive"],
+            ai_config=ai_config,
             skip_confirmation=options.no_confirm,
             verbose=options.verbose,
-            prompt_type=options.ai_options["prompt_type"].lower(),
         )
 
         selected_files = handle_file_selection(config)
-        git_add(" ".join(selected_files))
+        git_add(" ".join(selected_files), config)
 
-        if config.use_ollama:
+        if config.ai_config.use_ollama:
             try:
                 config.message = generate_commit_message(config)
             except KeyboardInterrupt:
-                unstage_files()
+                unstage_files(config)
                 rprint(
                     Panel(
                         "AI generation cancelled by user",
@@ -452,7 +450,7 @@ def commit(options: CommitOptions):
                 )
                 sys.exit(0)
             except GitError as e:
-                unstage_files()
+                unstage_files(config)
                 if isinstance(e, KeyboardInterrupt):
                     rprint(
                         Panel(
@@ -465,7 +463,7 @@ def commit(options: CommitOptions):
                 if not Confirm.ask(
                     "Would you like to continue with a manual commit message?"
                 ):
-                    unstage_files()
+                    unstage_files(config)
                     sys.exit(1)
 
         if not config.message:
@@ -478,24 +476,20 @@ def commit(options: CommitOptions):
         formatted_message = format_commit_message(selected_type, config.message)
 
         if not config.skip_confirmation:
-            header = COLORS["ai_message_header"]
-            title = f"[{header}]Commit Message[/{header}]"
-            rprint(
-                Panel.fit(
-                    formatted_message,
-                    title=title,
-                    border_style=COLORS["ai_message_border"],
-                )
+            ai_border_message(
+                message=formatted_message,
+                title="Commit Message",
+                message_style=None,
             )
             if not Confirm.ask("Do you want to proceed?"):
-                unstage_files()
+                unstage_files(config)
                 sys.exit(0)
 
-        git_commit(formatted_message)
-        git_push(config.branch)
+        git_commit(formatted_message, config)
+        git_push(config.branch, config)
 
     except KeyboardInterrupt:
-        unstage_files()
+        unstage_files(config)
         rprint(
             Panel(
                 "Operation cancelled by user", title="Cancelled", border_style="yellow"
@@ -504,15 +498,13 @@ def commit(options: CommitOptions):
         sys.exit(0)
     except GitError as e:
         # Handle git-related errors
+        unstage_files(config)
         rprint(
             Panel(
-                (
-                    f"[{COLORS['error']}]Git operation failed:[/{COLORS['error']}]\n"
-                    f"{str(e)}\n\n"
-                    "Suggestion: Please check your git repository and configuration."
-                ),
+                str(e),
                 title="Git Error",
                 border_style="red",
+                subtitle=e.suggestion if hasattr(e, "suggestion") else None,
             )
         )
         sys.exit(1)
