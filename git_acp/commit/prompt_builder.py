@@ -25,8 +25,9 @@ def create_advanced_commit_message_prompt(context: dict, config=None) -> str:
     common_type = (
         max(commit_types.items(), key=lambda x: x[1])[0] if commit_types else "feat"
     )
-    recent_messages = [c["message"] for c in context["recent_commits"]]
-    related_messages = [c["message"] for c in context["related_commits"]]
+    # Convert commit messages to a list of just the messages (without hashes)
+    recent_messages = [" ".join(c.split()[1:]) for c in context["recent_commits"]]
+    related_messages = [" ".join(c.split()[1:]) for c in context["related_commits"]]
 
     # Extract requirements from system prompt
     requirements = ADVANCED_COMMIT_SYSTEM_PROMPT.strip().split("\n")[2:]
