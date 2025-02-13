@@ -1,6 +1,8 @@
 """Git operations package for git-acp."""
 
-from git_acp.git.runner import run_git_command, GitError, setup_signal_handlers
+from git_acp.git.exceptions import GitError
+from git_acp.git.core import run_git_command
+from git_acp.git.runner import setup_signal_handlers
 from git_acp.git.status import get_changed_files, unstage_files
 from git_acp.git.history import (
     get_recent_commits,
@@ -9,7 +11,8 @@ from git_acp.git.history import (
     analyze_commit_patterns,
 )
 from git_acp.git.branch import get_current_branch
-from git_acp.git.classification import CommitType, classify_commit_type
+from git_acp.git.commit_type import CommitType
+from git_acp.git.classification import classify_commit_type
 
 # Re-export commit operations
 from git_acp.commit.commit import git_add, git_commit, git_push

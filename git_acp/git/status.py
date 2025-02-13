@@ -3,10 +3,11 @@ Git status operations and file tracking.
 """
 
 from typing import Dict, List
+from collections import defaultdict
 
-from git_acp.git.runner import GitError, run_git_command
+from git_acp.git.exceptions import GitError
+from git_acp.git.core import run_git_command
 from git_acp.config.settings import GIT_SETTINGS
-from git_acp.utils import debug_item
 
 
 def get_changed_files(config=None) -> set:
@@ -75,3 +76,27 @@ def get_name_status_changes(target: str, source: str) -> Dict[str, List[str]]:
         return changes
     except Exception as e:
         raise GitError(f"Failed to get name-status changes: {str(e)}") from e
+
+
+def analyze_diff_hotspots(diff_text: str, top_n: int = 3) -> List[str]:
+    """Analyze diff text to find most modified files.
+
+    Args:
+        diff_text: Raw diff output
+        top_n: Number of top files to return
+
+    Returns:
+        List of file paths ordered by modification frequency
+    """
+
+    file_changes = defaultdict(int)
+
+    current_file = None
+    for line in diff_text.split("\n"):
+        if line.startswith("+++ b/"):
+            current_file = line[6:].strip()
+        elif line.startswith("@@"):
+            if current_file:
+                file_changes[current_file] += 1
+
+    return sorted(file_changes.items(), key=lambda x: x[1], reverse=True)[:top_n]
