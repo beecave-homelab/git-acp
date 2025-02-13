@@ -14,6 +14,7 @@ from git_acp.git.exceptions import GitError
 from git_acp.utils.formatting import (
     debug_header,
     debug_item,
+    debug_preview,
     success,
     warning,
     ai_message,
@@ -185,8 +186,10 @@ def create_new_pr(
     context_type: str,
 ) -> None:
     """Create a new pull request."""
+
+    status("Creating Pull Request")
     if config.verbose:
-        debug_header("Creating Pull Request")
+        debug_header("Generating Pull Request with the below settings:")
         debug_item(config, "Source branch", source)
         debug_item(config, "Target branch", target)
         debug_item(config, "AI enabled", str(ollama))
@@ -316,6 +319,7 @@ def _generate_advanced_ai_content(config: GitConfig, git_data: dict) -> tuple:
         ValueError: If input parameters are invalid
         RuntimeError: If GitHub API operations fail
     """
+    status("Generating PR with `advanced` prompt-type")
     if config.verbose:
         debug_header("Generating PR Content with AI (Advanced Mode)")
 
@@ -431,27 +435,57 @@ def _generate_simple_ai_content(
         ValueError: If input parameters are invalid
         RuntimeError: If GitHub API operations fail
     """
+
     if config.verbose:
         debug_header("Generating PR Content in Simple Mode with AI")
+        debug_item(config, "Context Type", context_type)
+        debug_item(config, "AI Model", config.ai_config.model or DEFAULT_PR_AI_MODEL)
+    else:
+        status("Using the `simple` prompt-type to write a PR.")
+
+    # Prepare AI data based on context type
+    commit_messages = (
+        git_data["commit_messages_data"]["messages_with_details"]
+        if context_type in ["commits", "both"]
+        else git_data["commit_messages_data"]["messages"]
+    )
+    diff_text = git_data["diff_text"] if context_type in ["diffs", "both"] else ""
 
     ai_data = {
-        "commit_messages": (
-            git_data["commit_messages_data"]["messages_with_details"]
-            if context_type in ["commits", "both"]
-            else git_data["commit_messages_data"]["messages"]
-        ),
-        "diff": git_data["diff_text"] if context_type in ["diffs", "both"] else "",
+        "commit_messages": commit_messages,
+        "diff": diff_text,
         "added_files": git_data["added_files"],
         "modified_files": git_data["modified_files"],
         "deleted_files": git_data["deleted_files"],
         "model": config.ai_config.model,
     }
 
+    if config.verbose:
+        debug_header("AI Input Data Summary")
+        debug_item(config, "Number of Commit Messages", str(len(commit_messages)))
+        debug_item(
+            config,
+            "Diff Size",
+            f"{len(diff_text)} characters" if diff_text else "Not included",
+        )
+        debug_item(
+            config,
+            "Files Changed",
+            f"Added: {len(git_data['changes'].get('added', []))}, "
+            f"Modified: {len(git_data['changes'].get('modified', []))}, "
+            f"Deleted: {len(git_data['changes'].get('deleted', []))}",
+        )
+        if commit_messages:
+            debug_header("Sample Commit Messages")
+            debug_preview("\n".join(commit_messages[:3]))
+
     try:
+        if config.verbose:
+            debug_header("Generating PR Content")
         pr_markdown = generate_pr_simple(ai_data, config.verbose)
     except (GitError, ValueError, RuntimeError) as e:
         if context_type in ["diffs", "both"]:
-            warning(
+            warning_msg = (
                 "PR generation with full context failed. "
                 "Retrying with commit messages only.\n"
                 f"Error: {str(e)}\n\n"
@@ -459,7 +493,11 @@ def _generate_simple_ai_content(
                 "1. Using commits-only context (--context-type commits)\n"
                 "2. Breaking changes into smaller PRs"
             )
+            warning(warning_msg)
             # Retry with commit messages only
+            if config.verbose:
+                debug_header("Retrying with Commit Messages Only")
+                debug_item(config, "Context Type", "commits")
             ai_data["commit_messages"] = git_data["commit_messages_data"][
                 "messages_with_details"
             ]
@@ -472,6 +510,12 @@ def _generate_simple_ai_content(
     title = (
         first_line.lstrip("#").strip() if first_line.startswith("#") else "Pull Request"
     )
+
+    status("Generated PR Content")
+    if config.verbose:
+        debug_header("PR Content")
+        debug_item(config, "Title", title)
+        debug_preview(pr_markdown)
 
     return pr_markdown, title
 
@@ -513,6 +557,7 @@ def _display_pr_creation_preview(
     title: str, source: str, target: str, draft: bool, pr_markdown: str
 ) -> None:
     """Display preview of PR to be created."""
+
     status("Preview Pull Request")
     preview_content = (
         f"Title: {title}\n"
@@ -526,6 +571,7 @@ def _display_pr_creation_preview(
 
 def _confirm_pr_creation() -> bool:
     """Confirm PR creation with user."""
+
     try:
         answer = questionary.confirm(
             "Do you want to create this pull request?", style=Style(QUESTIONARY_STYLE)
@@ -540,7 +586,7 @@ def _submit_pr_to_github(
     title: str, source: str, target: str, pr_markdown: str, draft: bool, verbose: bool
 ) -> None:
     """Submit the PR to GitHub."""
-    
+
     status("Creating PR on GitHub")
     if verbose:
         debug_header("Creating PR on GitHub")
