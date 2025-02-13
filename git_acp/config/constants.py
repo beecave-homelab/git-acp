@@ -97,8 +97,10 @@ COMMIT_TYPE_PATTERNS: Final[Dict[str, List[str]]] = {
 # Formatting Configuration
 # Color settings for terminal output using rich library
 COLORS: Final[Dict[str, str]] = {
+    # Debugging information
     "debug_header": get_env("GIT_ACP_DEBUG_HEADER_COLOR", "blue"),
     "debug_value": get_env("GIT_ACP_DEBUG_VALUE_COLOR", "cyan"),
+    # Progress information
     "success": get_env("GIT_ACP_SUCCESS_COLOR", "green"),
     "warning": get_env("GIT_ACP_WARNING_COLOR", "yellow"),
     "status": get_env("GIT_ACP_STATUS_COLOR", "bold green"),
@@ -123,5 +125,8 @@ QUESTIONARY_STYLE: Final[list[tuple[str, str]]] = [
 
 # Terminal Configuration
 TERMINAL_WIDTH: Final[int] = get_env(
-    "GIT_ACP_TERMINAL_WIDTH", 100, int
-)  # Maximum width for formatted output
+    # Maximum width for formatted output
+    "GIT_ACP_TERMINAL_WIDTH",
+    100,
+    int,
+)

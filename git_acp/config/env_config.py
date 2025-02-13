@@ -21,14 +21,19 @@ def ensure_config_dir() -> None:
     config_dir.mkdir(parents=True, exist_ok=True)
 
 
-def load_env_config() -> None:
-    """Load environment variables from the config file."""
+def load_env_config() -> Optional[str]:
+    """Load environment variables from the config file.
+
+    Returns:
+        Optional[str]: Error message if .env file not found, None otherwise
+    """
     config_dir = get_config_dir()
     env_file = config_dir / ".env"
 
-    # Load from config dir if exists, otherwise use default values
     if env_file.exists():
         load_dotenv(env_file)
+        return None
+    return "No .env file found in config directory"
 
 
 def get_env(key: str, default: Any = None, type_cast: Optional[type] = None) -> Any:
@@ -45,28 +50,36 @@ def get_env(key: str, default: Any = None, type_cast: Optional[type] = None) -> 
     """
     value = os.getenv(key, default)
 
-    if value is not None and type_cast is not None:
-        try:
-            if type_cast == bool:
-                # Handle boolean values
-                if isinstance(value, str):
-                    return value.lower() in ("true", "1", "yes", "on")
-                return bool(value)
-            
-            # Special handling for timeout values
-            if key == "GIT_ACP_AI_TIMEOUT" and type_cast == float:
-                timeout = float(value)
-                if timeout < 10.0:
-                    print(f"Warning: AI timeout {timeout}s is very low. Using minimum of 10s.")
-                    return 10.0
-                if timeout > 300.0:
-                    print(f"Warning: AI timeout {timeout}s is very high. Using maximum of 300s.")
-                    return 300.0
-                return timeout
-            
-            return type_cast(value)
-        except (ValueError, TypeError) as e:
-            print(f"Warning: Failed to cast {key}={value} to {type_cast.__name__}: {str(e)}")
-            return default
+    try:
+        if type_cast == bool:
+            if isinstance(value, str):
+                return value.lower() in ("true", "1", "yes", "on")
+            return bool(value)
 
-    return value
+        if key == "GIT_ACP_AI_TIMEOUT" and type_cast == float:
+            return _handle_timeout(value, default)
+
+        return type_cast(value) if type_cast else value
+    except (ValueError, TypeError):
+        return default
+
+
+def _handle_timeout(value: Any, default: Any) -> float:
+    """Handle timeout value validation with error messages.
+
+    Args:
+        value: The timeout value to validate
+        default: Default value to use if validation fails
+
+    Returns:
+        float: The validated timeout value
+    """
+    try:
+        timeout = float(value)
+        if timeout < 10.0:
+            return 10.0
+        if timeout > 300.0:
+            return 300.0
+        return timeout
+    except (ValueError, TypeError):
+        return default
