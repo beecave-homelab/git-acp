@@ -111,7 +111,7 @@ COLORS: Final[Dict[str, str]] = {
     "key_combination": get_env("GIT_ACP_KEY_COMBINATION_COLOR", "cyan"),
     "instruction_text": get_env("GIT_ACP_INSTRUCTION_TEXT_COLOR", "dim"),
     # Text style formatting
-    "bold": get_env("GIT_ACP_BOLD_COLOR", "dim"),
+    "bold": get_env("GIT_ACP_BOLD_COLOR", "bold"),
 }
 
 # Questionary style configuration
