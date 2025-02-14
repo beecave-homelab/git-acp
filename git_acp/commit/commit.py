@@ -52,7 +52,7 @@ def git_add(files: str | List[str], config=None) -> None:
         else:
             raise GitError(
                 "No files matched the specified patterns",
-                suggestion="Check the file patterns and ensure they match existing files",
+                suggestion="Check file patterns and ensure they match existing files",
             )
     except GitError as e:
         raise GitError(f"Failed to add files: {str(e)}") from e
