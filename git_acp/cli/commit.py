@@ -434,7 +434,7 @@ def commit(options: CommitOptions):
         )
 
         selected_files = handle_file_selection(config)
-        git_add(" ".join(selected_files), config)
+        git_add(selected_files, config)
 
         if config.ai_config.use_ollama:
             try:

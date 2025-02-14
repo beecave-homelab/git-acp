@@ -31,7 +31,7 @@ def git_add(files: str | List[str], config=None) -> None:
             expanded_files = glob.glob(pattern)
 
             if expanded_files:
-                # If glob pattern matched files, add each one
+                # If glob pattern matched files, add each one individually
                 for file in expanded_files:
                     cmd = ["git", "add", "--", file]
                     if config and config.verbose:
