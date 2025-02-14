@@ -170,3 +170,53 @@ def bold_text(message: str) -> None:
     """Emphasize text with bold formatting."""
     bold_color = COLORS["bold"]
     rprint(f"[{bold_color}]{message}[/{bold_color}]")
+
+
+class ProgressReporter:
+    """Handle non-verbose progress reporting.
+
+    A class to manage progress reporting in non-verbose mode, providing methods to
+    start, end and update progress stages.
+
+    Attributes:
+        verbose (bool): Flag to control verbose output mode
+        current_status: Current status context manager for progress reporting
+    """
+
+    def __init__(self, verbose: bool = False):
+        """Initialize the ProgressReporter.
+
+        Args:
+            verbose (bool, optional): Flag to control verbose output. Defaults to False.
+        """
+        self.verbose = verbose
+        self.current_status = None
+
+    def start_stage(self, message: str) -> None:
+        """Start a new progress reporting stage.
+
+        Args:
+            message (str): The message to display for this stage
+        """
+        if not self.verbose:
+            self.current_status = console.status(f"[{COLORS['status']}]{message}")
+            self.current_status.__enter__()
+
+    def end_stage(self, message: str) -> None:
+        """End the current progress reporting stage.
+
+        Args:
+            message (str): Success message to display when ending the stage
+        """
+        if not self.verbose and self.current_status:
+            self.current_status.__exit__(None, None, None)
+            success(message)
+
+    def update(self, message: str) -> None:
+        """Update the current progress stage with a new message.
+
+        Args:
+            message (str): The new message to display
+        """
+        if not self.verbose:
+            instruction_text(message)

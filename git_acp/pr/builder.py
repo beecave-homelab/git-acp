@@ -24,7 +24,7 @@ from git_acp.utils.formatting import (
     debug_item,
     debug_json,
     warning,
-    status,
+    instruction_text,
 )
 from git_acp.ai.pr_prompts import (
     ADVANCED_PR_TITLE_SYSTEM_PROMPT,
@@ -97,7 +97,6 @@ def generate_pr_title(
         diff_text=context["diff"]["text"][:2000],
     )
 
-    status("Generating PR title")
     if verbose:
         debug_item(
             config, "Number of commit messages", len(context["commits"]["messages"])
@@ -175,9 +174,7 @@ def generate_pr_title(
 
 
 def generate_pr_summary(
-    pr_content: str,
-    commit_messages: list[str],
-    verbose: bool = False,
+    pr_content: str, verbose: bool = False
 ) -> str:
     """
     Generate a comprehensive summary for the PR based
@@ -201,7 +198,6 @@ def generate_pr_summary(
 
     prompt = ADVANCED_PR_SUMMARY_USER_PROMPT.format(partial_pr_markdown=pr_content)
 
-    status("Generating PR Summary")
     if verbose:
         debug_item(config, "Prompt Length", str(len(prompt)))
         debug_item(config, "Markdown Length", str(len(pr_content)))
@@ -222,8 +218,9 @@ def generate_pr_summary(
         for block, position in client.extract_thinking_blocks(result):
             debug_item(config, f"Thinking Block ({position})", block)
 
-    # Clean the result of any thinking tags
-    return client.clean_thinking_tags(result).strip()
+    cleaned_result = client.clean_thinking_tags(result).strip()
+
+    return cleaned_result
 
 
 def generate_code_changes(diff_text: str, verbose: bool = False) -> str:
@@ -256,7 +253,6 @@ def generate_code_changes(diff_text: str, verbose: bool = False) -> str:
             },
         ]
 
-        status("Generating Code Changes")
         if verbose:
             debug_item(config, "Prompt Length", str(len(messages[1]["content"])))
             debug_item(config, "Diff Length", str(len(diff_text)))
@@ -273,7 +269,9 @@ def generate_code_changes(diff_text: str, verbose: bool = False) -> str:
                 debug_item(config, f"Thinking Block ({position})", block)
                 debug_json({"position": position, "content": block})
 
-        return client.clean_thinking_tags(result).strip()
+        cleaned_result = client.clean_thinking_tags(result).strip()
+
+        return cleaned_result
     except Exception as e:
         warning(f"Failed to generate code changes description: {str(e)}")
         return "Code changes description unavailable"
@@ -307,7 +305,6 @@ def generate_reason_for_changes(
         diff_text=diff_text[:1000],
     )
 
-    status("Generating Reason for Changes")
     if verbose:
         debug_item(config, "Number of Commit Messages", str(len(commit_messages)))
         if commit_messages:
@@ -336,8 +333,9 @@ def generate_reason_for_changes(
         for block, position in client.extract_thinking_blocks(result):
             debug_item(config, f"Thinking Block ({position})", block)
 
-    # Clean the result of any thinking tags
-    return client.clean_thinking_tags(result).strip()
+    cleaned_result = client.clean_thinking_tags(result).strip()
+
+    return cleaned_result
 
 
 def generate_test_plan(diff_text: str, verbose: bool = False) -> str:
@@ -371,17 +369,18 @@ def generate_test_plan(diff_text: str, verbose: bool = False) -> str:
 
     result = client.chat_completion(messages)
 
-    status("Generating Test Plan")
     if verbose and client.is_reasoning_llm(result):
         debug_header("AI Reasoning Blocks")
         for block, position in client.extract_thinking_blocks(result):
             debug_item(config, f"Thinking Block ({position})", block)
 
-    return client.clean_thinking_tags(result).strip()
+    cleaned_result = client.clean_thinking_tags(result).strip()
+
+    return cleaned_result
 
 
 def generate_additional_notes(
-    commit_messages: List, diff_text: str, verbose: bool = False
+    commit_messages: List, verbose: bool = False
 ) -> str:
     """
     Generate any additional notes or comments for the PR.
@@ -415,13 +414,14 @@ def generate_additional_notes(
 
     result = client.chat_completion(messages)
 
-    status("Generating Additional Notes")
     if verbose and client.is_reasoning_llm(result):
         debug_header("AI Reasoning Blocks")
         for block, position in client.extract_thinking_blocks(result):
             debug_item(config, f"Thinking Block ({position})", block)
 
-    return client.clean_thinking_tags(result).strip()
+    cleaned_result = client.clean_thinking_tags(result).strip()
+
+    return cleaned_result
 
 
 def generate_pr_simple(git_data: Dict, verbose: bool = False) -> str:
@@ -467,7 +467,7 @@ def generate_pr_simple(git_data: Dict, verbose: bool = False) -> str:
         else "# Note: No changes to analyze"
     )
 
-    status("Generating PR with the `simple` prompt-type")
+    instruction_text("Generating PR with the `simple` prompt-type")
     if verbose:
         debug_header("Simple PR Generation Input")
         debug_item(config, "Number of commit messages", len(commit_messages))
@@ -508,7 +508,9 @@ def generate_pr_simple(git_data: Dict, verbose: bool = False) -> str:
         for block, position in client.extract_thinking_blocks(result):
             debug_item(config, f"Thinking Block ({position})", block)
 
-    return client.clean_thinking_tags(result).strip()
+    cleaned_result = client.clean_thinking_tags(result).strip()
+
+    return cleaned_result
 
 
 def extract_clean_title(content: str, verbose: bool = False) -> str:
@@ -553,6 +555,7 @@ def extract_clean_title(content: str, verbose: bool = False) -> str:
         {"role": "user", "content": prompt},
     ]
     result = client.chat_completion(messages)
+
     return result.strip()
 
 
@@ -642,6 +645,7 @@ def review_final_pr(markdown: str, verbose: bool = False) -> str:
         verbose=verbose,
     )
 
+    instruction_text("Reviewing final PR")
     client = AIClient(config, use_pr_model=True)
     messages = [
         {"role": "system", "content": PR_REVIEW_SYSTEM_PROMPT},
