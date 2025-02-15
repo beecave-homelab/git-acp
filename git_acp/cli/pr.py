@@ -19,8 +19,6 @@ from git_acp.utils.formatting import (
     warning,
     ai_message,
     ai_border_message,
-    instruction_text,
-    status,
     ProgressReporter,
 )
 
@@ -64,7 +62,7 @@ def handle_draft_operations(
     """Handle listing and removing draft PRs."""
     progress = ProgressReporter(config.verbose)
     progress.start_stage("Fetching draft pull requests...")
-    
+
     prs = list_pull_requests("open")
     draft_prs = [
         pull_request for pull_request in prs if pull_request.get("draft", False)
@@ -99,7 +97,9 @@ def handle_draft_operations(
         _handle_draft_deletion(config, draft_prs, progress)
 
 
-def _handle_draft_deletion(config: GitConfig, draft_prs: list, progress: ProgressReporter) -> None:
+def _handle_draft_deletion(
+    config: GitConfig, draft_prs: list, progress: ProgressReporter
+) -> None:
     """Handle the deletion of draft PRs."""
     if config.verbose:
         debug_header("Delete Draft Pull Requests")
@@ -123,7 +123,9 @@ def _handle_draft_deletion(config: GitConfig, draft_prs: list, progress: Progres
         _delete_single_draft(config, pr_map[selection], progress)
 
 
-def _delete_single_draft(config: GitConfig, pr_data: dict, progress: ProgressReporter) -> None:
+def _delete_single_draft(
+    config: GitConfig, pr_data: dict, progress: ProgressReporter
+) -> None:
     """Delete a single draft PR."""
     pr_number = pr_data["number"]
     if config.verbose:
@@ -220,7 +222,8 @@ def create_new_pr(
             else "Git data and commit history gathered successfully"
         )
 
-        # Generate PR content - removed progress stages here since they're handled in the content generation functions
+        # Generate PR content - removed progress stages here since they're handled
+        # in the content generation functions
         current_stage = "PR content generation"
         pr_markdown, title = _generate_pr_content(
             config, git_data, ollama, prompt_type, context_type, progress
@@ -229,7 +232,9 @@ def create_new_pr(
         # Preview PR
         current_stage = "PR preview"
         progress.start_stage("Preparing PR preview...")
-        _display_pr_creation_preview(title, source, target, draft, pr_markdown, progress)
+        _display_pr_creation_preview(
+            title, source, target, draft, pr_markdown, progress
+        )
         progress.end_stage(
             "PR preview ready"
             if prompt_type == "simple"
@@ -255,9 +260,17 @@ def create_new_pr(
 def _gather_git_data(target: str, source: str, progress: ProgressReporter) -> dict:
     """Gather git data for PR creation."""
     try:
+        progress.start_stage("Fetching commit messages...")
         commit_messages_data = get_commit_messages(target, source)
+        progress.end_stage("Commit messages fetched")
+
+        progress.start_stage("Getting diff between branches...")
         diff_text = get_diff_between_branches(target, source)
+        progress.end_stage("Diff retrieved")
+
+        progress.start_stage("Analyzing file changes...")
         changes = get_name_status_changes(target, source)
+        progress.end_stage("File changes analyzed")
 
         return {
             "commit_messages_data": commit_messages_data,
@@ -272,7 +285,12 @@ def _gather_git_data(target: str, source: str, progress: ProgressReporter) -> di
 
 
 def _generate_pr_content(
-    config: GitConfig, git_data: dict, ollama: bool, prompt_type: str, context_type: str, progress: ProgressReporter
+    config: GitConfig,
+    git_data: dict,
+    ollama: bool,
+    prompt_type: str,
+    context_type: str,
+    progress: ProgressReporter,
 ) -> tuple:
     """Generate PR content using AI or basic template.
 
@@ -292,7 +310,9 @@ def _generate_pr_content(
     """
     try:
         if ollama:
-            result = _generate_ai_pr_content(config, git_data, prompt_type, context_type, progress)
+            result = _generate_ai_pr_content(
+                config, git_data, prompt_type, context_type, progress
+            )
             return result
         return _generate_basic_pr_content(git_data)
     except (GitError, ValueError, RuntimeError) as e:
@@ -309,7 +329,11 @@ def _generate_pr_content(
 
 
 def _generate_ai_pr_content(
-    config: GitConfig, git_data: dict, prompt_type: str, context_type: str, progress: ProgressReporter
+    config: GitConfig,
+    git_data: dict,
+    prompt_type: str,
+    context_type: str,
+    progress: ProgressReporter,
 ) -> tuple:
     """Generate PR content using AI.
 
@@ -337,7 +361,7 @@ def _generate_ai_pr_content(
         # If advanced mode fails, try falling back to simple mode
         if prompt_type == "advanced":
             warning(
-                "Advanced AI PR generation failed. Trying simple mode.\n"
+                f"Advanced AI PR generation failed ({str(e)}). Trying simple mode.\n"
                 "Suggestion: For complex PRs, try:\n"
                 "1. Using simple mode (--prompt-type simple)\n"
                 "2. Reducing context (--context-type commits)\n"
@@ -347,7 +371,9 @@ def _generate_ai_pr_content(
         raise
 
 
-def _generate_advanced_ai_content(config: GitConfig, git_data: dict, progress: ProgressReporter) -> tuple:
+def _generate_advanced_ai_content(
+    config: GitConfig, git_data: dict, progress: ProgressReporter
+) -> tuple:
     """Generate advanced AI PR content."""
     try:
         # Code changes
@@ -355,7 +381,7 @@ def _generate_advanced_ai_content(config: GitConfig, git_data: dict, progress: P
         code_changes = generate_code_changes(
             git_data["diff_text"],
             config.verbose,
-            lambda msg: progress.update(msg)  # Pass progress.update as callback
+            lambda msg: progress.update(msg),  # Pass progress.update as callback
         )
         progress.end_stage("Code changes analyzed")
 
@@ -365,7 +391,7 @@ def _generate_advanced_ai_content(config: GitConfig, git_data: dict, progress: P
             git_data["commit_messages_data"]["messages"],
             git_data["diff_text"],
             config.verbose,
-            lambda msg: progress.update(msg)  # Pass progress.update as callback
+            lambda msg: progress.update(msg),  # Pass progress.update as callback
         )
         progress.end_stage("Change reasons identified")
 
@@ -374,7 +400,7 @@ def _generate_advanced_ai_content(config: GitConfig, git_data: dict, progress: P
         test_plan = generate_test_plan(
             git_data["diff_text"],
             config.verbose,
-            lambda msg: progress.update(msg)  # Pass progress.update as callback
+            lambda msg: progress.update(msg),  # Pass progress.update as callback
         )
         progress.end_stage("Test plan created")
 
@@ -383,7 +409,7 @@ def _generate_advanced_ai_content(config: GitConfig, git_data: dict, progress: P
         additional_notes = generate_additional_notes(
             git_data["commit_messages_data"]["messages"],
             config.verbose,
-            lambda msg: progress.update(msg)  # Pass progress.update as callback
+            lambda msg: progress.update(msg),  # Pass progress.update as callback
         )
         progress.end_stage("Notes compiled")
 
@@ -400,7 +426,7 @@ def _generate_advanced_ai_content(config: GitConfig, git_data: dict, progress: P
         summary = generate_pr_summary(
             partial_pr_markdown,
             config.verbose,
-            lambda msg: progress.update(msg)  # Pass progress.update as callback
+            lambda msg: progress.update(msg),  # Pass progress.update as callback
         )
         progress.end_stage("Summary generated")
 
@@ -408,7 +434,9 @@ def _generate_advanced_ai_content(config: GitConfig, git_data: dict, progress: P
         progress.start_stage("Generating title...")
         # Prepare AI data for title generation
         ai_data = {
-            "commit_messages": git_data["commit_messages_data"]["messages_with_details"],
+            "commit_messages": git_data["commit_messages_data"][
+                "messages_with_details"
+            ],
             "diff": git_data["diff_text"],
             "added_files": git_data["added_files"],
             "modified_files": git_data["modified_files"],
@@ -418,7 +446,9 @@ def _generate_advanced_ai_content(config: GitConfig, git_data: dict, progress: P
         title = generate_pr_title(
             ai_data,
             verbose=config.verbose,
-            progress_callback=lambda msg: progress.update(msg)  # Pass progress.update as callback
+            progress_callback=lambda msg: progress.update(
+                msg # Pass progress.update as callback
+            ),
         )
         progress.end_stage("Title generated")
 
@@ -552,7 +582,12 @@ def _generate_basic_pr_content(git_data: dict) -> tuple:
 
 
 def _display_pr_creation_preview(
-    title: str, source: str, target: str, draft: bool, pr_markdown: str, progress: ProgressReporter
+    title: str,
+    source: str,
+    target: str,
+    draft: bool,
+    pr_markdown: str,
+    progress: ProgressReporter,
 ) -> None:
     """Display preview of PR to be created."""
     progress.start_stage("Preparing PR preview...")

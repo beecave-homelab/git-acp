@@ -42,6 +42,7 @@ from git_acp.utils.formatting import (
     success,
     status,
     ai_border_message,
+    ProgressReporter,
 )
 from git_acp.cli.pr import pr
 
@@ -433,8 +434,11 @@ def commit(options: CommitOptions):
             verbose=options.verbose,
         )
 
+        # Create progress reporter
+        progress = ProgressReporter(verbose=config.verbose)
+
         selected_files = handle_file_selection(config)
-        git_add(selected_files, config)
+        git_add(selected_files, config, progress)
 
         if config.ai_config.use_ollama:
             try:
@@ -485,8 +489,8 @@ def commit(options: CommitOptions):
                 unstage_files(config)
                 sys.exit(0)
 
-        git_commit(formatted_message, config)
-        git_push(config.branch, config)
+        git_commit(formatted_message, config, progress)
+        git_push(config.branch, config, progress)
 
     except KeyboardInterrupt:
         unstage_files(config)

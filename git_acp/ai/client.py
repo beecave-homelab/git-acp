@@ -361,7 +361,7 @@ class AIClient:
         self,
         messages: list[dict[str, str]],
         progress_callback: Optional[Callable[[str], None]] = None,
-        **kwargs
+        **kwargs,
     ) -> str:
         """Generate a chat completion response from the AI model.
 
@@ -393,6 +393,7 @@ class AIClient:
 
         for retry_count in range(MAX_RETRIES):
             try:
+
                 def make_request() -> None:
                     nonlocal response_data
                     response_data = self._handle_ai_request(messages, **kwargs)

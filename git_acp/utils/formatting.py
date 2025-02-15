@@ -203,7 +203,7 @@ class ProgressReporter:
             if self.current_status is not None:
                 self.current_status.__exit__(None, None, None)
                 self.current_status = None
-            
+
             self.current_status = console.status(f"[{COLORS['status']}]{message}")
             self.current_status.__enter__()
 
