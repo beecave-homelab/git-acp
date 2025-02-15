@@ -381,7 +381,7 @@ def _generate_advanced_ai_content(
         code_changes = generate_code_changes(
             git_data["diff_text"],
             config.verbose,
-            lambda msg: progress.update(msg),  # Pass progress.update as callback
+            progress.update,  # Pass progress.update directly
         )
         progress.end_stage("Code changes analyzed")
 
@@ -391,7 +391,7 @@ def _generate_advanced_ai_content(
             git_data["commit_messages_data"]["messages"],
             git_data["diff_text"],
             config.verbose,
-            lambda msg: progress.update(msg),  # Pass progress.update as callback
+            progress.update,  # Pass progress.update directly
         )
         progress.end_stage("Change reasons identified")
 
@@ -400,7 +400,7 @@ def _generate_advanced_ai_content(
         test_plan = generate_test_plan(
             git_data["diff_text"],
             config.verbose,
-            lambda msg: progress.update(msg),  # Pass progress.update as callback
+            progress.update,  # Pass progress.update directly
         )
         progress.end_stage("Test plan created")
 
@@ -409,7 +409,7 @@ def _generate_advanced_ai_content(
         additional_notes = generate_additional_notes(
             git_data["commit_messages_data"]["messages"],
             config.verbose,
-            lambda msg: progress.update(msg),  # Pass progress.update as callback
+            progress.update,  # Pass progress.update directly
         )
         progress.end_stage("Notes compiled")
 
@@ -426,7 +426,7 @@ def _generate_advanced_ai_content(
         summary = generate_pr_summary(
             partial_pr_markdown,
             config.verbose,
-            lambda msg: progress.update(msg),  # Pass progress.update as callback
+            progress.update,  # Pass progress.update directly
         )
         progress.end_stage("Summary generated")
 
@@ -446,9 +446,7 @@ def _generate_advanced_ai_content(
         title = generate_pr_title(
             ai_data,
             verbose=config.verbose,
-            progress_callback=lambda msg: progress.update(
-                msg # Pass progress.update as callback
-            ),
+            progress_callback=progress.update,  # Pass progress.update directly
         )
         progress.end_stage("Title generated")
 
