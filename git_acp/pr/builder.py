@@ -2,7 +2,7 @@
 Functions for building PR descriptions and generating content using AI.
 """
 
-from typing import Dict, List
+from typing import Dict, List, Optional, Callable
 
 from git_acp.git.exceptions import GitError
 from git_acp.git.history import (
@@ -52,6 +52,7 @@ from git_acp.utils.types import GitConfig, AIConfig
 def generate_pr_title(
     git_data: Dict,
     verbose: bool = False,
+    progress_callback: Optional[Callable[[str], None]] = None,
 ) -> str:
     """
     Generate a PR title using AI.
@@ -60,6 +61,7 @@ def generate_pr_title(
         git_data: Dictionary containing commit messages,
         diff information, and model name
         verbose: Whether to log debug information
+        progress_callback: Optional callback function to update progress status
 
     Returns:
         Generated PR title
@@ -143,7 +145,7 @@ def generate_pr_title(
         {"role": "user", "content": prompt},
     ]
     try:
-        response = client.chat_completion(messages)
+        response = client.chat_completion(messages, progress_callback=progress_callback)
 
         # Handle reasoning LLM outputs
         if client.is_reasoning_llm(response):
@@ -174,7 +176,9 @@ def generate_pr_title(
 
 
 def generate_pr_summary(
-    pr_content: str, verbose: bool = False
+    pr_content: str,
+    verbose: bool = False,
+    progress_callback: Optional[Callable[[str], None]] = None,
 ) -> str:
     """
     Generate a comprehensive summary for the PR based
@@ -210,7 +214,7 @@ def generate_pr_summary(
         {"role": "system", "content": ADVANCED_PR_SUMMARY_SYSTEM_PROMPT},
         {"role": "user", "content": prompt},
     ]
-    result = client.chat_completion(messages)
+    result = client.chat_completion(messages, progress_callback=progress_callback)
 
     # Extract and log thinking blocks if present
     if verbose and client.is_reasoning_llm(result):
@@ -223,7 +227,11 @@ def generate_pr_summary(
     return cleaned_result
 
 
-def generate_code_changes(diff_text: str, verbose: bool = False) -> str:
+def generate_code_changes(
+    diff_text: str,
+    verbose: bool = False,
+    progress_callback: Optional[Callable[[str], None]] = None,
+) -> str:
     """Generate code changes description using AI."""
     try:
         # Create proper config object first
@@ -261,7 +269,7 @@ def generate_code_changes(diff_text: str, verbose: bool = False) -> str:
             )
             debug_item(config, "Diff Preview", debug_preview)
 
-        result = client.chat_completion(messages)
+        result = client.chat_completion(messages, progress_callback=progress_callback)
 
         if verbose and client.is_reasoning_llm(result):
             debug_header("AI Reasoning Blocks - Code Changes")
@@ -278,7 +286,10 @@ def generate_code_changes(diff_text: str, verbose: bool = False) -> str:
 
 
 def generate_reason_for_changes(
-    commit_messages: List, diff_text: str, verbose: bool = False
+    commit_messages: List,
+    diff_text: str,
+    verbose: bool = False,
+    progress_callback: Optional[Callable[[str], None]] = None,
 ) -> str:
     """
     Generate a clear explanation for the changes
@@ -325,7 +336,7 @@ def generate_reason_for_changes(
         {"role": "system", "content": ADVANCED_REASON_CHANGES_SYSTEM_PROMPT},
         {"role": "user", "content": prompt},
     ]
-    result = client.chat_completion(messages)
+    result = client.chat_completion(messages, progress_callback=progress_callback)
 
     # Extract and log thinking blocks if present
     if verbose and client.is_reasoning_llm(result):
@@ -338,7 +349,11 @@ def generate_reason_for_changes(
     return cleaned_result
 
 
-def generate_test_plan(diff_text: str, verbose: bool = False) -> str:
+def generate_test_plan(
+    diff_text: str,
+    verbose: bool = False,
+    progress_callback: Optional[Callable[[str], None]] = None,
+) -> str:
     """
     Generate a test plan for verifying the code changes.
     """
@@ -367,7 +382,7 @@ def generate_test_plan(diff_text: str, verbose: bool = False) -> str:
         },
     ]
 
-    result = client.chat_completion(messages)
+    result = client.chat_completion(messages, progress_callback=progress_callback)
 
     if verbose and client.is_reasoning_llm(result):
         debug_header("AI Reasoning Blocks")
@@ -380,7 +395,9 @@ def generate_test_plan(diff_text: str, verbose: bool = False) -> str:
 
 
 def generate_additional_notes(
-    commit_messages: List, verbose: bool = False
+    commit_messages: List,
+    verbose: bool = False,
+    progress_callback: Optional[Callable[[str], None]] = None,
 ) -> str:
     """
     Generate any additional notes or comments for the PR.
@@ -412,7 +429,7 @@ def generate_additional_notes(
         },
     ]
 
-    result = client.chat_completion(messages)
+    result = client.chat_completion(messages, progress_callback=progress_callback)
 
     if verbose and client.is_reasoning_llm(result):
         debug_header("AI Reasoning Blocks")

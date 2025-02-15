@@ -199,6 +199,11 @@ class ProgressReporter:
             message (str): The message to display for this stage
         """
         if not self.verbose:
+            # End any existing stage before starting a new one
+            if self.current_status is not None:
+                self.current_status.__exit__(None, None, None)
+                self.current_status = None
+            
             self.current_status = console.status(f"[{COLORS['status']}]{message}")
             self.current_status.__enter__()
 
@@ -210,6 +215,7 @@ class ProgressReporter:
         """
         if not self.verbose and self.current_status:
             self.current_status.__exit__(None, None, None)
+            self.current_status = None
             success(message)
 
     def update(self, message: str) -> None:

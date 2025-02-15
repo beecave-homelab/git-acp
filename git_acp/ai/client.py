@@ -2,6 +2,7 @@
 
 from threading import Thread, Event
 from time import sleep
+from typing import Optional, Callable
 
 import openai
 from rich.progress import Progress, SpinnerColumn, TextColumn, TimeElapsedColumn
@@ -356,11 +357,17 @@ class AIClient:
             e if isinstance(e, (openai.APIError, openai.APIConnectionError)) else None
         )
 
-    def chat_completion(self, messages: list[dict[str, str]], **kwargs) -> str:
+    def chat_completion(
+        self,
+        messages: list[dict[str, str]],
+        progress_callback: Optional[Callable[[str], None]] = None,
+        **kwargs
+    ) -> str:
         """Generate a chat completion response from the AI model.
 
         Args:
             messages: List of message dictionaries with 'role' and 'content'
+            progress_callback: Optional callback function to update progress status
             **kwargs: Additional arguments to pass to the completion API
 
         Returns:
@@ -386,37 +393,27 @@ class AIClient:
 
         for retry_count in range(MAX_RETRIES):
             try:
-                with Progress(
-                    SpinnerColumn(),
-                    TextColumn("[progress.description]{task.description}"),
-                    TimeElapsedColumn(),
-                    transient=True,
-                ) as progress:
-                    progress.add_task(
-                        description="Waiting for AI response...", total=None
-                    )
+                def make_request() -> None:
+                    nonlocal response_data
+                    response_data = self._handle_ai_request(messages, **kwargs)
+                    response_event.set()
 
-                    def make_request() -> None:
-                        nonlocal response_data
-                        response_data = self._handle_ai_request(messages, **kwargs)
-                        response_event.set()
+                # Start request in a separate thread
+                request_thread = Thread(target=make_request)
+                request_thread.start()
 
-                    # Start request in a separate thread
-                    request_thread = Thread(target=make_request)
-                    request_thread.start()
+                # Wait for response or timeout
+                if not response_event.wait(timeout=AI_SETTINGS["timeout"]):
+                    raise TimeoutError("Request timed out")
 
-                    # Wait for response or timeout
-                    if not response_event.wait(timeout=AI_SETTINGS["timeout"]):
-                        raise TimeoutError("Request timed out")
+                # Handle any errors from the request
+                self._handle_response_error(response_data)
 
-                    # Handle any errors from the request
-                    self._handle_response_error(response_data)
+                response = response_data.get("response")
+                if not response or not response.choices:
+                    raise GitError("Empty response from AI model")
 
-                    response = response_data.get("response")
-                    if not response or not response.choices:
-                        raise GitError("Empty response from AI model")
-
-                    return response.choices[0].message.content.strip()
+                return response.choices[0].message.content.strip()
 
             except (openai.APIError, openai.APIConnectionError, TimeoutError) as e:
                 # On last retry, raise the error
