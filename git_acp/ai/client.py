@@ -5,7 +5,6 @@ from time import sleep
 from typing import Optional, Callable
 
 import openai
-from rich.progress import Progress, SpinnerColumn, TextColumn, TimeElapsedColumn
 from git_acp.git import GitError
 from git_acp.config import AI_SETTINGS
 from git_acp.utils import (
