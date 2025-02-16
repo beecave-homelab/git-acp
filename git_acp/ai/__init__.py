@@ -1,11 +1,13 @@
 """AI package for git-acp."""
 
 from git_acp.ai.client import AIClient
-from git_acp.ai.commit_prompts import (
+from git_acp.ai.commit_prompts_advanced import (
     ADVANCED_COMMIT_SYSTEM_PROMPT,
+)
+from git_acp.ai.commit_prompts_simple import (
     SIMPLE_COMMIT_SYSTEM_PROMPT,
 )
-from git_acp.ai.pr_prompts import (
+from git_acp.ai.pr_prompts_advanced import (
     ADVANCED_PR_TITLE_SYSTEM_PROMPT,
     ADVANCED_PR_TITLE_USER_PROMPT,
     ADVANCED_PR_SUMMARY_SYSTEM_PROMPT,
@@ -18,12 +20,15 @@ from git_acp.ai.pr_prompts import (
     ADVANCED_TEST_PLAN_USER_PROMPT,
     ADVANCED_ADDITIONAL_NOTES_SYSTEM_PROMPT,
     ADVANCED_ADDITIONAL_NOTES_USER_PROMPT,
+    PR_REVIEW_SYSTEM_PROMPT,
+    PR_REVIEW_USER_PROMPT,
+)
+
+from git_acp.ai.pr_prompts_simple import (
     SIMPLE_PR_SYSTEM_PROMPT,
     SIMPLE_PR_USER_PROMPT,
     SIMPLE_TITLE_EXTRACTION_SYSTEM_PROMPT,
     SIMPLE_TITLE_EXTRACTION_USER_PROMPT,
-    PR_REVIEW_SYSTEM_PROMPT,
-    PR_REVIEW_USER_PROMPT,
 )
 from git_acp.commit.generation import generate_commit_message
 
