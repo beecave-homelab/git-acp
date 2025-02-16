@@ -11,6 +11,11 @@ from git_acp.commit.prompt_builder import (
     create_advanced_commit_message_prompt,
     create_simple_commit_message_prompt,
 )
+from git_acp.commit.generation import (
+    get_commit_context,
+    edit_commit_message,
+    generate_commit_message,
+)
 
 __all__ = [
     "git_add",
@@ -20,4 +25,7 @@ __all__ = [
     "build_simple_commit_message",
     "create_advanced_commit_message_prompt",
     "create_simple_commit_message_prompt",
+    "get_commit_context",
+    "edit_commit_message",
+    "generate_commit_message",
 ]
