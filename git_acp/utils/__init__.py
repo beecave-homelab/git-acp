@@ -14,8 +14,15 @@ from git_acp.utils.formatting import (
     key_combination,
     instruction_text,
     bold_text,
+    ProgressReporter,
 )
-from git_acp.utils.types import GitConfig, OptionalConfig, DiffType, PromptType
+from git_acp.utils.types import (
+    GitConfig,
+    OptionalConfig,
+    DiffType,
+    PromptType,
+    AIConfig,
+)
 
 __all__ = [
     "debug_print",
@@ -31,8 +38,10 @@ __all__ = [
     "key_combination",
     "instruction_text",
     "bold_text",
+    "ProgressReporter",
     "GitConfig",
     "OptionalConfig",
     "DiffType",
     "PromptType",
+    "AIConfig",
 ]
