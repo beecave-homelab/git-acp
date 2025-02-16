@@ -55,4 +55,4 @@ This module defines all configuration constants used throughout the `git_acp` pa
 **Types of Testing:**
 
 - **Unit Testing:** Employ `pytest` and `pytest-mock` to mock environment variables and test that constants are assigned correctly.
-- **Integration Testing:** Use `pytest` to load constants in combination with `env_config` and ensure seamless integration. 
+- **Integration Testing:** Use `pytest` to load constants in combination with `env_config` and ensure seamless integration.

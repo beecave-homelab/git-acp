@@ -1,38 +1,76 @@
-"""Manage git stash operations."""
-from git_acp.git.runner import run_git_command, GitError
+"""Git stash operations."""
 
-def manage_stash(operation: str, message: str = None, stash_id: str = None, config=None) -> str:
-    """
-    Manage stash operations.
-    
+from git_acp.git.exceptions import GitError
+from git_acp.git.core import run_git_command
+
+
+def stash_changes(message: str = None, config=None) -> None:
+    """Stash current changes.
+
     Args:
-        operation: "save", "pop", "apply", "drop", or "list".
-        message: Stash message for save.
-        stash_id: Identifier for pop, apply, or drop.
-    
-    Returns:
-        The output for the "list" operation, otherwise None.
+        message: Optional stash message
+        config: Optional configuration
+
+    Raises:
+        GitError: If stashing changes fails
     """
-    if operation == "save":
-        cmd = ["git", "stash", "push"]
+    try:
         if message:
-            cmd.extend(["-m", message])
-        run_git_command(cmd, config)
-    elif operation == "pop":
-        cmd = ["git", "stash", "pop"]
+            run_git_command(["git", "stash", "save", message], config)
+        else:
+            run_git_command(["git", "stash"], config)
+    except Exception as e:
+        raise GitError(f"Failed to stash changes: {str(e)}") from e
+
+
+def pop_stash(stash_id: str = None, config=None) -> None:
+    """Pop changes from stash.
+
+    Args:
+        stash_id: Optional stash ID to pop
+        config: Optional configuration
+
+    Raises:
+        GitError: If popping stash fails
+    """
+    try:
         if stash_id:
-            cmd.append(stash_id)
-        run_git_command(cmd, config)
-    elif operation == "apply":
-        cmd = ["git", "stash", "apply"]
-        if stash_id:
-            cmd.append(stash_id)
-        run_git_command(cmd, config)
-    elif operation == "drop":
-        if not stash_id:
-            raise GitError("Stash ID is required for drop operation.")
-        run_git_command(["git", "stash", "drop", stash_id], config)
-    elif operation == "list":
+            run_git_command(["git", "stash", "pop", stash_id], config)
+        else:
+            run_git_command(["git", "stash", "pop"], config)
+    except Exception as e:
+        raise GitError(f"Failed to pop stash: {str(e)}") from e
+
+
+def list_stashes(config=None) -> list:
+    """List all stashes.
+
+    Args:
+        config: Optional configuration
+
+    Returns:
+        list: List of stash entries
+
+    Raises:
+        GitError: If listing stashes fails
+    """
+    try:
         stdout, _ = run_git_command(["git", "stash", "list"], config)
-        return stdout
-    return "" 
+        return stdout.split("\n") if stdout else []
+    except Exception as e:
+        raise GitError(f"Failed to list stashes: {str(e)}") from e
+
+
+def clear_stashes(config=None) -> None:
+    """Clear all stashes.
+
+    Args:
+        config: Optional configuration
+
+    Raises:
+        GitError: If clearing stashes fails
+    """
+    try:
+        run_git_command(["git", "stash", "clear"], config)
+    except Exception as e:
+        raise GitError(f"Failed to clear stashes: {str(e)}") from e

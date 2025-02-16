@@ -19,13 +19,13 @@ This release introduces significant architectural improvements and refactoring a
 - Reorganized AI functionality into focused components:
   - `client.py`: Improved AI client with better request handling
   - `generation.py`: Streamlined commit message generation
-  - `prompts.py`: Centralized system prompts management
+  - `commit_prompts.py`: Centralized system prompts management
 
 ### Command Line Interface 🖥️
 
 - Enhanced CLI structure with better separation of concerns:
-  - `main.py`: Streamlined command orchestration
-  - `prompts.py`: User interaction management
+  - `cli.py`: Streamlined command orchestration
+  - `interactive_selection.py`: User interaction management
   - `helpers.py`: CLI utility functions
   - `formatting.py`: Terminal output formatting
 
