@@ -21,7 +21,12 @@ from git_acp.config.constants import (
     DEFAULT_BRANCH,
     MAX_DIFF_PREVIEW_LINES,
 )
-from git_acp.config.env_config import get_env, load_env_config
+from git_acp.config.env_config import (
+    get_env,
+    load_env_config,
+    get_config_dir,
+    ensure_config_dir,
+)
 from git_acp.config.settings import (
     AI_SETTINGS,
     GIT_SETTINGS,
@@ -54,5 +59,7 @@ __all__ = [
     "TERMINAL_SETTINGS",
     "get_env",
     "load_env_config",
+    "get_config_dir",
+    "ensure_config_dir",
     "load_config",
 ]
