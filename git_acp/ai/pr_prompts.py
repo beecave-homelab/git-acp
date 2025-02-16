@@ -168,12 +168,8 @@ Create a concise pull request description by analyzing the below information:
 
 {changes_overview}
 
-## Output format to use
-
-Remember to use the TEMPLATE and adjust the placeholder accordingly:
-
-```
-"""
+Remember to output only the Pull Request in the requested the TEMPLATE format.
+No additional notes, explenations or commentary."""
 
 SIMPLE_TITLE_EXTRACTION_SYSTEM_PROMPT = """
 You are a PR title writer. Your task is to:
@@ -190,9 +186,9 @@ Based on this PR content, generate a concise title that captures the main change
 
 Important:
 - Output only the title text
-- No quotes, formatting, or explanations
 - 5-10 words maximum
-- Focus on what changed"""
+- Focus on what changed
+- No quotes, formatting, or explanations"""
 
 # Common prompts used by both simple and advanced modes
 PR_REVIEW_SYSTEM_PROMPT = """
