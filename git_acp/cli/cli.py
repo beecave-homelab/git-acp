@@ -293,6 +293,16 @@ def main(add: Optional[str], message: Optional[str], branch: Optional[str],
         # Add files first
         try:
             git_add(config.files)
+            # Check if files were staged when -a is used
+            if add is not None:
+                staged_files = get_changed_files(config, staged_only=True)
+                if not staged_files:
+                    rprint(Panel(
+                        f"No files with changes found in the specified path: {config.files}",
+                        title="No Changes Staged",
+                        border_style="yellow"
+                    ))
+                    sys.exit(0)
         except GitError as e:
             rprint(Panel(
                 f"[{COLORS['error']}]Error adding files:[/{COLORS['error']}]\n{str(e)}\n\n"

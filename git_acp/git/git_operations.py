@@ -237,81 +237,77 @@ def git_push(branch: str, config: OptionalConfig = None) -> None:
         else:
             raise GitError(f"Failed to push changes: {str(e)}") from e
 
-def get_changed_files(config: OptionalConfig = None) -> Set[str]:
-    """Get list of changed files from git status.
+def get_changed_files(config: OptionalConfig = None, staged_only: bool = False) -> Set[str]:
+    """Get list of changed files.
     
-    This function retrieves both staged and unstaged changes, excluding certain
-    patterns like __pycache__ and compiled Python files.
+    Retrieves either all changed files (staged and unstaged) or only staged files,
+    excluding certain patterns like __pycache__ and compiled Python files.
     
     Args:
         config: GitConfig instance containing configuration options
+        staged_only: If True, returns only staged files. Otherwise, returns all changed files.
         
     Returns:
         Set[str]: Set of file paths that have been modified
         
     Raises:
-        GitError: If unable to get git status
+        GitError: If unable to get git status or diff
     """
-    if config and config.verbose:
-        debug_header("Getting changed files")
-
-    stdout_staged, _ = run_git_command(["git", "status", "--porcelain", "-uall"], config)
-    if config and config.verbose:
-        debug_item("Raw git status output", stdout_staged)
-    
     files = set()
+    if config and config.verbose:
+        debug_header(f"Getting {'staged ' if staged_only else ''}changed files")
 
-    def process_status_line(line: str) -> Optional[str]:
-        """Process a single git status line and extract the filename.
-        
-        The format of each line is: XY FILENAME
-        where X is the status in the index and Y is the status in the working tree.
-        
-        Args:
-            line: A line from git status --porcelain output
-            
-        Returns:
-            Optional[str]: The extracted file path, or None if it should be excluded
-        """
-        if not line.strip():
-            return None
-            
+    if staged_only:
+        stdout_staged_only, _ = run_git_command(["git", "diff", "--staged", "--name-only"], config)
         if config and config.verbose:
-            debug_item("Processing status line", line)
-            
-        # Extract the path, handling renames
-        if " -> " in line:
-            path = line.split(" -> ")[-1].strip()
-        else:
-            # The first two characters are the status codes
-            status_codes = line[:2]
-            # Find the actual start of the filename after the status codes
-            # This preserves leading dots and spaces in filenames
-            path = line[2:].lstrip()  # Remove only leading spaces after status codes
-            
+            debug_item("Raw git diff --staged --name-only output", stdout_staged_only)
+        files = set(stdout_staged_only.splitlines())
+    else:
+        stdout_status, _ = run_git_command(["git", "status", "--porcelain", "-uall"], config)
         if config and config.verbose:
-            debug_item("Status codes", status_codes)
-            debug_item("Extracted path", path)
-            
-        # Check if the file should be excluded
-        for pattern in EXCLUDED_PATTERNS:
-            if pattern in path:
-                if config and config.verbose:
-                    debug_item("Excluded path", f"Pattern '{pattern}' matched '{path}'")
+            debug_item("Raw git status --porcelain -uall output", stdout_status)
+
+        def process_status_line(line: str) -> Optional[str]:
+            """Process a single git status line and extract the filename."""
+            if not line.strip():
                 return None
-                
-        return path
-        
-    # Process each line of the status output
-    for line in stdout_staged.splitlines():
-        path = process_status_line(line)
-        if path:
+
             if config and config.verbose:
-                debug_item("Adding path to set", path)
-            files.add(path)
+                debug_item("Processing status line", line)
+
+            # Extract the path, handling renames
+            if " -> " in line:
+                path = line.split(" -> ")[-1].strip()
+            else:
+                # The first two characters are the status codes
+                # status_codes = line[:2] # Not used directly for path extraction now
+                # Find the actual start of the filename after the status codes
+                path = line[2:].lstrip()
+                
+            if config and config.verbose:
+                # debug_item("Status codes", status_codes) # Not strictly needed if not used
+                debug_item("Extracted path from status", path)
+            return path
+
+        for line in stdout_status.splitlines():
+            path = process_status_line(line)
+            if path:
+                files.add(path)
+
+    # Common exclusion logic
+    if files: # Only proceed if there are files to filter
+        excluded_files = set()
+        for f in files:
+            for pattern in EXCLUDED_PATTERNS:
+                if pattern in f:
+                    if config and config.verbose:
+                        debug_item("Excluding file based on pattern", f"Pattern '{pattern}' matched '{f}'")
+                    excluded_files.add(f)
+                    break
+        files -= excluded_files
             
     if config and config.verbose:
-        debug_item("Final file set", str(files))
+        debug_item("Final file set after exclusion", str(files))
         
     return files
 
