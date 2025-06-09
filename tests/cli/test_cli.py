@@ -28,13 +28,13 @@ class TestCli(unittest.TestCase):
 
         # Mock generate_commit_message to return a dummy message
         mock_generate_commit_message.return_value = "AI generated commit message"
-        
+
         # Mock get_current_branch used internally if no branch is specified
         with patch('git_acp.cli.cli.get_current_branch') as mock_get_current_branch:
             mock_get_current_branch.return_value = "main"
 
             result = self.runner.invoke(main, ['-a', 'folder/*.py', '-o', '--no-confirm', '--verbose'])
-        
+
         print(f"Output: {result.output}") # For debugging test
         print(f"Exception: {result.exception}")
         print(f"Exit code: {result.exit_code}")
@@ -88,7 +88,7 @@ class TestCli(unittest.TestCase):
         """Scenario 2.2: -a used, specified path has no files with changes."""
         # Mock get_changed_files (called by CLI for -a check) to return an empty set
         mock_get_changed_files_git_module.return_value = set()
-        
+
         # Mock get_current_branch used internally if no branch is specified
         with patch('git_acp.cli.cli.get_current_branch') as mock_get_current_branch:
             mock_get_current_branch.return_value = "main" # Needed for config creation
@@ -110,10 +110,10 @@ class TestCli(unittest.TestCase):
                 # For now, just checking staged_only=True is sufficient
                 break
         self.assertTrue(found_staged_only_call, "get_changed_files with staged_only=True was not called")
-        
+
         self.assertIn("No files with changes found in the specified path: folder/*.py", result.output)
         mock_sys_exit.assert_called_once_with(0) # Should exit with 0
-        
+
         # Ensure downstream functions were not called
         mock_generate_commit_message.assert_not_called()
         mock_git_commit.assert_not_called()

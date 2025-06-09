@@ -74,14 +74,14 @@ class TestChangedFiles:
         files = get_changed_files()
         assert '__pycache__/old.cpython-38.pyc' not in files
         assert 'src/new_feature.py' in files
-    
+
     @patch('git_acp.git.git_operations.run_git_command')
     def test_get_changed_files_staged_only_with_files(self, mock_run_git_command):
         mock_config = GitConfig(verbose=False) # Create a minimal config
         mock_run_git_command.return_value = ("file1.py\nfolder/file2.py", "")
-        
+
         result = get_changed_files(config=mock_config, staged_only=True)
-        
+
         mock_run_git_command.assert_called_once_with(
             ["git", "diff", "--staged", "--name-only"], mock_config
         )
@@ -91,9 +91,9 @@ class TestChangedFiles:
     def test_get_changed_files_staged_only_no_files(self, mock_run_git_command):
         mock_config = GitConfig(verbose=False)
         mock_run_git_command.return_value = ("", "") # No output means no staged files
-        
+
         result = get_changed_files(config=mock_config, staged_only=True)
-        
+
         mock_run_git_command.assert_called_once_with(
             ["git", "diff", "--staged", "--name-only"], mock_config
         )
@@ -106,9 +106,9 @@ class TestChangedFiles:
         # For this example, let's assume it is, as per the problem description.
         # If EXCLUDED_PATTERNS is dynamic, this test might need adjustment or direct mock.
         mock_run_git_command.return_value = ("file1.py\n__pycache__/somefile.pyc\nfolder/file2.py", "")
-        
+
         result = get_changed_files(config=mock_config, staged_only=True)
-        
+
         mock_run_git_command.assert_called_once_with(
             ["git", "diff", "--staged", "--name-only"], mock_config
         )
@@ -258,9 +258,9 @@ class TestChangedFiles(unittest.TestCase): # Changed from 'class TestChangedFile
     def test_get_changed_files_staged_only_with_files(self, mock_run_git_command): # Added self
         mock_config = GitConfig(verbose=False)
         mock_run_git_command.return_value = ("file1.py\nfolder/file2.py", "")
-        
+
         result = get_changed_files(config=mock_config, staged_only=True)
-        
+
         mock_run_git_command.assert_called_once_with(
             ["git", "diff", "--staged", "--name-only"], mock_config
         )
@@ -270,9 +270,9 @@ class TestChangedFiles(unittest.TestCase): # Changed from 'class TestChangedFile
     def test_get_changed_files_staged_only_no_files(self, mock_run_git_command): # Added self
         mock_config = GitConfig(verbose=False)
         mock_run_git_command.return_value = ("", "")
-        
+
         result = get_changed_files(config=mock_config, staged_only=True)
-        
+
         mock_run_git_command.assert_called_once_with(
             ["git", "diff", "--staged", "--name-only"], mock_config
         )
@@ -283,9 +283,9 @@ class TestChangedFiles(unittest.TestCase): # Changed from 'class TestChangedFile
         mock_config = GitConfig(verbose=False)
         # Assuming EXCLUDED_PATTERNS is available and includes "__pycache__"
         mock_run_git_command.return_value = ("file1.py\n__pycache__/somefile.pyc\nfolder/file2.py", "")
-        
+
         result = get_changed_files(config=mock_config, staged_only=True)
-        
+
         mock_run_git_command.assert_called_once_with(
             ["git", "diff", "--staged", "--name-only"], mock_config
         )

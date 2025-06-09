@@ -271,10 +271,10 @@ def get_changed_files(config: OptionalConfig = None, staged_only: bool = False) 
             """Process a single git status line and extract the filename."""
             if not line.strip():
                 return None
-            
+
             if config and config.verbose:
                 debug_item("Processing status line", line)
-                
+
             # Extract the path, handling renames
             if " -> " in line:
                 path = line.split(" -> ")[-1].strip()
@@ -288,7 +288,7 @@ def get_changed_files(config: OptionalConfig = None, staged_only: bool = False) 
                 # debug_item("Status codes", status_codes) # Not strictly needed if not used
                 debug_item("Extracted path from status", path)
             return path
-            
+
         for line in stdout_status.splitlines():
             path = process_status_line(line)
             if path:
@@ -303,7 +303,7 @@ def get_changed_files(config: OptionalConfig = None, staged_only: bool = False) 
                     if config and config.verbose:
                         debug_item("Excluding file based on pattern", f"Pattern '{pattern}' matched '{f}'")
                     excluded_files.add(f)
-                    break 
+                    break
         files -= excluded_files
             
     if config and config.verbose:
