@@ -11,6 +11,8 @@ This module provides a command-line interface for automating Git operations with
 """
 
 import sys
+import glob
+import shlex
 from typing import List, Set, Optional
 import click
 import questionary
@@ -181,10 +183,10 @@ def select_commit_type(config: GitConfig, suggested_type: CommitType) -> CommitT
 
 @click.command()
 # Git Operations Group
-@click.option('-a', '--add', 
-              help="Specify files to stage for commit. If not provided, shows an interactive file selection menu.",
-              metavar="<file>")
-@click.option('-m', '--message', 
+@click.option('-a', '--add',
+              help="Specify space-separated files/patterns to stage (e.g., \"file1.py *.py folder/\"). Patterns are globbed recursively (e.g. `**/*.py`). If not provided, interactive selection is used.",
+              metavar="<files_or_patterns>")
+@click.option('-m', '--message',
               help="Custom commit message. If not provided with --ollama, defaults to 'Automated commit'.",
               metavar="<message>")
 @click.option('-b', '--branch', 
@@ -241,11 +243,36 @@ def main(add: Optional[str], message: Optional[str], branch: Optional[str],
     """
     # Set up signal handler for graceful interruption
     setup_signal_handlers()
-    
+
     try:
-        # If no files specified, show interactive selection
+        processed_add_argument: Optional[str] = None
+        if add is not None:
+            if not add.strip():
+                rprint(f"[{COLORS['warning']}]The -a flag was used with an empty string. No files will be staged based on this argument.[/{COLORS['warning']}]")
+                processed_add_argument = ""
+            else:
+                items_to_process = shlex.split(add)
+                resolved_paths: List[str] = []
+                unmatched_items: List[str] = []
+                for item in items_to_process:
+                    expanded_paths = glob.glob(item, recursive=True)
+                    if not expanded_paths:
+                        unmatched_items.append(item)
+                    else:
+                        resolved_paths.extend(expanded_paths)
+
+                if unmatched_items:
+                    rprint(f"[{COLORS['warning']}]Warning: The following patterns/files provided via -a did not match any filesystem paths: {', '.join(unmatched_items)}[/{COLORS['warning']}]")
+
+                if not resolved_paths:
+                    rprint(f"[{COLORS['info']}]No files or directories matched the criteria from the -a argument. No files will be staged.[/{COLORS['info']}]")
+                    processed_add_argument = ""
+                else:
+                    unique_paths = list(dict.fromkeys(resolved_paths)) # Remove duplicates while preserving order
+                    processed_add_argument = " ".join(f'"{p}"' if " " in p else p for p in unique_paths)
+
         config = GitConfig(
-            files=add or ".",
+            files=processed_add_argument if processed_add_argument is not None else ".",
             message=message or "Automated commit",
             branch=branch,
             use_ollama=ollama,
@@ -255,28 +282,28 @@ def main(add: Optional[str], message: Optional[str], branch: Optional[str],
             prompt_type=prompt_type.lower()
         )
 
-        if add is None:
+        if add is None:  # Only run interactive selection if -a was not provided
             try:
-                changed_files = get_changed_files(config)
+                changed_files = get_changed_files(config) # config is used for verbose
                 if not changed_files:
-                    raise GitError("No changes detected in the repository. Make some changes first.")
+                    if config.skip_confirmation:
+                        rprint(Panel("No changes detected in the repository. Nothing to do.", title="No Changes", border_style="yellow"))
+                        sys.exit(0)
+                    # If not skipping confirmation, select_files will handle empty changed_files by raising an error or specific behavior
+
+                # This line updates config.files with the interactive selection
                 config.files = select_files(changed_files)
             except GitError as e:
                 if "cancelled by user" in str(e).lower():
                     unstage_files()
-                    rprint(Panel(
-                        "Operation cancelled by user.",
-                        title="Cancelled",
-                        border_style="yellow"
-                    ))
+                    rprint(Panel("Operation cancelled by user.", title="Cancelled", border_style="yellow"))
                 else:
-                    rprint(Panel(
-                        f"[{COLORS['error']}]Error selecting files:[/{COLORS['error']}]\n{str(e)}\n\n"
-                        "Suggestion: Make sure you're in a git repository with changes to commit.",
-                        title="File Selection Failed",
-                        border_style="red"
-                    ))
+                    rprint(Panel(f"[{COLORS['error']}]Error during file selection:[/{COLORS['error']}]\n{str(e)}", title="File Selection Failed", border_style="red"))
                 sys.exit(1)
+        elif processed_add_argument == "": # -a was used but resulted in no files
+            rprint(Panel("The -a argument resulted in no files to stage. Nothing to commit.", title="No Files to Stage via -a", border_style="yellow"))
+            sys.exit(0)
+
 
         if not config.branch:
             try:
@@ -292,14 +319,15 @@ def main(add: Optional[str], message: Optional[str], branch: Optional[str],
 
         # Add files first
         try:
-            git_add(config.files)
+            git_add(config.files, config) # Pass config for verbose/debug
             # Check if files were staged when -a is used
-            if add is not None:
+            if add is not None: # -a was used
                 staged_files = get_changed_files(config, staged_only=True)
                 if not staged_files:
+                    # This message is now more specific if -a was used and resolved to something, but nothing was actually changed/staged
                     rprint(Panel(
-                        f"No files with changes found in the specified path: {config.files}",
-                        title="No Changes Staged",
+                        f"No actual changes were found in the files/patterns specified by -a (resolved to: '{config.files}'). Nothing was staged.",
+                        title="No Changes Staged via -a",
                         border_style="yellow"
                     ))
                     sys.exit(0)
