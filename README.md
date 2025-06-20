@@ -4,8 +4,8 @@ A Python tool to automate Git add, commit, and push actions with optional AI-gen
 
 ![GIT-ACP logo](./assets/logo/git-acp-logo-textonly.png)
 
-![Python](https://img.shields.io/badge/python-3.6%2B-blue)
-![Version](https://img.shields.io/badge/version-0.14.1-brightgreen)
+![Python](https://img.shields.io/badge/python-3.10%2B-blue)
+![Version](https://img.shields.io/badge/version-0.15.1-brightgreen)
 ![License](https://img.shields.io/badge/license-MIT-green)
 
 ## Table of Contents
@@ -15,7 +15,6 @@ A Python tool to automate Git add, commit, and push actions with optional AI-gen
 - [Quick Start](#quick-start)
 - [Configuration](#configuration)
 - [Documentation](#documentation)
-- [Contributing](#contributing)
 - [License](#license)
 
 ## Features
@@ -53,6 +52,7 @@ git-acp -o
 ![git-acp interactive mode](./assets/examples/git-acp-example-output-default.gif)
 
 For more usage examples and advanced features, refer to:
+
 - [Basic Usage Guide](docs/usage/basic_usage.md)
 - [Advanced Usage Guide](docs/usage/advanced_usage.md)
 
@@ -82,7 +82,6 @@ See [Advanced Usage](docs/usage/advanced_usage.md#advanced-usage) for all availa
 - [Getting Started](docs/getting_started/introduction.md)
 - [Usage](docs/usage/basic_usage.md)
 - [Testing Overview](docs/tests/test_plan.md)
-
 
 ## License
 

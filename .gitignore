@@ -9,6 +9,11 @@
 !requirements.dev.txt
 !setup.py
 !.env.example
+!pyproject.toml
+!project-overview.md
+!VERSIONS.md
+!to-do/
+!to-do/*.md
 
 # Allow the package directory and Python files
 !git_acp/
