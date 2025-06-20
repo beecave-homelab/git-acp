@@ -7,4 +7,4 @@ A command-line tool for automating Git operations with enhanced features:
 - Conventional commits support
 """
 
-__version__ = "0.14.1"
+__version__ = "0.15.0"

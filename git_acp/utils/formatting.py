@@ -5,15 +5,9 @@ including debug information, success messages, warnings, and status updates.
 """
 
 import json
-import shutil
-from datetime import datetime
-from typing import Dict, List, Optional, Union
 
 from rich import print as rprint
 from rich.console import Console
-from rich.panel import Panel
-from rich.table import Table
-from rich.text import Text
 
 from git_acp.config import COLORS, TERMINAL_WIDTH
 

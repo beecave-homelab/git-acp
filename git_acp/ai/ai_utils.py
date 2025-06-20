@@ -34,7 +34,6 @@ from git_acp.git import (
 from git_acp.utils import (
     GitConfig,
     OptionalConfig,
-    PromptType,
     debug_header,
     debug_item,
     debug_preview,
