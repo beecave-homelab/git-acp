@@ -11,7 +11,7 @@
 !.env.example
 !pyproject.toml
 !project-overview.md
-!VERSION.md
+!VERSIONS.md
 !to-do/
 !to-do/*.md
 
