@@ -175,7 +175,7 @@ class TestBranchOperations:
         mock_config = GitConfig(verbose=False)
         delete_branch('old-branch', config=mock_config)
         mock_run.assert_called_with(
-            ['git', 'branch', '-D', 'old-branch'], # Assuming force delete for simplicity, or add force=True
+            ['git', 'branch', '-d', 'old-branch'], # Assuming force delete for simplicity, or add force=True
             mock_config
         )
 
@@ -220,7 +220,7 @@ class TestCommitAnalysis:
         assert patterns['scopes']['login'] == 1
 
 class TestProtectedBranches:
-    @patch('git_acp.git.git_operations.run_git_mock_config = GitConfig(verbose=False)command')
+    @patch('git_acp.git.git_operations.run_git_command')
     def test_protected_branch_deletion(self, mock_run):
         from git_acp.git.git_operations import delete_branch
         mock_config = GitConfig(verbose=False)
