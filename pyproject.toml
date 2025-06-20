@@ -1,0 +1,82 @@
+[build-system]
+requires = ["pdm-backend"]
+build-backend = "pdm.backend"
+
+[project]
+name = "git-acp"
+version = "0.15.0"
+authors = [
+    { name = "elvee" },
+]
+description = "Git Add-Commit-Push automation tool with AI-powered commit messages"
+readme = "README.md"
+requires-python = ">=3.10"
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Developers",
+    "Topic :: Software Development :: Version Control :: Git",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+]
+dependencies = [
+    "typing;python_version<'3.7'",
+    "click==8.1.8",
+    "rich==13.9.4",
+    "questionary==2.1.0",
+    "openai==1.59.3",
+    "tqdm==4.67.1",
+    "python-dotenv==1.0.1",
+]
+
+[project.urls]
+"Homepage" = "https://github.com/beecave-homelab/git-acp"
+
+[project.scripts]
+git-acp = "git_acp.cli:main"
+
+[project.optional-dependencies]
+test = [
+    "pytest>=8.0",
+]
+lint = [
+    "ruff>=0.4.0",
+    "black>=24.4.0",
+    "pylint>=3.2.0",
+]
+dev = [
+    "pytest>=8.0",
+    "ruff>=0.4.0",
+    "black>=24.4.0",
+    "pylint>=3.2.0",
+]
+
+[tool.black]
+line-length = 88
+target-version = ['py310']
+include = '\.pyi?$'
+extend-exclude = '''
+# A regex preceded with ^/ will apply only to files and directories
+# in the root of the project.
+^/docs/
+'''
+
+[tool.pylint.messages_control]
+disable = [
+    # "C0330", # Wrong hanging indentation
+    # "C0326", # Bad whitespace
+]
+
+[tool.pylint.format]
+max-line-length = 88  # Match black's default line length
+
+[tool.ruff]
+line-length = 88
+target-version = "py310"
+exclude = ["venv/", "docs/"]
+
+[tool.pytest.ini_options]
+addopts = "-q"
+testpaths = ["tests"]

@@ -48,7 +48,7 @@ def get_env(key: str, default: Any = None, type_cast: Optional[type] = None) -> 
 
     if value is not None and type_cast is not None:
         try:
-            if type_cast == bool:
+            if type_cast is bool:
                 return str(value).lower() in ("true", "1", "yes", "y")
             return type_cast(value)
         except (ValueError, TypeError):
