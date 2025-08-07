@@ -26,11 +26,6 @@ from git_acp.utils import (
 )
 
 # Re-export history-related helpers for backward compatibility
-from git_acp.git.history import (
-    analyze_commit_patterns,
-    find_related_commits,
-    get_recent_commits,
-)
 
 console = Console()
 
@@ -357,8 +352,6 @@ def unstage_files(config: OptionalConfig = None) -> None:
         run_git_command(["git", "reset", "HEAD"], config)
     except GitError as e:
         raise GitError(f"Failed to unstage files: {str(e)}") from e
-
-
 
 
 def get_diff(diff_type: DiffType = "staged", config: OptionalConfig = None) -> str:
