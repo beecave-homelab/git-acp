@@ -1,37 +1,35 @@
 """Git repository operations module.
 
-This module provides functions for interacting with Git repositories, including:
-- Running git commands
-- Managing files (add, commit, push)
-- Analyzing commit history
-- Handling git operations errors
+This module provides functions for interacting with Git repositories, including
+running git commands, managing files, and handling git operation errors.
+Commit history analysis utilities are provided in :mod:`git_acp.git.history`.
 """
 
-import json
 import shlex
 import signal
 import subprocess
 import sys
-from collections import Counter
-from typing import Dict, List, Literal, Optional, Set, Tuple
+from typing import Literal, Optional, Set, Tuple
 
 from rich import print as rprint
 from rich.console import Console
 from rich.panel import Panel
 
-from git_acp.config import (
-    DEFAULT_NUM_RECENT_COMMITS,
-    DEFAULT_REMOTE,
-    EXCLUDED_PATTERNS,
-)
+from git_acp.config import DEFAULT_REMOTE, EXCLUDED_PATTERNS
 from git_acp.utils import (
     DiffType,
     OptionalConfig,
     debug_header,
     debug_item,
-    debug_json,
     status,
     success,
+)
+
+# Re-export history-related helpers for backward compatibility
+from git_acp.git.history import (
+    analyze_commit_patterns,
+    find_related_commits,
+    get_recent_commits,
 )
 
 console = Console()
@@ -361,129 +359,6 @@ def unstage_files(config: OptionalConfig = None) -> None:
         raise GitError(f"Failed to unstage files: {str(e)}") from e
 
 
-def get_recent_commits(
-    num_commits: int = DEFAULT_NUM_RECENT_COMMITS, config: OptionalConfig = None
-) -> List[Dict[str, str]]:
-    """Get recent commit history.
-
-    Args:
-        num_commits: Number of recent commits to fetch
-        config: GitConfig instance containing configuration options
-
-    Returns:
-        List[Dict[str, str]]: List of commit dictionaries with hash, message, author, date
-
-    Raises:
-        GitError: If unable to get commit history
-    """
-    try:
-        if config and config.verbose:
-            debug_header("Getting recent commits")
-            debug_item("Number of commits", str(num_commits))
-
-        # Get commit history in JSON format
-        stdout, _ = run_git_command(
-            [
-                "git",
-                "log",
-                f"-{num_commits}",
-                '--pretty=format:{"hash":"%h","message":"%s","author":"%an","date":"%ad"}',
-                "--date=short",
-            ],
-            config,
-        )
-
-        if not stdout:
-            return []
-
-        # Parse each line as a JSON object
-        commits = []
-        for line in stdout.splitlines():
-            try:
-                commit = json.loads(line)
-                commits.append(commit)
-            except json.JSONDecodeError:
-                continue
-
-        if config and config.verbose:
-            debug_item("Found commits", str(len(commits)))
-
-        return commits
-
-    except GitError as e:
-        raise GitError(f"Failed to get recent commits: {str(e)}") from e
-
-
-def find_related_commits(
-    diff_content: str,
-    num_commits: int = DEFAULT_NUM_RECENT_COMMITS,
-    config: OptionalConfig = None,
-) -> List[Dict[str, str]]:
-    """Find commits related to the current changes.
-
-    This function searches the commit history for commits that modified
-    similar files or areas of code.
-
-    Args:
-        diff_content: The git diff content to analyze
-        num_commits: Maximum number of related commits to find
-        config: GitConfig instance containing configuration options
-
-    Returns:
-        List[Dict[str, str]]: List of related commit dictionaries
-
-    Raises:
-        GitError: If unable to find related commits
-    """
-    try:
-        # Get all recent commits first
-        all_commits = get_recent_commits(
-            num_commits * 2, config
-        )  # Get more commits to filter from
-        related_commits = []
-
-        # Extract file paths from the current diff
-        current_files = set()
-        for line in diff_content.splitlines():
-            if line.startswith("+++ b/") or line.startswith("--- a/"):
-                file_path = line[6:]  # Remove "+++ b/" or "--- a/"
-                if file_path != "/dev/null":  # Ignore deleted files
-                    current_files.add(file_path)
-
-        # Find commits that modified the same files
-        for commit in all_commits:
-            try:
-                # Get the diff for this commit
-                stdout, _ = run_git_command(
-                    [
-                        "git",
-                        "show",
-                        "--name-only",
-                        "--pretty=format:",  # Empty format to only get file names
-                        commit["hash"],
-                    ],
-                    config,
-                )
-
-                # Check if any of the files match
-                commit_files = set(stdout.splitlines())
-                if current_files & commit_files:  # If there's any intersection
-                    related_commits.append(commit)
-                    if len(related_commits) >= num_commits:
-                        break
-
-            except GitError:
-                continue  # Skip commits that can't be analyzed
-
-        if config and config.verbose:
-            debug_header("Related commits found:")
-            for commit in related_commits:
-                debug_json(commit)
-
-        return related_commits
-
-    except GitError as e:
-        raise GitError(f"Failed to find related commits: {str(e)}") from e
 
 
 def get_diff(diff_type: DiffType = "staged", config: OptionalConfig = None) -> str:
@@ -700,59 +575,6 @@ def manage_stash(
     except GitError as e:
         raise GitError(f"Failed to {operation} stash: {str(e)}") from e
     return None
-
-
-def analyze_commit_patterns(
-    commits: List[Dict[str, str]], config: OptionalConfig = None
-) -> Dict[str, Dict[str, int]]:
-    """Analyze commit history to find patterns in commit types and scopes.
-
-    Args:
-        commits: List of commit dictionaries with hash, message, author, date
-        config: GitConfig instance containing configuration options
-
-    Returns:
-        Dict[str, Dict[str, int]]: Dictionary containing frequency counts of commit types and scopes
-    """
-    if config and config.verbose:
-        debug_header("Analyzing commit patterns")
-        debug_item("Number of commits", str(len(commits)))
-
-    patterns = {
-        "types": Counter(),  # Count of commit types (feat, fix, etc.)
-        "scopes": Counter(),  # Count of commit scopes (in parentheses)
-    }
-
-    for commit in commits:
-        message = commit.get("message", "")
-        if not message:
-            continue
-
-        # Extract commit type (everything before the colon)
-        if ":" in message:
-            type_part = message.split(":", 1)[0].strip()
-            if "(" in type_part:
-                type_part = type_part.split("(", 1)[0].strip()
-            # Remove emoji if present
-            type_part = type_part.split(" ", 1)[0].strip()
-            patterns["types"][type_part.lower()] += 1
-
-            if config and config.verbose:
-                debug_item("Found commit type", type_part)
-
-        # Extract scope (text in parentheses)
-        if "(" in message and ")" in message:
-            scope = message[message.find("(") + 1 : message.find(")")].strip()
-            if scope:
-                patterns["scopes"][scope.lower()] += 1
-                if config and config.verbose:
-                    debug_item("Found commit scope", scope)
-
-    if config and config.verbose:
-        debug_item("Commit types found", str(dict(patterns["types"])))
-        debug_item("Commit scopes found", str(dict(patterns["scopes"])))
-
-    return patterns
 
 
 def setup_signal_handlers() -> None:
