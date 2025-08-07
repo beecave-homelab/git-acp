@@ -64,7 +64,8 @@ git_acp/
 ├── __main__.py             # Main entry point, calls the CLI.
 ├── ai/
 │   ├── __init__.py         # Exposes the commit message generation function.
-│   └── ai_utils.py         # Handles interaction with the Ollama AI.
+│   ├── ai_utils.py         # Builds commit message prompts and editing helpers.
+│   └── client.py           # Handles communication with the Ollama AI.
 ├── cli/
 │   ├── __init__.py         # Exposes the main CLI function.
 │   └── cli.py              # Defines the command-line interface using Click.
@@ -77,7 +78,8 @@ git_acp/
 ├── git/
 │   ├── __init__.py         # Exposes all public Git operation functions.
 │   ├── classification.py   # Classifies commit types based on file changes.
-│   └── git_operations.py   # Wraps core Git commands (add, commit, push, etc.).
+│   ├── git_operations.py   # Core Git commands (add, commit, push, etc.).
+│   └── history.py          # Commit history and analysis utilities.
 └── utils/
     ├── __init__.py         # Exposes utility functions and types.
     ├── formatting.py       # Provides styled terminal output functions.
