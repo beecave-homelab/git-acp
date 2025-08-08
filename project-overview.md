@@ -10,7 +10,7 @@ generated: 2025-06-20T00:00:00Z
 `git-acp` is a command-line tool that automates the `git add`, `commit`, and `push` workflow. It offers interactive file selection, AI-powered commit message generation via Ollama, and enforces Conventional Commits standards.
 
 [![Language](https://img.shields.io/badge/Python-3.10+-blue)]
-[![Version](https://img.shields.io/badge/Version-0.15.1-brightgreen)](#version-summary)
+[![Version](https://img.shields.io/badge/Version-0.16.0-brightgreen)](#version-summary)
 [![CLI](https://img.shields.io/badge/CLI-Click-blue)](#cli)
 
 ## Table of Contents
@@ -40,6 +40,7 @@ pdm install -G dev && pdm run git-acp --help
 
 | Version | Date       | Type | Key Changes                |
 |---------|------------|------|----------------------------|
+| 0.16.0  | 2025-08-08 | ✨   | Refactors and enhancements; feature work |
 | 0.15.1  | 2024-07-08 | 🐛   | Fixed -a flag logic, minor enhancements |
 | 0.15.0  | 2025-06-20 | ✨   | Enhanced CLI & version bump |
 | 0.14.1  | YYYY-MM-DD | ✨   | Initial project setup      |
