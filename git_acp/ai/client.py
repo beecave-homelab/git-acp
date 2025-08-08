@@ -11,8 +11,8 @@ from typing import Any
 
 from rich.progress import Progress
 
-# Import from ai_utils to allow tests to patch OpenAI via the original module.
-from git_acp.ai import ai_utils
+from openai import OpenAI
+
 from git_acp.config import (
     DEFAULT_AI_MODEL,
     DEFAULT_AI_TIMEOUT,
@@ -45,7 +45,7 @@ class AIClient:
             debug_item("Timeout", str(DEFAULT_AI_TIMEOUT))
 
         try:
-            self.client = ai_utils.OpenAI(
+            self.client = OpenAI(
                 base_url=DEFAULT_BASE_URL,
                 api_key=DEFAULT_API_KEY,
                 timeout=DEFAULT_AI_TIMEOUT,
@@ -57,8 +57,7 @@ class AIClient:
                 debug_item("Error Message", str(e))
             if "Invalid URL" in str(e):
                 raise GitError(
-                    "Invalid Ollama server URL. Please check your "
-                    "configuration."
+                    "Invalid Ollama server URL. Please check your configuration."
                 ) from e
             raise GitError(
                 "Invalid AI configuration. Please verify your settings."
@@ -69,8 +68,7 @@ class AIClient:
                 debug_item("Error Type", "ConnectionError")
                 debug_item("Base URL", DEFAULT_BASE_URL)
             raise GitError(
-                "Could not connect to Ollama server. Please ensure it's "
-                "running."
+                "Could not connect to Ollama server. Please ensure it's running."
             ) from None
         except Exception as e:
             if self.config and self.config.verbose:
@@ -121,14 +119,12 @@ class AIClient:
 
                 def make_request():
                     try:
-                        response_data["response"] = (
-                            self.client.chat.completions.create(
-                                model=DEFAULT_AI_MODEL,
-                                messages=messages,
-                                temperature=DEFAULT_TEMPERATURE,
-                                timeout=DEFAULT_AI_TIMEOUT,
-                                **kwargs,
-                            )
+                        response_data["response"] = self.client.chat.completions.create(
+                            model=DEFAULT_AI_MODEL,
+                            messages=messages,
+                            temperature=DEFAULT_TEMPERATURE,
+                            timeout=DEFAULT_AI_TIMEOUT,
+                            **kwargs,
                         )
                     except Exception as e:  # pragma: no cover
                         response_data["error"] = e
@@ -139,15 +135,10 @@ class AIClient:
                 thread.start()
 
                 elapsed = 0
-                while (
-                    not response_event.is_set()
-                    and elapsed < DEFAULT_AI_TIMEOUT
-                ):
+                while not response_event.is_set() and elapsed < DEFAULT_AI_TIMEOUT:
                     progress.update(
                         task,
-                        completed=int(
-                            (elapsed / DEFAULT_AI_TIMEOUT) * 100
-                        ),
+                        completed=int((elapsed / DEFAULT_AI_TIMEOUT) * 100),
                     )
                     sleep(0.1)
                     elapsed += 0.1
@@ -162,8 +153,7 @@ class AIClient:
                 response = response_data["response"]
                 if not response or not response.choices:
                     raise GitError(
-                        "AI model returned an empty response. Please try "
-                        "again."
+                        "AI model returned an empty response. Please try again."
                     )
 
                 return response.choices[0].message.content

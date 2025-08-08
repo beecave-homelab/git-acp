@@ -40,14 +40,9 @@ git-acp = "git_acp.cli:main"
 [project.optional-dependencies]
 test = [
     "pytest>=8.0",
+    "pytest-cov>=6.2.1",
 ]
 lint = [
-    "ruff>=0.4.0",
-    "black>=24.4.0",
-    "pylint>=3.2.0",
-]
-dev = [
-    "pytest>=8.0",
     "ruff>=0.4.0",
     "black>=24.4.0",
     "pylint>=3.2.0",

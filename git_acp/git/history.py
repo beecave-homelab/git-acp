@@ -8,7 +8,7 @@ from git_acp.config import DEFAULT_NUM_RECENT_COMMITS
 from git_acp.utils import OptionalConfig, debug_header, debug_item, debug_json
 
 if TYPE_CHECKING:  # pragma: no cover - for type hints only
-    from git_acp.git.git_operations import GitError
+    pass
 
 
 def get_recent_commits(
@@ -35,8 +35,7 @@ def get_recent_commits(
             debug_item("Number of commits", str(num_commits))
 
         format_str = (
-            '--pretty=format:{"hash":"%h","message":"%s",'
-            '"author":"%an","date":"%ad"}'
+            '--pretty=format:{"hash":"%h","message":"%s","author":"%an","date":"%ad"}'
         )
         stdout, _ = run_git_command(
             [

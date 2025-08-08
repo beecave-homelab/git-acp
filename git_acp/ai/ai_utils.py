@@ -8,7 +8,6 @@ import json
 from typing import Any, Dict
 
 import questionary
-from openai import OpenAI
 from rich import print as rprint
 from rich.panel import Panel
 
@@ -33,6 +32,8 @@ from git_acp.utils import (
     debug_preview,
 )
 
+from git_acp.ai.client import AIClient
+
 
 def create_advanced_commit_message_prompt(
     context: Dict[str, Any],
@@ -50,17 +51,13 @@ def create_advanced_commit_message_prompt(
     # Get most common commit type from recent commits
     commit_types = context["commit_patterns"]["types"]
     common_type = (
-        max(commit_types.items(), key=lambda x: x[1])[0]
-        if commit_types
-        else "feat"
+        max(commit_types.items(), key=lambda x: x[1])[0] if commit_types else "feat"
     )
 
     # Format recent commit messages for context
     recent_messages = [c["message"] for c in context["recent_commits"]]
     related_messages = [c["message"] for c in context["related_commits"]]
-    related_json = (
-        json.dumps(related_messages, indent=2) if related_messages else "[]"
-    )
+    related_json = json.dumps(related_messages, indent=2) if related_messages else "[]"
 
     prompt = (
         "Generate a concise and descriptive commit message for the following "
@@ -291,8 +288,6 @@ def generate_commit_message(config: GitConfig) -> str:
             debug_item("Error", str(e))
         raise GitError(f"Failed to generate commit message: {str(e)}") from e
 
-
-from git_acp.ai.client import AIClient
 
 __all__ = [
     "AIClient",
