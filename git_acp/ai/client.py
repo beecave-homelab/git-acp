@@ -18,6 +18,7 @@ from git_acp.config import (
     DEFAULT_AI_TIMEOUT,
     DEFAULT_API_KEY,
     DEFAULT_BASE_URL,
+    DEFAULT_FALLBACK_BASE_URL,
     DEFAULT_TEMPERATURE,
 )
 from git_acp.git import GitError
@@ -37,16 +38,17 @@ class AIClient:
             None
         """
         self.config = config
+        self.base_url = DEFAULT_BASE_URL
         if self.config and self.config.verbose:
             debug_header("Initializing AI client")
-            debug_item("Base URL", DEFAULT_BASE_URL)
+            debug_item("Base URL", self.base_url)
             debug_item("Model", DEFAULT_AI_MODEL)
             debug_item("Temperature", str(DEFAULT_TEMPERATURE))
             debug_item("Timeout", str(DEFAULT_AI_TIMEOUT))
 
         try:
             self.client = OpenAI(
-                base_url=DEFAULT_BASE_URL,
+                base_url=self.base_url,
                 api_key=DEFAULT_API_KEY,
                 timeout=DEFAULT_AI_TIMEOUT,
             )
@@ -63,13 +65,36 @@ class AIClient:
                 "Invalid AI configuration. Please verify your settings."
             ) from e
         except ConnectionError:
-            if self.config and self.config.verbose:
-                debug_header("AI Client Connection Failed")
-                debug_item("Error Type", "ConnectionError")
-                debug_item("Base URL", DEFAULT_BASE_URL)
-            raise GitError(
-                "Could not connect to Ollama server. Please ensure it's running."
-            ) from None
+            # Attempt fallback URL if configured
+            if (
+                DEFAULT_FALLBACK_BASE_URL
+                and DEFAULT_FALLBACK_BASE_URL != DEFAULT_BASE_URL
+            ):
+                if self.config and self.config.verbose:
+                    debug_header("Primary AI server unavailable, trying fallback")
+                    debug_item("Fallback URL", DEFAULT_FALLBACK_BASE_URL)
+                try:
+                    self.base_url = DEFAULT_FALLBACK_BASE_URL
+                    self.client = OpenAI(
+                        base_url=self.base_url,
+                        api_key=DEFAULT_API_KEY,
+                        timeout=DEFAULT_AI_TIMEOUT,
+                    )
+                except Exception:
+                    if self.config and self.config.verbose:
+                        debug_header("Fallback AI Client Connection Failed")
+                        debug_item("Base URL", DEFAULT_FALLBACK_BASE_URL)
+                    raise GitError(
+                        "Could not connect to Ollama server. Please ensure it's running."
+                    ) from None
+            else:
+                if self.config and self.config.verbose:
+                    debug_header("AI Client Connection Failed")
+                    debug_item("Error Type", "ConnectionError")
+                    debug_item("Base URL", self.base_url)
+                raise GitError(
+                    "Could not connect to Ollama server. Please ensure it's running."
+                ) from None
         except Exception as e:
             if self.config and self.config.verbose:
                 debug_header("AI Client Initialization Failed")
@@ -106,6 +131,7 @@ class AIClient:
                     "First message preview",
                     messages[0]["content"][:100] + "...",
                 )
+                debug_item("Base URL", self.base_url)
                 debug_item("Timeout", f"{DEFAULT_AI_TIMEOUT}s")
 
             with Progress() as progress:
@@ -170,7 +196,7 @@ class AIClient:
         except ConnectionError:
             if self.config and self.config.verbose:
                 debug_header("AI Connection Failed")
-                debug_item("Base URL", DEFAULT_BASE_URL)
+                debug_item("Base URL", self.base_url)
                 debug_item("Model", DEFAULT_AI_MODEL)
             raise GitError(
                 "Could not connect to Ollama server. Please ensure:\n"
