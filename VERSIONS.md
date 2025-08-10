@@ -1,6 +1,28 @@
 # Versions
 
-## **v0.16.0** (Current) - *August 2025*
+## **v0.17.0** (Current) - *10-08-2025*
+
+#### ✨/🔄 Brief Description
+
+Minor feature release with refactors. Introduces a configurable fallback Ollama server and flattens the Git operations structure for maintainability. Includes test additions.
+
+#### ✨ **New Features in v0.17.0**
+
+- Added: Configurable fallback Ollama server
+
+#### 🔧 **Improvements in v0.17.0**
+
+- Refactor: Flattened Git operations package structure
+- Refactor: Internal cleanups across Git helpers
+- Tests: Added basic to-do test scaffold
+
+#### 📝 **Key Commits in v0.17.0**
+
+`f14f674`, `35960dd`, `3102ffb`, `57a2633`
+
+---
+
+## **v0.16.0** - *August 2025*
 
 #### ✨/🔄 Brief Description
 
