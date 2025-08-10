@@ -20,6 +20,12 @@ class TestConstants:
             ("GIT_ACP_TEMPERATURE", "DEFAULT_TEMPERATURE", 0.7, float),
             ("GIT_ACP_DEFAULT_BRANCH", "DEFAULT_BRANCH", "main", str),
             ("GIT_ACP_DEBUG_HEADER_COLOR", "COLORS", "blue", dict),
+            (
+                "GIT_ACP_FALLBACK_BASE_URL",
+                "DEFAULT_FALLBACK_BASE_URL",
+                "https://diffsense.onrender.com/v1",
+                str,
+            ),
         ],
     )
     def test_environment_overrides(

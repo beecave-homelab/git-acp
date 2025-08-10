@@ -5,7 +5,7 @@ A Python tool to automate Git add, commit, and push actions with optional AI-gen
 ![GIT-ACP logo](./assets/logo/git-acp-logo-textonly.png)
 
 ![Python](https://img.shields.io/badge/python-3.10%2B-blue)
-![Version](https://img.shields.io/badge/version-0.15.1-brightgreen)
+![Version](https://img.shields.io/badge/version-0.17.0-brightgreen)
 ![License](https://img.shields.io/badge/license-MIT-green)
 
 ## Table of Contents

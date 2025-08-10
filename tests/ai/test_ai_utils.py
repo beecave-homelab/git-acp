@@ -20,7 +20,12 @@ from git_acp.ai.ai_utils import (
 )
 from git_acp.git import GitError
 from git_acp.utils import GitConfig, PromptType
-from git_acp.config import DEFAULT_BASE_URL, DEFAULT_API_KEY, DEFAULT_AI_TIMEOUT
+from git_acp.config import (
+    DEFAULT_BASE_URL,
+    DEFAULT_FALLBACK_BASE_URL,
+    DEFAULT_API_KEY,
+    DEFAULT_AI_TIMEOUT,
+)
 
 
 # Test fixtures
@@ -73,7 +78,7 @@ class TestAIClient:
 
     def test_init_success(self, mock_config):
         """Test successful AIClient initialization."""
-        with patch("git_acp.ai.ai_utils.OpenAI") as mock_openai:
+        with patch("git_acp.ai.client.OpenAI") as mock_openai:
             client = AIClient(mock_config)
             assert client.config == mock_config
             mock_openai.assert_called_once_with(
@@ -84,19 +89,33 @@ class TestAIClient:
 
     def test_init_invalid_url(self, mock_config):
         """Test AIClient initialization with invalid URL."""
-        with patch("git_acp.ai.ai_utils.OpenAI", side_effect=ValueError("Invalid URL")):
+        with patch("git_acp.ai.client.OpenAI", side_effect=ValueError("Invalid URL")):
             with pytest.raises(GitError, match="Invalid Ollama server URL"):
                 AIClient(mock_config)
 
     def test_init_connection_error(self, mock_config):
         """Test AIClient initialization with connection error."""
-        with patch("git_acp.ai.ai_utils.OpenAI", side_effect=ConnectionError()):
+        with patch("git_acp.ai.client.OpenAI", side_effect=ConnectionError()):
             with pytest.raises(GitError, match="Could not connect to Ollama server"):
                 AIClient(mock_config)
 
+    def test_init_fallback_url(self, mock_config):
+        """Test AIClient uses fallback URL when primary fails."""
+        with patch(
+            "git_acp.ai.client.OpenAI",
+            side_effect=[ConnectionError(), MagicMock()],
+        ) as mock_openai:
+            client = AIClient(mock_config)
+            assert mock_openai.call_count == 2
+            assert client.base_url == DEFAULT_FALLBACK_BASE_URL
+            first_call = mock_openai.call_args_list[0]
+            second_call = mock_openai.call_args_list[1]
+            assert first_call.kwargs["base_url"] == DEFAULT_BASE_URL
+            assert second_call.kwargs["base_url"] == DEFAULT_FALLBACK_BASE_URL
+
     def test_chat_completion_success(self, mock_config, mock_openai_response):
         """Test successful chat completion."""
-        with patch("git_acp.ai.ai_utils.OpenAI") as mock_openai:
+        with patch("git_acp.ai.client.OpenAI") as mock_openai:
             mock_client = Mock()
             mock_client.chat.completions.create.return_value = mock_openai_response
             mock_openai.return_value = mock_client
@@ -110,7 +129,7 @@ class TestAIClient:
 
     def test_chat_completion_timeout(self, mock_config):
         """Test chat completion timeout."""
-        with patch("git_acp.ai.ai_utils.OpenAI") as mock_openai:
+        with patch("git_acp.ai.client.OpenAI") as mock_openai:
             mock_client = Mock()
             mock_client.chat.completions.create.side_effect = TimeoutError()
             mock_openai.return_value = mock_client
