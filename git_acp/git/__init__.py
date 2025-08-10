@@ -1,7 +1,7 @@
 """Git operations package for git-acp."""
 
 from git_acp.git.classification import CommitType, classify_commit_type
-from git_acp.git.git_operations import (
+from git_acp.git.operations import (
     GitError,
     get_changed_files,
     get_current_branch,

@@ -1,48 +1,29 @@
-"""Commit history and analysis utilities."""
+from __future__ import annotations
 
-from collections import Counter
 import json
-from typing import Dict, List, TYPE_CHECKING
+from collections import Counter
+from typing import Dict, List, Optional
 
 from git_acp.config import DEFAULT_NUM_RECENT_COMMITS
 from git_acp.utils import OptionalConfig, debug_header, debug_item, debug_json
-
-if TYPE_CHECKING:  # pragma: no cover - for type hints only
-    pass
+from .core import GitError, run_git_command
 
 
 def get_recent_commits(
-    num_commits: int = DEFAULT_NUM_RECENT_COMMITS,
-    config: OptionalConfig = None,
+    num_commits: int = DEFAULT_NUM_RECENT_COMMITS, config: OptionalConfig = None
 ) -> List[Dict[str, str]]:
-    """Get recent commit history.
-
-    Args:
-        num_commits (int): Number of commits to retrieve.
-        config (OptionalConfig | None): Optional configuration settings.
-
-    Returns:
-        List[Dict[str, str]]: Recent commit information.
-
-    Raises:
-        GitError: If the git command fails.
-    """
-    from git_acp.git.git_operations import GitError, run_git_command
-
+    """Get recent commit history."""
     try:
         if config and config.verbose:
             debug_header("Getting recent commits")
             debug_item("Number of commits", str(num_commits))
 
-        format_str = (
-            '--pretty=format:{"hash":"%h","message":"%s","author":"%an","date":"%ad"}'
-        )
         stdout, _ = run_git_command(
             [
                 "git",
                 "log",
                 f"-{num_commits}",
-                format_str,
+                '--pretty=format:{"hash":"%h","message":"%s","author":"%an","date":"%ad"}',
                 "--date=short",
             ],
             config,
@@ -73,24 +54,10 @@ def find_related_commits(
     num_commits: int = DEFAULT_NUM_RECENT_COMMITS,
     config: OptionalConfig = None,
 ) -> List[Dict[str, str]]:
-    """Find commits related to the current changes.
-
-    Args:
-        diff_content (str): Diff content to compare.
-        num_commits (int): Number of commits to return.
-        config (OptionalConfig | None): Optional configuration settings.
-
-    Returns:
-        List[Dict[str, str]]: Related commit information.
-
-    Raises:
-        GitError: If the git command fails.
-    """
-    from git_acp.git.git_operations import GitError, run_git_command
-
+    """Find commits related to the current changes."""
     try:
         all_commits = get_recent_commits(num_commits * 2, config)
-        related_commits = []
+        related_commits: List[Dict[str, str]] = []
 
         current_files = set()
         for line in diff_content.splitlines():
@@ -111,11 +78,13 @@ def find_related_commits(
                     ],
                     config,
                 )
+
                 commit_files = set(stdout.splitlines())
                 if current_files & commit_files:
                     related_commits.append(commit)
                     if len(related_commits) >= num_commits:
                         break
+
             except GitError:
                 continue
 
@@ -131,18 +100,9 @@ def find_related_commits(
 
 
 def analyze_commit_patterns(
-    commits: List[Dict[str, str]],
-    config: OptionalConfig = None,
+    commits: List[Dict[str, str]], config: OptionalConfig = None
 ) -> Dict[str, Dict[str, int]]:
-    """Analyze commit history to find patterns in commit types and scopes.
-
-    Args:
-        commits (List[Dict[str, str]]): Commit dictionaries to analyze.
-        config (OptionalConfig | None): Optional configuration settings.
-
-    Returns:
-        Dict[str, Dict[str, int]]: Counts of commit types and scopes.
-    """
+    """Analyze commit history to find patterns in commit types and scopes."""
     if config and config.verbose:
         debug_header("Analyzing commit patterns")
         debug_item("Number of commits", str(len(commits)))
@@ -163,6 +123,7 @@ def analyze_commit_patterns(
                 type_part = type_part.split("(", 1)[0].strip()
             type_part = type_part.split(" ", 1)[0].strip()
             patterns["types"][type_part.lower()] += 1
+
             if config and config.verbose:
                 debug_item("Found commit type", type_part)
 
@@ -178,10 +139,3 @@ def analyze_commit_patterns(
         debug_item("Commit scopes found", str(dict(patterns["scopes"])))
 
     return patterns
-
-
-__all__ = [
-    "get_recent_commits",
-    "find_related_commits",
-    "analyze_commit_patterns",
-]
