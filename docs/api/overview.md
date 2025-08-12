@@ -1,6 +1,6 @@
 # `git_acp` Package Documentation
 
-**Version**: `0.14.0`  
+**Version**: `0.17.0`
 **Summary**: The `git_acp` package is a command-line utility and Python API for automating common Git workflows with enhanced features such as:
 
 - Interactive file selection
@@ -46,7 +46,8 @@ You can install the `git_acp` package by cloning the repository or adding it to 
 git_acp/
 ├── ai/
 │   ├── __init__.py
-│   └── ai_utils.py
+│   ├── ai_utils.py
+│   └── client.py
 ├── cli/
 │   ├── __init__.py
 │   └── cli.py
@@ -56,22 +57,28 @@ git_acp/
 │   └── env_config.py
 ├── git/
 │   ├── __init__.py
+│   ├── classification.py
+│   ├── core.py
+│   ├── diff.py
 │   ├── git_operations.py
-│   └── classification.py
+│   ├── history.py
+│   ├── management.py
+│   ├── operations.py
+│   └── staging.py
 ├── utils/
 │   ├── __init__.py
 │   ├── formatting.py
 │   └── types.py
 ├── __init__.py
-├── __main__.py
+└── __main__.py
 ```
 
 ---
 
 ## Top-Level Module (`git_acp`)
 
-**Location**: `git_acp/__init__.py`  
-This is the root of the package. It defines the package’s version and imports public-facing objects from submodules.
+**Location**: `git_acp/__init__.py`
+This is the root of the package and defines the package’s version.
 
 - **Attributes**:
   - `__version__`: The version of the `git_acp` package.
@@ -81,52 +88,42 @@ This is the root of the package. It defines the package’s version and imports 
 ```python
 import git_acp
 
-print(git_acp.__version__)  # "0.14.0"
+print(git_acp.__version__)  # "0.17.0"
 ```
 
 ---
 
 ## AI Subpackage (`git_acp.ai`)
 
-**Location**: `git_acp/ai/__init__.py` and `git_acp/ai/ai_utils.py`  
+**Location**: `git_acp/ai/__init__.py`, `git_acp/ai/ai_utils.py`, `git_acp/ai/client.py`
 
 This subpackage contains functionality for AI-powered commit message generation. It integrates with an AI backend (e.g., Ollama).
 
 ### `git_acp.ai.__init__.py`
 
-Exports public functions/classes from the AI subpackage.
+Exposes high-level AI helpers.
 
-- `generate_commit_message(config: GitConfig) -> str`  
-  A convenience import that references `ai_utils.generate_commit_message`.
+- `generate_commit_message(config: GitConfig) -> str`
+  Convenience import that references `ai_utils.generate_commit_message`.
 
 ### `git_acp.ai.ai_utils`
 
-Contains the core logic for generating commit messages with AI.
+Core logic for building commit context and prompts.
 
-- **Function**: `generate_commit_message(config: GitConfig) -> str`  
-  Generates a commit message using AI.  
-  **Args**:  
-  - `config (GitConfig)`: The user’s Git configuration containing flags such as `use_ollama`, `verbose`, etc.  
-  **Returns**:  
-  - `str`: The AI-generated (and possibly user-edited) commit message.
+- **Functions**:
+  - `create_advanced_commit_message_prompt(context: Dict[str, Any], config: OptionalConfig = None) -> str`
+  - `create_simple_commit_message_prompt(context: Dict[str, Any], config: OptionalConfig = None) -> str`
+  - `get_commit_context(config: GitConfig) -> Dict[str, Any]`
+  - `edit_commit_message(message: str, config: GitConfig) -> str`
+  - `generate_commit_message(config: GitConfig) -> str`
 
-- **Class**: `AIClient`  
-  A client for interacting with the AI model.  
-  **Methods**:
-  1. `__init__(self, config: OptionalConfig = None)`: Initializes the AI client with default or custom base URLs, API keys, etc.
-  2. `chat_completion(self, messages: list, **kwargs) -> str`: Sends a chat-style request to the AI model and returns the response text.
+### `git_acp.ai.client`
 
-- **Function**: `create_advanced_commit_message_prompt(context: Dict[str, Any], config: OptionalConfig = None) -> str`  
-  Creates a multi-context prompt for the AI to generate a more descriptive commit message.
+Defines the `AIClient` class used to communicate with the AI model.
 
-- **Function**: `create_simple_commit_message_prompt(context: Dict[str, Any], config: OptionalConfig = None) -> str`  
-  Creates a straightforward prompt for simpler commit messages.
-
-- **Function**: `edit_commit_message(message: str, config: GitConfig) -> str`  
-  Offers an interactive editing step for AI-generated commit messages if `interactive=True`.
-
-- **Function**: `get_commit_context(config: GitConfig) -> Dict[str, Any]`  
-  Gathers context from recent commits, staged diff, etc., to feed into AI prompts.
+- **Class**: `AIClient`
+  - `__init__(config: OptionalConfig = None)`
+  - `chat_completion(messages: list[dict[str, str]], **kwargs) -> str`
 
 ---
 
@@ -191,26 +188,26 @@ Manages environment variables, configuration constants, and user-defined setting
 
 ### `git_acp.config.__init__.py`
 
-Exports commonly used config objects and methods.
+Exports commonly used config objects and methods:
 
-- **Exports**:
-  - `COLORS`
-  - `QUESTIONARY_STYLE`
-  - `COMMIT_TYPES`
-  - `COMMIT_TYPE_PATTERNS`
-  - `EXCLUDED_PATTERNS`
-  - `DEFAULT_REMOTE`
-  - `DEFAULT_NUM_RECENT_COMMITS`
-  - `DEFAULT_NUM_RELATED_COMMITS`
-  - `DEFAULT_AI_MODEL`
-  - `DEFAULT_TEMPERATURE`
-  - `DEFAULT_BASE_URL`
-  - `DEFAULT_API_KEY`
-  - `DEFAULT_PROMPT_TYPE`
-  - `DEFAULT_AI_TIMEOUT`
-  - `TERMINAL_WIDTH`
-  - `get_env`
-  - `load_env_config`
+- `COLORS`
+- `QUESTIONARY_STYLE`
+- `COMMIT_TYPES`
+- `COMMIT_TYPE_PATTERNS`
+- `EXCLUDED_PATTERNS`
+- `DEFAULT_REMOTE`
+- `DEFAULT_NUM_RECENT_COMMITS`
+- `DEFAULT_NUM_RELATED_COMMITS`
+- `DEFAULT_AI_MODEL`
+- `DEFAULT_TEMPERATURE`
+- `DEFAULT_BASE_URL`
+- `DEFAULT_FALLBACK_BASE_URL`
+- `DEFAULT_API_KEY`
+- `DEFAULT_PROMPT_TYPE`
+- `DEFAULT_AI_TIMEOUT`
+- `TERMINAL_WIDTH`
+- `get_env`
+- `load_env_config`
 
 ### `git_acp.config.env_config`
 
@@ -231,100 +228,45 @@ Defines constants for AI configuration, Git workflow configuration, file-exclusi
 
 ## Git Subpackage (`git_acp.git`)
 
-**Location**: `git_acp/git/__init__.py`, `git_acp/git/git_operations.py`, `git_acp/git/classification.py`  
+**Location**: `git_acp/git/`
 
-Implements direct interaction with Git repositories (add, commit, push, logs, diffs, etc.) as well as commit type classification logic.
+Implements direct interaction with Git repositories (add, commit, push, diffs, history, branch management) and commit type classification. The subpackage is organized into several modules:
+
+- `core.py` – defines `GitError` and `run_git_command`.
+- `staging.py` – staging and pushing helpers: `get_current_branch`, `git_add`, `git_commit`, `git_push`, `unstage_files`, `setup_signal_handlers`.
+- `diff.py` – file change detection and diff retrieval: `get_changed_files`, `get_diff`.
+- `history.py` – commit history utilities: `get_recent_commits`, `find_related_commits`, `analyze_commit_patterns`.
+- `management.py` – branch, remote, tag, and stash management: `create_branch`, `delete_branch`, `merge_branch`, `manage_remote`, `manage_tags`, `manage_stash`.
+- `operations.py` – convenience layer re-exporting the above functions.
+- `classification.py` – commit type helpers: `CommitType`, `classify_commit_type`, `get_changes`.
+- `git_operations.py` – backward compatibility shim that re-exports from `operations`.
 
 ### `git_acp.git.__init__.py`
 
-- **Exports**:
-  - `GitError`
-  - `run_git_command`
-  - `get_current_branch`
-  - `git_add`
-  - `git_commit`
-  - `git_push`
-  - `get_changed_files`
-  - `unstage_files`
-  - `get_diff`
-  - `get_recent_commits`
-  - `find_related_commits`
-  - `analyze_commit_patterns`
-  - `CommitType`
-  - `classify_commit_type`
-  - `setup_signal_handlers`
+Re-exports commonly used operations:
 
-### `git_acp.git.git_operations`
-
-- **Class**: `GitError(Exception)`  
-  Custom exception type for Git-related errors.
-
-- **Function**: `run_git_command(command: list[str], config: OptionalConfig = None) -> Tuple[str, str]`  
-  Runs a raw Git command using `subprocess.Popen` and returns `(stdout, stderr)` or raises `GitError`.
-
-- **Function**: `get_current_branch(config: OptionalConfig = None) -> str`  
-  Returns the currently checked-out Git branch name.
-
-- **Function**: `git_add(files: str, config: OptionalConfig = None) -> None`  
-  Stages specified files for commit. Accepts space-separated paths or `"."` for all.
-
-- **Function**: `git_commit(message: str, config: OptionalConfig = None) -> None`  
-  Commits staged changes with the provided commit message.
-
-- **Function**: `git_push(branch: str, config: OptionalConfig = None) -> None`  
-  Pushes the specified branch to the default remote (`origin`).
-
-- **Function**: `get_changed_files(config: OptionalConfig = None) -> Set[str]`  
-  Returns a set of changed file paths (staged or unstaged), filtering out excluded patterns.
-
-- **Function**: `unstage_files(config: OptionalConfig = None) -> None`  
-  Resets the staging area (equivalent to `git reset HEAD`).
-
-- **Function**: `get_recent_commits(num_commits: int = DEFAULT_NUM_RECENT_COMMITS, config: OptionalConfig = None) -> List[Dict[str, str]]`  
-  Fetches a specified number of recent commits in JSON-like form.
-
-- **Function**: `find_related_commits(diff_content: str, num_commits: int = DEFAULT_NUM_RECENT_COMMITS, config: OptionalConfig = None) -> List[Dict[str, str]]`  
-  Locates recently made commits that modified similar files/areas based on a diff.
-
-- **Function**: `get_diff(diff_type: DiffType = "staged", config: OptionalConfig = None) -> str`  
-  Retrieves the raw Git diff (staged or unstaged).
-
-- **Function**: `create_branch(branch_name: str, config: OptionalConfig = None) -> None`  
-  Creates and checks out a new branch.
-
-- **Function**: `delete_branch(branch_name: str, force: bool = False, config: OptionalConfig = None) -> None`  
-  Deletes a local branch. Use `force=True` to force-delete.
-
-- **Function**: `merge_branch(source_branch: str, config: OptionalConfig = None) -> None`  
-  Merges the specified source branch into the current branch.
-
-- **Function**: `manage_remote(operation: Literal["add", "remove", "set-url"], remote_name: str, url: Optional[str] = None, config: OptionalConfig = None) -> None`  
-  Adds, removes, or sets the URL of a Git remote.
-
-- **Function**: `manage_tags(operation: Literal["create", "delete", "push"], tag_name: str, message: Optional[str] = None, config: OptionalConfig = None) -> None`  
-  Creates, deletes, or pushes Git tags.
-
-- **Function**: `manage_stash(operation: Literal["save", "pop", "apply", "drop", "list"], message: Optional[str] = None, stash_id: Optional[str] = None, config: OptionalConfig = None) -> Optional[str]`  
-  Performs stash operations, returning the stash list for `list` operation.
-
-- **Function**: `analyze_commit_patterns(commits: List[Dict[str, str]], config: OptionalConfig = None) -> Dict[str, Dict[str, int]]`  
-  Analyzes commit messages to find frequent types and scopes (e.g., `feat`, `fix`).
-
-- **Function**: `setup_signal_handlers() -> None`  
-  Installs signal handlers to gracefully unstage files and exit on `CTRL+C`.
+- `GitError`
+- `run_git_command`
+- `get_current_branch`
+- `git_add`
+- `git_commit`
+- `git_push`
+- `get_changed_files`
+- `unstage_files`
+- `get_diff`
+- `get_recent_commits`
+- `find_related_commits`
+- `analyze_commit_patterns`
+- `CommitType`
+- `classify_commit_type`
+- `setup_signal_handlers`
 
 ### `git_acp.git.classification`
 
-- **Enum**: `CommitType(Enum)`  
-  Enumerates conventional commit types (FEAT, FIX, DOCS, etc.) with optional emojis.  
-  **Method**:
-  - `from_str(type_str: str) -> CommitType`: Converts a string to a `CommitType` or raises `GitError`.
-
-- **Function**: `classify_commit_type(config) -> CommitType`  
-  Examines the current diff and determines the most likely commit type based on patterns defined in `git_acp.config.constants.COMMIT_TYPE_PATTERNS`.
-
-- **Function**: `get_changes() -> str`  
-  Retrieves staged or unstaged changes as a diff string, throwing `GitError` if none exist.
+- **Enum**: `CommitType(Enum)` – conventional commit types with emojis. Includes `from_str(type_str: str) -> CommitType`.
+- **Functions**:
+  - `classify_commit_type(config) -> CommitType`
+  - `get_changes() -> str`
 
 ---
 
@@ -379,31 +321,32 @@ Provides functionality for printing styled debug and status messages using [Rich
 
 Defines custom data classes and type aliases used throughout `git_acp`.
 
-- **Dataclass**: `GitConfig`  
-  Holds settings for Git operations:
+  - **Dataclass**: `GitConfig`
+    Holds settings for Git operations:
 
-  ```python
-  @dataclass
-  class GitConfig:
-      files: str = "."
-      message: str = "Automated commit"
-      branch: Optional['GitConfig'] = None
-      use_ollama: bool = False
-      interactive: bool = False
-      skip_confirmation: bool = False
-      verbose: bool = False
-      prompt_type: str = "advanced"
-  ```
+    ```python
+    @dataclass
+    class GitConfig:
+        files: str = "."
+        message: str = "Automated commit"
+        branch: Optional['GitConfig'] = None
+        use_ollama: bool = False
+        interactive: bool = False
+        skip_confirmation: bool = False
+        verbose: bool = False
+        prompt_type: str = "advanced"
+    ```
 
-- **Type Aliases**:
-  - `OptionalConfig = Optional[GitConfig]`
-  - `DiffType = Literal["staged", "unstaged"]`
-  - `RemoteOperation = Literal["add", "remove", "set-url"]`
-  - `TagOperation = Literal["create", "delete", "push"]`
-  - `StashOperation = Literal["save", "pop", "apply", "drop", "list"]`
-  - `PromptType = Literal["simple", "advanced"]`
-  - `Message = Dict[str, str]`
-  - `CommitContext = Dict[str, Any]`
+  - **Type Aliases**:
+    - `OptionalConfig = Optional[GitConfig]`
+    - `DiffType = Literal["staged", "unstaged"]`
+    - `RemoteOperation = Literal["add", "remove", "set-url"]`
+    - `TagOperation = Literal["create", "delete", "push"]`
+    - `StashOperation = Literal["save", "pop", "apply", "drop", "list"]`
+    - `CommitDict = Dict[str, str]`
+    - `PromptType = Literal["simple", "advanced"]`
+    - `Message = Dict[str, str]`
+    - `CommitContext = Dict[str, Any]`
 
 ---
 
