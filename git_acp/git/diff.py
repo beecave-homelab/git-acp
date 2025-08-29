@@ -5,11 +5,13 @@ from typing import Optional, Set
 
 from git_acp.config import EXCLUDED_PATTERNS
 from git_acp.utils import DiffType, OptionalConfig, debug_header, debug_item
-from .core import GitError, run_git_command
+from git_acp.git.core import GitError
 
 
 def get_changed_files(config: OptionalConfig = None, staged_only: bool = False) -> Set[str]:
     """Get list of changed files."""
+    from git_acp.git.git_operations import run_git_command
+
     files: Set[str] = set()
     if config and config.verbose:
         debug_header(f"Getting {'staged ' if staged_only else ''}changed files")
@@ -61,6 +63,7 @@ def get_changed_files(config: OptionalConfig = None, staged_only: bool = False) 
 
 def get_diff(diff_type: DiffType = "staged", config: OptionalConfig = None) -> str:
     """Get the git diff output for staged or unstaged changes."""
+    from git_acp.git.git_operations import run_git_command
     try:
         if config and config.verbose:
             debug_header(f"Getting {diff_type} diff")

@@ -1,10 +1,8 @@
 from __future__ import annotations
 
 import shlex
-import subprocess
 import signal
 import sys
-from typing import Optional
 
 from rich import print as rprint
 from rich.console import Console
@@ -12,7 +10,7 @@ from rich.panel import Panel
 
 from git_acp.config import DEFAULT_REMOTE
 from git_acp.utils import OptionalConfig, debug_header, debug_item, status, success
-from .core import GitError, run_git_command
+from git_acp.git.core import GitError
 
 console = Console()
 
@@ -20,6 +18,8 @@ console = Console()
 def get_current_branch(config: OptionalConfig = None) -> str:
     """Get the name of the current git branch."""
     try:
+        from git_acp.git.git_operations import run_git_command
+
         if config and config.verbose:
             debug_header("Getting Current Branch")
         stdout, _ = run_git_command(["git", "rev-parse", "--abbrev-ref", "HEAD"], config)
@@ -38,6 +38,8 @@ def get_current_branch(config: OptionalConfig = None) -> str:
 def git_add(files: str, config: OptionalConfig = None) -> None:
     """Add files to git staging area."""
     try:
+        from git_acp.git.git_operations import run_git_command
+
         if config and config.verbose:
             debug_header("Adding Files to Staging Area")
             debug_item("Raw files input", files)
@@ -70,6 +72,8 @@ def git_add(files: str, config: OptionalConfig = None) -> None:
 def git_commit(message: str, config: OptionalConfig = None) -> None:
     """Commit staged changes to the repository."""
     try:
+        from git_acp.git.git_operations import run_git_command
+
         if config and config.verbose:
             debug_header("Committing Changes")
             debug_item("Message", message)
@@ -87,6 +91,8 @@ def git_commit(message: str, config: OptionalConfig = None) -> None:
 def git_push(branch: str, config: OptionalConfig = None) -> None:
     """Push committed changes to the remote repository."""
     try:
+        from git_acp.git.git_operations import run_git_command
+
         if config and config.verbose:
             debug_header("Pushing Changes")
             debug_item("Branch", branch)
@@ -117,6 +123,8 @@ def git_push(branch: str, config: OptionalConfig = None) -> None:
 def unstage_files(config: OptionalConfig = None) -> None:
     """Unstage all files from the staging area."""
     try:
+        from git_acp.git.git_operations import run_git_command
+
         if config and config.verbose:
             debug_header("Unstaging all files")
         run_git_command(["git", "reset", "HEAD"], config)

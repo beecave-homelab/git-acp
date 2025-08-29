@@ -3,12 +3,13 @@ from __future__ import annotations
 from typing import Literal, Optional
 
 from git_acp.utils import OptionalConfig, debug_header, debug_item
-from .core import GitError, run_git_command
+from git_acp.git.core import GitError
 
 
 def create_branch(branch_name: str, config: OptionalConfig = None) -> None:
     """Create a new git branch."""
     try:
+        from git_acp.git.git_operations import run_git_command
         if config and config.verbose:
             debug_header("Creating branch")
             debug_item("Creating branch", branch_name)
@@ -20,6 +21,7 @@ def create_branch(branch_name: str, config: OptionalConfig = None) -> None:
 def delete_branch(branch_name: str, force: bool = False, config: OptionalConfig = None) -> None:
     """Delete a git branch."""
     try:
+        from git_acp.git.git_operations import run_git_command
         if config and config.verbose:
             debug_header("Deleting branch")
             debug_item("Deleting branch", branch_name)
@@ -34,6 +36,7 @@ def delete_branch(branch_name: str, force: bool = False, config: OptionalConfig 
 def merge_branch(source_branch: str, config: OptionalConfig = None) -> None:
     """Merge a branch into the current branch."""
     try:
+        from git_acp.git.git_operations import run_git_command
         if config and config.verbose:
             debug_header("Merging branch")
             debug_item("Merging branch", source_branch)
@@ -52,6 +55,8 @@ def manage_remote(
     try:
         if config and config.verbose:
             debug_item(f"Remote operation: {operation}", f"{remote_name} {url or ''}")
+
+        from git_acp.git.git_operations import run_git_command
 
         if operation == "add":
             if not url:
@@ -78,6 +83,8 @@ def manage_tags(
         if config and config.verbose:
             debug_item(f"Tag operation: {operation}", tag_name)
 
+        from git_acp.git.git_operations import run_git_command
+
         if operation == "create":
             if message:
                 run_git_command(["git", "tag", "-a", tag_name, "-m", message], config)
@@ -101,6 +108,8 @@ def manage_stash(
     try:
         if config and config.verbose:
             debug_item(f"Stash operation: {operation}", f"{message or ''} {stash_id or ''}")
+
+        from git_acp.git.git_operations import run_git_command
 
         if operation == "save":
             cmd = ["git", "stash", "push"]

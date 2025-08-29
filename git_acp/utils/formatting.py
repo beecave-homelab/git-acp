@@ -10,8 +10,13 @@ from rich import print as rprint
 from rich.console import Console
 
 from git_acp.config import COLORS, TERMINAL_WIDTH
+from typing import Set
 
 console = Console(width=TERMINAL_WIDTH)
+
+# Keep track of previously displayed warning messages so repeated warnings
+# (such as the macOS ``MallocStackLogging`` notice) are only shown once.
+_shown_warnings: Set[str] = set()
 
 
 def debug_header(message: str) -> None:
@@ -78,10 +83,16 @@ def success(message: str) -> None:
 def warning(message: str) -> None:
     """Print a warning message with appropriate styling.
 
+    Subsequent calls with the same *message* will be ignored to avoid
+    spamming the terminal with duplicate warnings.
+
     Args:
         message: The warning message to display
     """
-    rprint(f"[{COLORS['warning']}]Warning: {message}[{COLORS['warning']}]")
+    if message in _shown_warnings:
+        return
+    _shown_warnings.add(message)
+    rprint(f"[{COLORS['warning']}]Warning: {message}[/{COLORS['warning']}]")
 
 
 def status(message: str) -> Console.status:

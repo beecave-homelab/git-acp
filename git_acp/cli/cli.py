@@ -24,11 +24,11 @@ from rich.prompt import Confirm
 
 from git_acp.ai import generate_commit_message
 from git_acp.config import COLORS, QUESTIONARY_STYLE
+import git_acp.git as git_module
 from git_acp.git import (
     CommitType,
     GitError,
     classify_commit_type,
-    get_changed_files,
     get_current_branch,
     git_add,
     git_commit,
@@ -355,7 +355,7 @@ def main(
 
         if add is None:  # Only run interactive selection if -a was not provided
             try:
-                changed_files = get_changed_files(config)  # config is used for verbose
+                changed_files = git_module.get_changed_files(config)  # config is used for verbose
                 if not changed_files:
                     if config.skip_confirmation:
                         rprint(
@@ -418,7 +418,7 @@ def main(
             git_add(config.files, config)  # Pass config for verbose/debug
             # Check if files were staged when -a is used
             if add is not None:  # -a was used
-                staged_files = get_changed_files(config, staged_only=True)
+                staged_files = git_module.get_changed_files(config, staged_only=True)
                 if not staged_files:
                     # This message is now more specific if -a was used and resolved to something, but nothing was actually changed/staged
                     rprint(
@@ -474,13 +474,12 @@ def main(
             except GitError as e:
                 rprint(
                     Panel(
-                        f"[{COLORS['error']}]Error determining commit type:[/{COLORS['error']}]\n{str(e)}\n\n"
-                        "Suggestion: Check your changes or specify a commit type with -t.",
-                        title="Commit Type Error",
-                        border_style="red",
+                        f"[{COLORS['warning']}]Commit type detection failed, defaulting to 'chore':[/{COLORS['warning']}]\n{str(e)}",
+                        title="Commit Type Warning",
+                        border_style="yellow",
                     )
                 )
-                sys.exit(1)
+                suggested_type = CommitType.CHORE
 
             # Let user select commit type, unless it was specified with -t flag
             rprint(

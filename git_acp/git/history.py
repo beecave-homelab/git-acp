@@ -6,7 +6,7 @@ from typing import Dict, List, Optional
 
 from git_acp.config import DEFAULT_NUM_RECENT_COMMITS
 from git_acp.utils import OptionalConfig, debug_header, debug_item, debug_json
-from .core import GitError, run_git_command
+from git_acp.git.core import GitError
 
 
 def get_recent_commits(
@@ -14,6 +14,8 @@ def get_recent_commits(
 ) -> List[Dict[str, str]]:
     """Get recent commit history."""
     try:
+        from git_acp.git.git_operations import run_git_command
+
         if config and config.verbose:
             debug_header("Getting recent commits")
             debug_item("Number of commits", str(num_commits))
@@ -56,6 +58,8 @@ def find_related_commits(
 ) -> List[Dict[str, str]]:
     """Find commits related to the current changes."""
     try:
+        from git_acp.git.git_operations import run_git_command
+
         all_commits = get_recent_commits(num_commits * 2, config)
         related_commits: List[Dict[str, str]] = []
 
