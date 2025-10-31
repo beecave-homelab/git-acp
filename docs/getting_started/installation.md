@@ -188,6 +188,11 @@ pip install --user git+https://github.com/beecave-homelab/git-acp.git
 export PATH="$HOME/.local/bin:$PATH"
 ```
 
+#### "'VSplit' object has no attribute 'content'" on Debian
+
+- Cause: Debian installs `prompt-toolkit` 3.0.50+, which removed the legacy `content` attribute used by `questionary` 2.1.0.
+- Fix: Upgrade `git-acp` to the latest release or reinstall it after ensuring `prompt-toolkit<3.0.50` is installed in the environment.
+
 ### System-Specific Notes
 
 #### macOS
