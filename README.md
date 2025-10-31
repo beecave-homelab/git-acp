@@ -31,7 +31,7 @@ A Python tool to automate Git add, commit, and push actions with optional AI-gen
 ### Recommended: Global Installation with pipx
 
 ```bash
-pipx install "git+https://github.com/beecave-homelab/git-acp.git@d722434c1d4981bb3326cf5e6132665e6f2cdad9"
+pipx install "git+https://github.com/beecave-homelab/git-acp.git"
 ```
 
 For other installation methods and detailed instructions, see the [Installation Guide](docs/getting_started/installation.md).
