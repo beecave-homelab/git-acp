@@ -1,8 +1,7 @@
 import unittest
-from unittest.mock import patch, MagicMock
+from unittest.mock import patch
 from click.testing import CliRunner
 from git_acp.cli.cli import main
-from git_acp.utils import GitConfig  # For creating config objects if needed
 
 
 class TestCli(unittest.TestCase):

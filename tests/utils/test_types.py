@@ -1,11 +1,9 @@
 """Unit tests for type definitions and dataclasses."""
 
-import pytest
-from git_acp.utils.types import GitConfig, DiffType, PromptType, CommitDict
-from typing import Optional, ForwardRef
+from git_acp.utils.types import CommitDict, DiffType, GitConfig, PromptType
 
 
-def test_gitconfig_default_values():
+def test_gitconfig_default_values() -> None:
     """Test GitConfig dataclass default values."""
     config = GitConfig()
     assert config.files == "."
@@ -15,7 +13,7 @@ def test_gitconfig_default_values():
     assert config.prompt_type == "advanced"
 
 
-def test_gitconfig_custom_values():
+def test_gitconfig_custom_values() -> None:
     """Test GitConfig initialization with custom values."""
     custom_config = GitConfig(
         files="src/",
@@ -31,7 +29,7 @@ def test_gitconfig_custom_values():
     assert custom_config.prompt_type == "simple"
 
 
-def test_diff_type_literal():
+def test_diff_type_literal() -> None:
     """Test DiffType literal values."""
     valid_values = DiffType.__args__  # type: ignore
     assert "staged" in valid_values
@@ -39,7 +37,7 @@ def test_diff_type_literal():
     assert len(valid_values) == 2
 
 
-def test_prompt_type_literal():
+def test_prompt_type_literal() -> None:
     """Test PromptType literal values."""
     valid_values = PromptType.__args__  # type: ignore
     assert "simple" in valid_values
@@ -47,7 +45,7 @@ def test_prompt_type_literal():
     assert len(valid_values) == 2
 
 
-def test_commit_dict_type():
+def test_commit_dict_type() -> None:
     """Test CommitDict type definition."""
     sample_commit: CommitDict = {
         "hash": "abc123",
@@ -59,21 +57,21 @@ def test_commit_dict_type():
     assert all(isinstance(v, str) for v in sample_commit.values())
 
 
-def test_gitconfig_type_annotations():
+def test_gitconfig_type_annotations() -> None:
     """Test type annotations for GitConfig fields."""
     annotations = GitConfig.__annotations__
-    assert annotations["files"] == str
-    assert annotations["message"] == str
+    assert annotations["files"] is str
+    assert annotations["message"] is str
 
     # Revert to string comparison for forward reference
     assert str(annotations["branch"]) == "typing.Optional[ForwardRef('GitConfig')]"
 
-    assert annotations["use_ollama"] == bool
-    assert annotations["interactive"] == bool
-    assert annotations["prompt_type"] == str
+    assert annotations["use_ollama"] is bool
+    assert annotations["interactive"] is bool
+    assert annotations["prompt_type"] is str
 
 
-def test_config_serialization():
+def test_config_serialization() -> None:
     """Test dataclass serialization capabilities."""
     config = GitConfig(skip_confirmation=True)
     config_dict = {

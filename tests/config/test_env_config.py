@@ -1,5 +1,4 @@
-import os
-from unittest.mock import patch, Mock
+from unittest.mock import patch
 from pathlib import Path
 import pytest
 from git_acp.config.env_config import (

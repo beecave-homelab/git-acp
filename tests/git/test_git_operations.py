@@ -1,21 +1,21 @@
+import unittest
+from unittest.mock import MagicMock, patch
+
 import pytest
-from unittest.mock import patch, MagicMock, call
+
 from git_acp.git.git_operations import (
-    run_git_command,
-    get_diff,
+    GitError,  # Added for testing exclusions
     get_changed_files,
+    get_diff,
     git_push,
-    GitError,
-    EXCLUDED_PATTERNS,  # Added for testing exclusions
+    run_git_command,
 )
 from git_acp.utils import GitConfig  # Added for creating config objects
-from subprocess import CalledProcessError
-from unittest.mock import call  # Ensure call is imported if not already
 
 
 class TestRunGitCommand:
     @patch("subprocess.Popen")
-    def test_successful_command(self, mock_popen):
+    def test_successful_command(self, mock_popen) -> None:
         mock_process = MagicMock()
         mock_process.communicate.return_value = ("output", "")
         mock_process.returncode = 0
@@ -25,7 +25,7 @@ class TestRunGitCommand:
         assert stdout == "output"
 
     @patch("subprocess.Popen")
-    def test_error_handling(self, mock_popen):
+    def test_error_handling(self, mock_popen) -> None:
         mock_process = MagicMock()
         mock_process.communicate.return_value = ("", "fatal error")
         mock_process.returncode = 1
@@ -35,7 +35,7 @@ class TestRunGitCommand:
             run_git_command(["git", "invalid"])
 
     @patch("subprocess.Popen")
-    def test_known_error_patterns(self, mock_popen):
+    def test_known_error_patterns(self, mock_popen) -> None:
         mock_process = MagicMock()
         mock_process.communicate.return_value = (
             "",
@@ -51,14 +51,14 @@ class TestRunGitCommand:
 
 class TestDiffOperations:
     @patch("git_acp.git.git_operations.run_git_command")
-    def test_get_diff_staged(self, mock_run):
+    def test_get_diff_staged(self, mock_run) -> None:
         mock_run.return_value = ("diff output", "")
         result = get_diff("staged")
         assert result == "diff output"
         mock_run.assert_called_with(["git", "diff", "--staged"], None)
 
     @patch("git_acp.git.git_operations.run_git_command")
-    def test_get_diff_unstaged(self, mock_run):
+    def test_get_diff_unstaged(self, mock_run) -> None:
         mock_run.return_value = ("diff output", "")
         result = get_diff("unstaged")
         assert result == "diff output"
@@ -67,7 +67,7 @@ class TestDiffOperations:
 
 class TestChangedFiles:
     @patch("git_acp.git.git_operations.run_git_command")
-    def test_file_exclusion(self, mock_run):
+    def test_file_exclusion(self, mock_run) -> None:
         mock_run.return_value = (
             "MM tests/__init__.py\n"
             "A  src/new_feature.py\n"
@@ -79,7 +79,7 @@ class TestChangedFiles:
         assert "src/new_feature.py" in files
 
     @patch("git_acp.git.git_operations.run_git_command")
-    def test_get_changed_files_staged_only_with_files(self, mock_run_git_command):
+    def test_get_changed_files_staged_only_with_files(self, mock_run_git_command) -> None:
         mock_config = GitConfig(verbose=False)  # Create a minimal config
         mock_run_git_command.return_value = ("file1.py\nfolder/file2.py", "")
 
@@ -91,7 +91,7 @@ class TestChangedFiles:
         self.assertEqual(result, {"file1.py", "folder/file2.py"})
 
     @patch("git_acp.git.git_operations.run_git_command")
-    def test_get_changed_files_staged_only_no_files(self, mock_run_git_command):
+    def test_get_changed_files_staged_only_no_files(self, mock_run_git_command) -> None:
         mock_config = GitConfig(verbose=False)
         mock_run_git_command.return_value = ("", "")  # No output means no staged files
 
@@ -105,7 +105,7 @@ class TestChangedFiles:
     @patch("git_acp.git.git_operations.run_git_command")
     def test_get_changed_files_staged_only_with_excluded_files(
         self, mock_run_git_command
-    ):
+    ) -> None:
         mock_config = GitConfig(verbose=False)
         # Ensure __pycache__ is in EXCLUDED_PATTERNS for this test to be meaningful
         # For this example, let's assume it is, as per the problem description.
@@ -149,7 +149,7 @@ class TestPushOperations:
         mock_run.assert_called_with(["git", "push", "origin", "main"], None)
 
     @patch("git_acp.git.git_operations.run_git_command")
-    def test_push_rejection(self, mock_run):
+    def test_push_rejection(self, mock_run) -> None:
         mock_run.side_effect = GitError("! [rejected]")
         with pytest.raises(GitError) as exc:
             git_push("feature")
@@ -158,12 +158,10 @@ class TestPushOperations:
 
 class TestSignalHandlers:
     @patch("git_acp.git.git_operations.unstage_files")
-    def test_interrupt_handling(self, mock_unstage):
+    def test_interrupt_handling(self, mock_unstage) -> None:
         import signal
 
         with pytest.raises(SystemExit):
-            from git_acp.git.git_operations import setup_signal_handlers
-
             # setup_signal_handlers() # Call it to set the handler
             handler = signal.getsignal(signal.SIGINT)
             if callable(
@@ -175,7 +173,7 @@ class TestSignalHandlers:
 
 class TestBranchOperations:
     @patch("git_acp.git.git_operations.run_git_command")
-    def test_create_branch(self, mock_run):
+    def test_create_branch(self, mock_run) -> None:
         from git_acp.git.git_operations import create_branch
 
         mock_config = GitConfig(verbose=False)
@@ -188,7 +186,7 @@ class TestBranchOperations:
         )
 
     @patch("git_acp.git.git_operations.run_git_command")
-    def test_delete_branch(self, mock_run):
+    def test_delete_branch(self, mock_run) -> None:
         from git_acp.git.git_operations import delete_branch
 
         mock_config = GitConfig(verbose=False)
@@ -206,26 +204,28 @@ class TestBranchOperations:
 
 class TestTagOperations:
     @patch("git_acp.git.git_operations.run_git_command")
-    def test_create_annotated_tag(self, mock_run):
+    def test_create_annotated_tag(self, mock_run) -> None:
         from git_acp.git.git_operations import manage_tags
 
         mock_config = GitConfig(verbose=False)
-        manage_tags("create", "v1.0", message="Initial release", config=mock_config)
+        manage_tags("create", "v0.5.0", message="Initial release", config=mock_config)
         mock_run.assert_called_with(
-            ["git", "tag", "-a", "v1.0", "-m", "Initial release"], mock_config
+            ["git", "tag", "-a", "v0.5.0", "-m", "Initial release"], mock_config
         )
 
     @patch("git_acp.git.git_operations.run_git_command")
-    def test_delete_tag(self, mock_run):
+    def test_delete_tag(self, mock_run) -> None:
         from git_acp.git.git_operations import manage_tags
 
         mock_config = GitConfig(verbose=False)
+        manage_tags("delete", "v0.5.0", config=mock_config)
+        mock_run.assert_called_with(["git", "tag", "-d", "v0.5.0"], mock_config)
         manage_tags("delete", "v0.5", config=mock_config)
         mock_run.assert_called_with(["git", "tag", "-d", "v0.5"], mock_config)
 
 
 class TestCommitAnalysis:
-    def test_analyze_commit_patterns(self):
+    def test_analyze_commit_patterns(self) -> None:
         from git_acp.git.git_operations import analyze_commit_patterns
 
         mock_config = GitConfig(verbose=False)
@@ -247,7 +247,7 @@ class TestCommitAnalysis:
 
 class TestProtectedBranches:
     @patch("git_acp.git.git_operations.run_git_command")
-    def test_protected_branch_deletion(self, mock_run):
+    def test_protected_branch_deletion(self, mock_run) -> None:
         from git_acp.git.git_operations import delete_branch
 
         mock_config = GitConfig(verbose=False)
@@ -268,12 +268,13 @@ class TestProtectedBranches:
 # If it's pure pytest, then direct asserts are fine.
 
 # Convert TestChangedFiles to inherit from unittest.TestCase for self.assertEqual
-import unittest
 
 
-class TestChangedFiles(unittest.TestCase):  # Changed from 'class TestChangedFiles:'
+class TestChangedFilesUnittest(
+    unittest.TestCase
+):  # Changed from 'class TestChangedFiles:'
     @patch("git_acp.git.git_operations.run_git_command")
-    def test_file_exclusion(self, mock_run):  # Added self
+    def test_file_exclusion(self, mock_run) -> None:  # Added self
         mock_config = GitConfig(verbose=False)
         mock_run.return_value = (
             "MM tests/__init__.py\n"
@@ -290,7 +291,7 @@ class TestChangedFiles(unittest.TestCase):  # Changed from 'class TestChangedFil
     @patch("git_acp.git.git_operations.run_git_command")
     def test_get_changed_files_staged_only_with_files(
         self, mock_run_git_command
-    ):  # Added self
+    ) -> None:  # Added self
         mock_config = GitConfig(verbose=False)
         mock_run_git_command.return_value = ("file1.py\nfolder/file2.py", "")
 
@@ -304,7 +305,7 @@ class TestChangedFiles(unittest.TestCase):  # Changed from 'class TestChangedFil
     @patch("git_acp.git.git_operations.run_git_command")
     def test_get_changed_files_staged_only_no_files(
         self, mock_run_git_command
-    ):  # Added self
+    ) -> None:  # Added self
         mock_config = GitConfig(verbose=False)
         mock_run_git_command.return_value = ("", "")
 
@@ -318,7 +319,7 @@ class TestChangedFiles(unittest.TestCase):  # Changed from 'class TestChangedFil
     @patch("git_acp.git.git_operations.run_git_command")
     def test_get_changed_files_staged_only_with_excluded_files(
         self, mock_run_git_command
-    ):  # Added self
+    ) -> None:  # Added self
         mock_config = GitConfig(verbose=False)
         # Assuming EXCLUDED_PATTERNS is available and includes "__pycache__"
         mock_run_git_command.return_value = (

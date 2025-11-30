@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import json
 from collections import Counter
-from typing import Dict, List, Optional
+from typing import Dict, List
 
 from git_acp.config import DEFAULT_NUM_RECENT_COMMITS
 from git_acp.utils import OptionalConfig, debug_header, debug_item, debug_json

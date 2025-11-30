@@ -5,6 +5,7 @@ from typing import Tuple
 
 from git_acp.utils import OptionalConfig, debug_header, debug_item
 
+
 class GitError(Exception):
     """Custom exception for git-related errors."""
 
@@ -57,13 +58,17 @@ def run_git_command(
         if config and config.verbose:
             debug_header("Git Command Error")
             debug_item("Error Type", "FileNotFoundError")
-        raise GitError("Git is not installed or not in PATH. Please install git and try again.")
+        raise GitError(
+            "Git is not installed or not in PATH. Please install git and try again."
+        )
     except PermissionError:
         if config and config.verbose:
             debug_header("Git Command Error")
             debug_item("Error Type", "PermissionError")
             debug_item("Command", " ".join(command))
-        raise GitError("Permission denied while executing git command. Please check your permissions.")
+        raise GitError(
+            "Permission denied while executing git command. Please check your permissions."
+        )
     except Exception as e:
         if config and config.verbose:
             debug_header("Git Command Error")

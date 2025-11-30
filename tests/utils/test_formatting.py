@@ -1,9 +1,6 @@
 """Unit tests for formatting utilities."""
 
-from unittest.mock import patch
-import pytest
 from git_acp.utils import formatting
-from git_acp.config import COLORS
 
 
 def test_debug_preview_truncation(capsys):

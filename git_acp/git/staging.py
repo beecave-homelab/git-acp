@@ -1,10 +1,8 @@
 from __future__ import annotations
 
 import shlex
-import subprocess
 import signal
 import sys
-from typing import Optional
 
 from rich import print as rprint
 from rich.console import Console
@@ -22,9 +20,13 @@ def get_current_branch(config: OptionalConfig = None) -> str:
     try:
         if config and config.verbose:
             debug_header("Getting Current Branch")
-        stdout, _ = run_git_command(["git", "rev-parse", "--abbrev-ref", "HEAD"], config)
+        stdout, _ = run_git_command(
+            ["git", "rev-parse", "--abbrev-ref", "HEAD"], config
+        )
         if not stdout:
-            raise GitError("Failed to determine current branch. Are you in a valid git repository?")
+            raise GitError(
+                "Failed to determine current branch. Are you in a valid git repository?"
+            )
         if config and config.verbose:
             debug_item("Current Branch", stdout)
         return stdout
@@ -32,7 +34,9 @@ def get_current_branch(config: OptionalConfig = None) -> str:
         if config and config.verbose:
             debug_header("Branch Detection Failed")
             debug_item("Error", str(e))
-        raise GitError("Could not determine the current branch. Please ensure you're in a git repository.") from e
+        raise GitError(
+            "Could not determine the current branch. Please ensure you're in a git repository."
+        ) from e
 
 
 def git_add(files: str, config: OptionalConfig = None) -> None:
@@ -129,7 +133,11 @@ def setup_signal_handlers() -> None:
 
     def signal_handler(signum, frame):
         unstage_files()
-        rprint(Panel("Operation cancelled by user.", title="Cancelled", border_style="yellow"))
+        rprint(
+            Panel(
+                "Operation cancelled by user.", title="Cancelled", border_style="yellow"
+            )
+        )
         sys.exit(1)
 
     signal.signal(signal.SIGINT, signal_handler)

@@ -17,7 +17,9 @@ def create_branch(branch_name: str, config: OptionalConfig = None) -> None:
         raise GitError(f"Failed to create branch: {str(e)}") from e
 
 
-def delete_branch(branch_name: str, force: bool = False, config: OptionalConfig = None) -> None:
+def delete_branch(
+    branch_name: str, force: bool = False, config: OptionalConfig = None
+) -> None:
     """Delete a git branch."""
     try:
         if config and config.verbose:
@@ -100,7 +102,9 @@ def manage_stash(
     """Manage git stash operations."""
     try:
         if config and config.verbose:
-            debug_item(f"Stash operation: {operation}", f"{message or ''} {stash_id or ''}")
+            debug_item(
+                f"Stash operation: {operation}", f"{message or ''} {stash_id or ''}"
+            )
 
         if operation == "save":
             cmd = ["git", "stash", "push"]

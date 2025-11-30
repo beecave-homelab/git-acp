@@ -4,11 +4,8 @@ This module contains tests for the AI utilities used in commit message generatio
 including AI client initialization, context gathering, and message generation.
 """
 
-import json
 from unittest.mock import Mock, patch, MagicMock
 import pytest
-from openai import OpenAI
-from rich.panel import Panel
 
 from git_acp.ai.ai_utils import (
     AIClient,
@@ -19,7 +16,7 @@ from git_acp.ai.ai_utils import (
     generate_commit_message,
 )
 from git_acp.git import GitError
-from git_acp.utils import GitConfig, PromptType
+from git_acp.utils import GitConfig
 from git_acp.config import (
     DEFAULT_BASE_URL,
     DEFAULT_FALLBACK_BASE_URL,

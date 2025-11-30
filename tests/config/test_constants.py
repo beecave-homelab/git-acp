@@ -1,14 +1,16 @@
 import os
+
 import pytest
+
 from git_acp.config import constants
 
 
 class TestConstants:
-    """Test suite for configuration constants"""
+    """Test suite for configuration constants."""
 
     @pytest.fixture(autouse=True)
-    def clear_env(self):
-        """Clear relevant environment variables before each test"""
+    def clear_env(self) -> None:
+        """Clear relevant environment variables before each test."""
         keys = [k for k in os.environ if k.startswith("GIT_ACP_")]
         for key in keys:
             del os.environ[key]
@@ -30,9 +32,9 @@ class TestConstants:
     )
     def test_environment_overrides(
         self, monkeypatch, env_var, constant, default, cast_type
-    ):
-        """Constants should reflect environment variables when set"""
-        test_value = "test_value_123" if cast_type == str else "0.99"
+    ) -> None:
+        """Constants should reflect environment variables when set."""
+        test_value = "test_value_123" if cast_type is str else "0.99"
         monkeypatch.setenv(env_var, test_value)
 
         # Reload module to pick up new env vars
@@ -46,21 +48,21 @@ class TestConstants:
             color_key = "_".join(env_var.split("_")[2:-1]).lower()
             assert value[color_key] == test_value
         else:
-            expected = cast_type(test_value) if cast_type != dict else test_value
+            expected = cast_type(test_value) if cast_type is not dict else test_value
             assert value == expected
 
-    def test_excluded_patterns(self):
-        """Should contain essential exclusion patterns"""
+    def test_excluded_patterns(self) -> None:
+        """Should contain essential exclusion patterns."""
         essential_patterns = {"__pycache__", ".pyc", ".venv", "node_modules"}
         assert essential_patterns.issubset(set(constants.EXCLUDED_PATTERNS))
 
-    def test_commit_type_emojis(self):
-        """Commit types should have non-empty emoji values"""
+    def test_commit_type_emojis(self) -> None:
+        """Commit types should have non-empty emoji values."""
         for key, value in constants.COMMIT_TYPES.items():
             assert len(value.split()) > 1, f"Missing emoji for {key}"
 
-    def test_questionary_style_structure(self):
-        """Questionary style should have correct tuple structure"""
+    def test_questionary_style_structure(self) -> None:
+        """Questionary style should have correct tuple structure."""
         assert len(constants.QUESTIONARY_STYLE) >= 4
         for style in constants.QUESTIONARY_STYLE:
             assert isinstance(style, tuple) and len(style) == 2
@@ -73,8 +75,8 @@ class TestConstants:
             (None, 100),
         ],
     )
-    def test_terminal_width_handling(self, monkeypatch, width_env, expected):
-        """Should handle valid/invalid terminal width values"""
+    def test_terminal_width_handling(self, monkeypatch, width_env, expected) -> None:
+        """Should handle valid/invalid terminal width values."""
         if width_env is not None:
             monkeypatch.setenv("GIT_ACP_TERMINAL_WIDTH", width_env)
 
