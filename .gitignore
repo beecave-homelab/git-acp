@@ -15,6 +15,7 @@
 !VERSIONS.md
 !to-do/
 !to-do/*.md
+!AGENTS.md
 
 # Allow the package directory and Python files
 !git_acp/
