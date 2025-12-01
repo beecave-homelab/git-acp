@@ -63,8 +63,10 @@ def test_gitconfig_type_annotations() -> None:
     assert annotations["files"] is str
     assert annotations["message"] is str
 
-    # Revert to string comparison for forward reference
-    assert str(annotations["branch"]) == "typing.Optional[ForwardRef('GitConfig')]"
+    # Accept both old-style (typing.Optional) and new-style (X | None) representations
+    branch_annotation = str(annotations["branch"])
+    assert "GitConfig" in branch_annotation
+    assert "None" in branch_annotation or "Optional" in branch_annotation
 
     assert annotations["use_ollama"] is bool
     assert annotations["interactive"] is bool

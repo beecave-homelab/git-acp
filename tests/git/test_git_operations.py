@@ -59,7 +59,7 @@ class TestRunGitCommand:
 class TestDiffOperations:
     """Tests for diff retrieval helpers."""
 
-    @patch("git_acp.git.git_operations.run_git_command")
+    @patch("git_acp.git.diff.run_git_command")
     def test_get_diff_staged(self, mock_run) -> None:
         """Return staged diff output from git diff --staged."""
         mock_run.return_value = ("diff output", "")
@@ -67,7 +67,7 @@ class TestDiffOperations:
         assert result == "diff output"
         mock_run.assert_called_with(["git", "diff", "--staged"], None)
 
-    @patch("git_acp.git.git_operations.run_git_command")
+    @patch("git_acp.git.diff.run_git_command")
     def test_get_diff_unstaged(self, mock_run) -> None:
         """Return unstaged diff output from git diff."""
         mock_run.return_value = ("diff output", "")
@@ -105,7 +105,7 @@ class TestChangedFiles:
         mock_run_git_command.assert_called_once_with(
             ["git", "diff", "--staged", "--name-only"], mock_config
         )
-        self.assertEqual(result, {"file1.py", "folder/file2.py"})
+        assert result == {"file1.py", "folder/file2.py"}
 
     @patch("git_acp.git.git_operations.run_git_command")
     def test_get_changed_files_staged_only_no_files(self, mock_run_git_command) -> None:
@@ -118,7 +118,7 @@ class TestChangedFiles:
         mock_run_git_command.assert_called_once_with(
             ["git", "diff", "--staged", "--name-only"], mock_config
         )
-        self.assertEqual(result, set())
+        assert result == set()
 
     @patch("git_acp.git.git_operations.run_git_command")
     def test_get_changed_files_staged_only_with_excluded_files(
@@ -139,50 +139,59 @@ class TestChangedFiles:
             ["git", "diff", "--staged", "--name-only"], mock_config
         )
         # Depending on the actual EXCLUDED_PATTERNS loaded by git_operations
-        self.assertEqual(result, {"file1.py", "folder/file2.py"})
+        assert result == {"file1.py", "folder/file2.py"}
 
 
 class TestPushOperations:
     """Tests for git push helper."""
 
-    @patch("git_acp.git.git_operations.run_git_command")
+    @patch("git_acp.git.staging.run_git_command")
     def test_push_success(self, mock_run):
         """Push to origin successfully."""
         mock_run.return_value = ("", "")
         git_push("main")
         mock_run.assert_called_with(["git", "push", "origin", "main"], None)
 
-    @patch("git_acp.git.git_operations.run_git_command")
+    @patch("git_acp.git.staging.run_git_command")
     def test_push_rejection(self, mock_run) -> None:
         """Raise GitError with helpful message on push rejection."""
         mock_run.side_effect = GitError("! [rejected]")
         with pytest.raises(GitError) as exc:
             git_push("feature")
-        assert "pull the latest changes" in str(exc.value)
+        assert "Pull latest changes first" in str(exc.value)
 
 
 class TestSignalHandlers:
     """Tests for signal handler setup."""
 
-    @patch("git_acp.git.git_operations.unstage_files")
-    def test_interrupt_handling(self, mock_unstage) -> None:
+    @patch("git_acp.git.staging.unstage_files")
+    @patch("git_acp.git.staging.rprint")
+    def test_interrupt_handling(self, mock_rprint, mock_unstage) -> None:
         """Unstage files on SIGINT interrupt."""
         import signal
 
-        with pytest.raises(SystemExit):
-            # setup_signal_handlers() # Call it to set the handler
-            handler = signal.getsignal(signal.SIGINT)
-            if callable(
-                handler
-            ):  # Check if handler is callable (it should be after setup)
-                handler(signal.SIGINT, None)
-            mock_unstage.assert_called()
+        from git_acp.git.staging import setup_signal_handlers
+
+        # Set up the signal handler
+        setup_signal_handlers()
+
+        # Get the installed handler
+        handler = signal.getsignal(signal.SIGINT)
+        assert callable(handler), "SIGINT handler should be callable"
+
+        # Call the handler and expect SystemExit
+        with pytest.raises(SystemExit) as exc:
+            handler(signal.SIGINT, None)
+
+        assert exc.value.code == 1
+        mock_unstage.assert_called_once()
+        mock_rprint.assert_called_once()
 
 
 class TestBranchOperations:
     """Tests for branch creation and deletion helpers."""
 
-    @patch("git_acp.git.git_operations.run_git_command")
+    @patch("git_acp.git.management.run_git_command")
     def test_create_branch(self, mock_run) -> None:
         """Create a new branch with git checkout -b."""
         from git_acp.git.git_operations import create_branch
@@ -196,7 +205,7 @@ class TestBranchOperations:
             mock_config,
         )
 
-    @patch("git_acp.git.git_operations.run_git_command")
+    @patch("git_acp.git.management.run_git_command")
     def test_delete_branch(self, mock_run) -> None:
         """Delete a branch with git branch -d."""
         from git_acp.git.git_operations import delete_branch
@@ -217,7 +226,7 @@ class TestBranchOperations:
 class TestTagOperations:
     """Tests for tag management helpers."""
 
-    @patch("git_acp.git.git_operations.run_git_command")
+    @patch("git_acp.git.management.run_git_command")
     def test_create_annotated_tag(self, mock_run) -> None:
         """Create an annotated tag with git tag -a."""
         from git_acp.git.git_operations import manage_tags
@@ -228,7 +237,7 @@ class TestTagOperations:
             ["git", "tag", "-a", "v0.5.0", "-m", "Initial release"], mock_config
         )
 
-    @patch("git_acp.git.git_operations.run_git_command")
+    @patch("git_acp.git.management.run_git_command")
     def test_delete_tag(self, mock_run) -> None:
         """Delete a tag with git tag -d."""
         from git_acp.git.git_operations import manage_tags
@@ -267,7 +276,7 @@ class TestCommitAnalysis:
 class TestProtectedBranches:
     """Tests for protected branch handling."""
 
-    @patch("git_acp.git.git_operations.run_git_command")
+    @patch("git_acp.git.management.run_git_command")
     def test_protected_branch_deletion(self, mock_run) -> None:
         """Raise GitError when deleting a protected branch."""
         from git_acp.git.git_operations import delete_branch
