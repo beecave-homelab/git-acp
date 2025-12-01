@@ -113,7 +113,9 @@ def select_files(changed_files: Set[str]) -> str:
         raise GitError("No files selected.")
 
     if "All files" in selected:
-        rprint(f"[{COLORS['warning']}]Adding all files[/{COLORS['warning']}]")
+        rprint(f"[{COLORS['warning']}]Adding files:[/{COLORS['warning']}]")
+        for file in sorted(changed_files):
+            rprint(f"  - {file}")
         return "."
 
     # Print selected files for user feedback

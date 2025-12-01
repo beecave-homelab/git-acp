@@ -1,7 +1,9 @@
 import unittest
-from unittest.mock import patch, MagicMock
+from unittest.mock import MagicMock, call, patch
+
 from click.testing import CliRunner
-from git_acp.cli.cli import main
+
+from git_acp.cli.cli import COLORS, main, select_files
 from git_acp.utils import GitConfig  # For creating config objects if needed
 
 
@@ -94,6 +96,27 @@ class TestCli(unittest.TestCase):
         mock_generate_commit_message.assert_not_called()
         mock_git_commit.assert_not_called()
         mock_git_push.assert_not_called()
+
+
+class TestSelectFiles(unittest.TestCase):
+    def test_select_files_all_option_lists_each_file(self):
+        changed_files = {"b.txt", "a.txt"}
+
+        with patch("git_acp.cli.cli.questionary.checkbox") as mock_checkbox, patch(
+            "git_acp.cli.cli.rprint"
+        ) as mock_rprint:
+            mock_checkbox.return_value.ask.return_value = ["All files"]
+
+            result = select_files(changed_files)
+
+        self.assertEqual(result, ".")
+
+        expected_calls = [
+            call(f"[{COLORS['warning']}]Adding files:[/{COLORS['warning']}]")
+        ]
+        expected_calls.extend(call(f"  - {file}") for file in ["a.txt", "b.txt"])
+
+        mock_rprint.assert_has_calls(expected_calls)
 
 
 if __name__ == "__main__":
