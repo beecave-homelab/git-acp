@@ -5,12 +5,13 @@ with support for both simple and advanced context-aware generation.
 """
 
 import json
-from typing import Any, Dict
+from typing import Any
 
 import questionary
 from rich import print as rprint
 from rich.panel import Panel
 
+from git_acp.ai.client import AIClient
 from git_acp.config import (
     COLORS,
     DEFAULT_NUM_RECENT_COMMITS,
@@ -32,11 +33,9 @@ from git_acp.utils import (
     debug_preview,
 )
 
-from git_acp.ai.client import AIClient
-
 
 def create_advanced_commit_message_prompt(
-    context: Dict[str, Any],
+    context: dict[str, Any],
     config: OptionalConfig = None,
 ) -> str:
     """Create an AI prompt for generating a commit message.
@@ -84,7 +83,7 @@ def create_advanced_commit_message_prompt(
     return prompt
 
 
-def get_commit_context(config: GitConfig) -> Dict[str, Any]:
+def get_commit_context(config: GitConfig) -> dict[str, Any]:
     """Gather git context information for commit message generation.
 
     Args:
@@ -158,7 +157,7 @@ def get_commit_context(config: GitConfig) -> Dict[str, Any]:
 
 
 def create_simple_commit_message_prompt(
-    context: Dict[str, Any],
+    context: dict[str, Any],
     config: OptionalConfig = None,
 ) -> str:
     """Create a simple AI prompt for generating a commit message.

@@ -2,7 +2,8 @@
 
 """Command-line interface for Git Add-Commit-Push automation.
 
-This module provides a command-line interface for automating Git operations with enhanced features:
+This module provides a CLI for automating Git operations with enhanced features:
+
 - Interactive file selection for staging
 - AI-powered commit message generation using Ollama
 - Smart commit type classification
@@ -13,7 +14,6 @@ This module provides a command-line interface for automating Git operations with
 import glob
 import shlex
 import sys
-from typing import List, Optional, Set
 
 import click
 import questionary
@@ -39,6 +39,22 @@ from git_acp.git import (
 from git_acp.utils import GitConfig
 
 console = Console()
+
+
+def _error_panel(error_msg: str, suggestion: str, title: str) -> Panel:
+    """Create an error panel with consistent formatting.
+
+    Args:
+        error_msg: The error message to display.
+        suggestion: A suggestion for resolving the error.
+        title: The panel title.
+
+    Returns:
+        Panel: A Rich Panel with the error message.
+    """
+    err = COLORS["error"]
+    content = f"[{err}]{error_msg}[/{err}]\n\nSuggestion: {suggestion}"
+    return Panel(content, title=title, border_style="red")
 
 
 def debug_print(config: GitConfig, message: str) -> None:
@@ -68,7 +84,7 @@ def format_commit_message(commit_type: CommitType, message: str) -> str:
     return f"{commit_type.value}: {title}\n\n{description}".strip()
 
 
-def select_files(changed_files: Set[str]) -> str:
+def select_files(changed_files: set[str]) -> str:
     """Present an interactive selection menu for changed files.
 
     Args:
@@ -76,6 +92,9 @@ def select_files(changed_files: Set[str]) -> str:
 
     Returns:
         str: Space-separated list of selected files, with proper quoting
+
+    Raises:
+        GitError: If no files found, user cancels, or no selection made.
     """
     if not changed_files:
         raise GitError("No changed files found to commit.")
@@ -90,12 +109,10 @@ def select_files(changed_files: Set[str]) -> str:
     # Create choices with the original filenames
     choices = []
     for file in sorted(list(changed_files)):
-        choices.append(
-            {
-                "name": file,  # Display name
-                "value": file,  # Actual value
-            }
-        )
+        choices.append({
+            "name": file,  # Display name
+            "value": file,  # Actual value
+        })
 
     # Add "All files" as the last option
     choices.append({"name": "All files", "value": "All files"})
@@ -126,8 +143,8 @@ def select_files(changed_files: Set[str]) -> str:
 
 
 def select_commit_type(config: GitConfig, suggested_type: CommitType) -> CommitType:
-    """
-    Present an interactive selection menu for commit types.
+    """Present an interactive selection menu for commit types.
+
     If no_confirm is True, automatically selects the suggested type.
 
     Args:
@@ -176,9 +193,8 @@ def select_commit_type(config: GitConfig, suggested_type: CommitType) -> CommitT
     if config.verbose:
         debug_print(config, f"Suggested commit type: {suggested_type.value}")
 
-    def validate_single_selection(selected_types: List[CommitType]) -> str | bool:
-        """
-        Validate that exactly one commit type is selected.
+    def validate_single_selection(selected_types: list[CommitType]) -> str | bool:
+        """Validate that exactly one commit type is selected.
 
         Args:
             selected_types: List of selected commit types
@@ -211,19 +227,29 @@ def select_commit_type(config: GitConfig, suggested_type: CommitType) -> CommitT
 @click.option(
     "-a",
     "--add",
-    help='Specify space-separated files/patterns to stage (e.g., "file1.py *.py folder/"). Patterns are globbed recursively (e.g. `**/*.py`). If not provided, interactive selection is used.',
+    help=(
+        "Specify space-separated files/patterns to stage "
+        '(e.g., "file1.py *.py folder/"). Patterns are globbed recursively. '
+        "If not provided, interactive selection is used."
+    ),
     metavar="<files_or_patterns>",
 )
 @click.option(
     "-m",
     "--message",
-    help="Custom commit message. If not provided with --ollama, defaults to 'Automated commit'.",
+    help=(
+        "Custom commit message. If not provided with --ollama, "
+        "defaults to 'Automated commit'."
+    ),
     metavar="<message>",
 )
 @click.option(
     "-b",
     "--branch",
-    help="Target branch for push operation. If not specified, uses the current active branch.",
+    help=(
+        "Target branch for push operation. "
+        "If not specified, uses the current active branch."
+    ),
     metavar="<branch>",
 )
 @click.option(
@@ -242,20 +268,28 @@ def select_commit_type(config: GitConfig, suggested_type: CommitType) -> CommitT
     "-o",
     "--ollama",
     is_flag=True,
-    help="Use Ollama AI to generate a descriptive commit message based on your changes.",
+    help=(
+        "Use Ollama AI to generate a descriptive commit message based on your changes."
+    ),
 )
 @click.option(
     "-i",
     "--interactive",
     is_flag=True,
-    help="Enable interactive mode to review and edit the AI-generated commit message. Only works with --ollama.",
+    help=(
+        "Enable interactive mode to review and edit the AI-generated commit "
+        "message. Only works with --ollama."
+    ),
 )
 @click.option(
     "-p",
     "--prompt-type",
     type=click.Choice(["simple", "advanced"], case_sensitive=False),
     default="advanced",
-    help="Select AI prompt complexity for commit message generation. 'simple' for basic messages, 'advanced' for detailed analysis.",
+    help=(
+        "Select AI prompt complexity for commit message generation. "
+        "'simple' for basic messages, 'advanced' for detailed analysis."
+    ),
     metavar="<type>",
 )
 # General Options Group
@@ -263,29 +297,35 @@ def select_commit_type(config: GitConfig, suggested_type: CommitType) -> CommitT
     "-nc",
     "--no-confirm",
     is_flag=True,
-    help="Skip all confirmation prompts and proceed automatically with suggested values.",
+    help=(
+        "Skip all confirmation prompts and proceed automatically with suggested values."
+    ),
 )
 @click.option(
     "-v",
     "--verbose",
     is_flag=True,
-    help="Enable verbose output mode to show detailed debug information during execution.",
+    help=(
+        "Enable verbose output mode to show detailed debug information "
+        "during execution."
+    ),
 )
 def main(
-    add: Optional[str],
-    message: Optional[str],
-    branch: Optional[str],
+    add: str | None,
+    message: str | None,
+    branch: str | None,
     ollama: bool,
     interactive: bool,
     no_confirm: bool,
-    commit_type: Optional[str],
+    commit_type: str | None,
     verbose: bool,
     prompt_type: str,
 ) -> None:
-    """Automate git add, commit, and push operations with smart features.
+    r"""Automate git add, commit, and push operations with smart features.
 
-    This tool streamlines your git workflow by combining add, commit, and push operations
-    with intelligent features like AI-powered commit messages and conventional commits support.
+    This tool streamlines your git workflow by combining add, commit, and push
+    operations with intelligent features like AI-powered commit messages and
+    conventional commits support.
 
     \b
     Features:
@@ -301,22 +341,26 @@ def main(
     - AI Features: AI-powered commit message generation (-o, -i, -p)
     - General: Program behavior control (-nc, -v)
 
+    Raises:
+        GitError: For various git operation failures.
     """
     # Set up signal handler for graceful interruption
     setup_signal_handlers()
 
     try:
-        processed_add_argument: Optional[str] = None
+        processed_add_argument: str | None = None
         if add is not None:
             if not add.strip():
+                warn = COLORS["warning"]
                 rprint(
-                    f"[{COLORS['warning']}]The -a flag was used with an empty string. No files will be staged based on this argument.[/{COLORS['warning']}]"
+                    f"[{warn}]The -a flag was used with an empty string. "
+                    f"No files will be staged based on this argument.[/{warn}]"
                 )
                 processed_add_argument = ""
             else:
                 items_to_process = shlex.split(add)
-                resolved_paths: List[str] = []
-                unmatched_items: List[str] = []
+                resolved_paths: list[str] = []
+                unmatched_items: list[str] = []
                 for item in items_to_process:
                     expanded_paths = glob.glob(item, recursive=True)
                     if not expanded_paths:
@@ -325,13 +369,20 @@ def main(
                         resolved_paths.extend(expanded_paths)
 
                 if unmatched_items:
+                    warn = COLORS["warning"]
+                    unmatched = ", ".join(unmatched_items)
                     rprint(
-                        f"[{COLORS['warning']}]Warning: The following patterns/files provided via -a did not match any filesystem paths: {', '.join(unmatched_items)}[/{COLORS['warning']}]"
+                        f"[{warn}]Warning: The following patterns/files "
+                        f"provided via -a did not match any filesystem "
+                        f"paths: {unmatched}[/{warn}]"
                     )
 
                 if not resolved_paths:
+                    info = COLORS["info"]
                     rprint(
-                        f"[{COLORS['info']}]No files or directories matched the criteria from the -a argument. No files will be staged.[/{COLORS['info']}]"
+                        f"[{info}]No files or directories matched the "
+                        f"criteria from the -a argument. "
+                        f"No files will be staged.[/{info}]"
                     )
                     processed_add_argument = ""
                 else:
@@ -366,7 +417,8 @@ def main(
                             )
                         )
                         sys.exit(0)
-                    # If not skipping confirmation, select_files will handle empty changed_files by raising an error or specific behavior
+                    # If not skipping confirmation, select_files will
+                    # handle empty changed_files by raising an error
 
                 # This line updates config.files with the interactive selection
                 config.files = select_files(changed_files)
@@ -382,10 +434,10 @@ def main(
                     )
                 else:
                     rprint(
-                        Panel(
-                            f"[{COLORS['error']}]Error during file selection:[/{COLORS['error']}]\n{str(e)}",
-                            title="File Selection Failed",
-                            border_style="red",
+                        _error_panel(
+                            f"Error during file selection:\n{e}",
+                            "Check file paths and try again.",
+                            "File Selection Failed",
                         )
                     )
                 sys.exit(1)
@@ -404,11 +456,10 @@ def main(
                 config.branch = get_current_branch()
             except GitError as e:
                 rprint(
-                    Panel(
-                        f"[{COLORS['error']}]Error getting current branch:[/{COLORS['error']}]\n{str(e)}\n\n"
-                        "Suggestion: Ensure you're in a git repository and have a valid branch.",
-                        title="Branch Detection Failed",
-                        border_style="red",
+                    _error_panel(
+                        f"Error getting current branch:\n{e}",
+                        "Ensure you're in a git repository with a valid branch.",
+                        "Branch Detection Failed",
                     )
                 )
                 sys.exit(1)
@@ -420,22 +471,24 @@ def main(
             if add is not None:  # -a was used
                 staged_files = get_changed_files(config, staged_only=True)
                 if not staged_files:
-                    # This message is now more specific if -a was used and resolved to something, but nothing was actually changed/staged
+                    # No actual changes in specified files
+                    msg = (
+                        f"No actual changes were found in the files/patterns "
+                        f"specified by -a (resolved to: '{config.files}'). "
+                        "Nothing was staged."
+                    )
                     rprint(
                         Panel(
-                            f"No actual changes were found in the files/patterns specified by -a (resolved to: '{config.files}'). Nothing was staged.",
-                            title="No Changes Staged via -a",
-                            border_style="yellow",
+                            msg, title="No Changes Staged via -a", border_style="yellow"
                         )
                     )
                     sys.exit(0)
         except GitError as e:
             rprint(
-                Panel(
-                    f"[{COLORS['error']}]Error adding files:[/{COLORS['error']}]\n{str(e)}\n\n"
-                    "Suggestion: Check file paths and repository permissions.",
-                    title="Git Add Failed",
-                    border_style="red",
+                _error_panel(
+                    f"Error adding files:\n{e}",
+                    "Check file paths and repository permissions.",
+                    "Git Add Failed",
                 )
             )
             sys.exit(1)
@@ -446,11 +499,10 @@ def main(
                     config.message = generate_commit_message(config)
                 except GitError as e:
                     rprint(
-                        Panel(
-                            f"[{COLORS['error']}]AI commit message generation failed:[/{COLORS['error']}]\n{str(e)}\n\n"
-                            "Suggestion: Check Ollama server status and configuration.",
-                            title="AI Generation Failed",
-                            border_style="red",
+                        _error_panel(
+                            f"AI commit message generation failed:\n{e}",
+                            "Check Ollama server status and configuration.",
+                            "AI Generation Failed",
                         )
                     )
                     if not Confirm.ask(
@@ -461,7 +513,8 @@ def main(
 
             if not config.message:
                 raise GitError(
-                    "No commit message provided. Please specify a message with -m or use --ollama."
+                    "No commit message provided. "
+                    "Please specify a message with -m or use --ollama."
                 )
 
             # Get suggested commit type
@@ -473,29 +526,29 @@ def main(
                 )
             except GitError as e:
                 rprint(
-                    Panel(
-                        f"[{COLORS['error']}]Error determining commit type:[/{COLORS['error']}]\n{str(e)}\n\n"
-                        "Suggestion: Check your changes or specify a commit type with -t.",
-                        title="Commit Type Error",
-                        border_style="red",
+                    _error_panel(
+                        f"Error determining commit type:\n{e}",
+                        "Check your changes or specify a commit type with -t.",
+                        "Commit Type Error",
                     )
                 )
                 sys.exit(1)
 
             # Let user select commit type, unless it was specified with -t flag
-            rprint(
-                f"[{COLORS['bold']}]🤖 Analyzing changes to suggest commit type...[/{COLORS['bold']}]"
-            )
+            bold = COLORS["bold"]
+            rprint(f"[{bold}]🤖 Analyzing changes to suggest commit type...[/{bold}]")
+            success = COLORS["success"]
             if commit_type:
                 selected_type = suggested_type
                 rprint(
-                    f"[{COLORS['success']}]✓ Using specified commit type: {selected_type.value}[/{COLORS['success']}]"
+                    f"[{success}]✓ Using specified commit type: "
+                    f"{selected_type.value}[/{success}]"
                 )
             else:
                 try:
                     selected_type = select_commit_type(config, suggested_type)
                     rprint(
-                        f"[{COLORS['success']}]✓ Commit type selected successfully[/{COLORS['success']}]"
+                        f"[{success}]✓ Commit type selected successfully[/{success}]"
                     )
                 except GitError as e:
                     if "cancelled by user" in str(e).lower():
@@ -508,11 +561,10 @@ def main(
                         )
                     else:
                         rprint(
-                            Panel(
-                                f"[{COLORS['error']}]Error selecting commit type:[/{COLORS['error']}]\n{str(e)}\n\n"
-                                "Suggestion: Try again or specify a commit type with -t.",
-                                title="Commit Type Selection Failed",
-                                border_style="red",
+                            _error_panel(
+                                f"Error selecting commit type:\n{e}",
+                                "Try again or specify a commit type with -t.",
+                                "Commit Type Selection Failed",
                             )
                         )
                     unstage_files()
@@ -520,12 +572,14 @@ def main(
 
             formatted_message = format_commit_message(selected_type, config.message)
 
+            header = COLORS["ai_message_header"]
+            border = COLORS["ai_message_border"]
             if not config.skip_confirmation:
                 rprint(
                     Panel.fit(
                         formatted_message,
-                        title=f"[{COLORS['ai_message_header']}]Commit Message[/{COLORS['ai_message_header']}]",
-                        border_style=COLORS["ai_message_border"],
+                        title=f"[{header}]Commit Message[/{header}]",
+                        border_style=border,
                     )
                 )
                 if not Confirm.ask("Do you want to proceed?"):
@@ -542,8 +596,8 @@ def main(
                 rprint(
                     Panel.fit(
                         formatted_message,
-                        title=f"[{COLORS['ai_message_header']}]Auto-committing with message[/{COLORS['ai_message_header']}]",
-                        border_style=COLORS["ai_message_border"],
+                        title=f"[{header}]Auto-committing with message[/{header}]",
+                        border_style=border,
                     )
                 )
 
@@ -551,11 +605,10 @@ def main(
                 git_commit(formatted_message)
             except GitError as e:
                 rprint(
-                    Panel(
-                        f"[{COLORS['error']}]Error committing changes:[/{COLORS['error']}]\n{str(e)}\n\n"
-                        "Suggestion: Check if there are changes to commit and try again.",
-                        title="Commit Failed",
-                        border_style="red",
+                    _error_panel(
+                        f"Error committing changes:\n{e}",
+                        "Check if there are changes to commit and try again.",
+                        "Commit Failed",
                     )
                 )
                 sys.exit(1)
@@ -564,11 +617,10 @@ def main(
                 git_push(config.branch)
             except GitError as e:
                 rprint(
-                    Panel(
-                        f"[{COLORS['error']}]Error pushing changes:[/{COLORS['error']}]\n{str(e)}\n\n"
-                        "Suggestion: Pull latest changes, resolve conflicts if any, and try again.",
-                        title="Push Failed",
-                        border_style="red",
+                    _error_panel(
+                        f"Error pushing changes:\n{e}",
+                        "Pull latest changes, resolve conflicts, and try again.",
+                        "Push Failed",
                     )
                 )
                 sys.exit(1)
@@ -576,22 +628,20 @@ def main(
         except Exception as e:
             unstage_files()
             rprint(
-                Panel(
-                    f"[{COLORS['error']}]An unexpected error occurred:[/{COLORS['error']}]\n{str(e)}\n\n"
-                    "Suggestion: Please report this issue if it persists.",
-                    title="Unexpected Error",
-                    border_style="red bold",
+                _error_panel(
+                    f"An unexpected error occurred:\n{e}",
+                    "Please report this issue if it persists.",
+                    "Unexpected Error",
                 )
             )
             sys.exit(1)
 
     except Exception as e:
         rprint(
-            Panel(
-                f"[{COLORS['error']}]Critical error:[/{COLORS['error']}]\n{str(e)}\n\n"
-                "Suggestion: Please check your git repository and configuration.",
-                title="Critical Error",
-                border_style="red bold",
+            _error_panel(
+                f"Critical error:\n{e}",
+                "Please check your git repository and configuration.",
+                "Critical Error",
             )
         )
         sys.exit(1)

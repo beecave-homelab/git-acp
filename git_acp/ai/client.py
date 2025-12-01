@@ -9,9 +9,8 @@ from threading import Event, Thread
 from time import sleep
 from typing import Any
 
-from rich.progress import Progress
-
 from openai import OpenAI
+from rich.progress import Progress
 
 from git_acp.config import (
     DEFAULT_AI_MODEL,
@@ -34,8 +33,8 @@ class AIClient:
         Args:
             config (OptionalConfig | None): Optional configuration settings.
 
-        Returns:
-            None
+        Raises:
+            GitError: If connection to AI server fails or configuration is invalid.
         """
         self.config = config
         self.base_url = DEFAULT_BASE_URL
@@ -84,17 +83,15 @@ class AIClient:
                     if self.config and self.config.verbose:
                         debug_header("Fallback AI Client Connection Failed")
                         debug_item("Base URL", DEFAULT_FALLBACK_BASE_URL)
-                    raise GitError(
-                        "Could not connect to Ollama server. Please ensure it's running."
-                    ) from None
+                    msg = "Could not connect to Ollama. Ensure it's running."
+                    raise GitError(msg) from None
             else:
                 if self.config and self.config.verbose:
                     debug_header("AI Client Connection Failed")
                     debug_item("Error Type", "ConnectionError")
                     debug_item("Base URL", self.base_url)
-                raise GitError(
-                    "Could not connect to Ollama server. Please ensure it's running."
-                ) from None
+                msg = "Could not connect to Ollama. Ensure it's running."
+                raise GitError(msg) from None
         except Exception as e:
             if self.config and self.config.verbose:
                 debug_header("AI Client Initialization Failed")
@@ -122,6 +119,7 @@ class AIClient:
 
         Raises:
             GitError: With specific error context for failure scenarios.
+            TimeoutError: If the request exceeds the configured timeout.
         """
         try:
             if self.config and self.config.verbose:
