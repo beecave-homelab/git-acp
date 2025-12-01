@@ -16,6 +16,9 @@
 !to-do/
 !to-do/*.md
 !AGENTS.md
+!scripts/
+!scripts/*.sh
+!scripts/*.py
 
 # Allow the package directory and Python files
 !git_acp/
