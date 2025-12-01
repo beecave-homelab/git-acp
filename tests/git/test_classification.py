@@ -120,3 +120,135 @@ class TestGetChanges:
         mock_get_diff.return_value = None
         with pytest.raises(GitError):
             get_changes()
+
+    @patch("git_acp.git.classification.get_diff")
+    def test_get_changes__raises_on_git_error(self, mock_get_diff):
+        """Wrap GitError with meaningful message."""
+        mock_get_diff.side_effect = GitError("git error")
+        with pytest.raises(GitError) as exc:
+            get_changes()
+        assert "Failed to retrieve changes" in str(exc.value)
+
+
+class TestClassifyCommitTypeEdgeCases:
+    """Edge case tests for classify_commit_type function."""
+
+    @pytest.fixture
+    def verbose_config(self):
+        """Return a verbose config object."""
+        cfg = MagicMock()
+        cfg.verbose = True
+        return cfg
+
+    @pytest.fixture
+    def mock_config(self):
+        """Return a non-verbose config object."""
+        cfg = MagicMock()
+        cfg.verbose = False
+        return cfg
+
+    @patch("git_acp.git.classification.get_diff")
+    @patch("git_acp.git.classification.debug_header")
+    @patch("git_acp.git.classification.debug_item")
+    def test_classify__default_chore_verbose(
+        self, mock_debug_item, mock_debug_header, mock_get_diff, verbose_config
+    ):
+        """Log debug output when defaulting to CHORE in verbose mode."""
+        mock_get_diff.return_value = "some random change without patterns"
+
+        result = classify_commit_type(verbose_config)
+
+        assert result == CommitType.CHORE
+        mock_debug_header.assert_any_call("No Specific Pattern Matched")
+        mock_debug_item.assert_any_call("Default Type", "CHORE")
+
+    @patch("git_acp.git.classification.get_diff")
+    @patch("git_acp.git.classification.debug_header")
+    @patch("git_acp.git.classification.debug_item")
+    def test_classify__git_error_verbose(
+        self, mock_debug_item, mock_debug_header, mock_get_diff, verbose_config
+    ):
+        """Log error details in verbose mode when GitError occurs."""
+        mock_get_diff.side_effect = GitError("no changes")
+
+        with pytest.raises(GitError):
+            classify_commit_type(verbose_config)
+
+        mock_debug_header.assert_any_call("Commit Classification Failed")
+        mock_debug_item.assert_any_call("Error Type", "GitError")
+
+    @patch("git_acp.git.classification.get_diff")
+    @patch("git_acp.git.classification.debug_header")
+    @patch("git_acp.git.classification.debug_item")
+    def test_classify__unexpected_error_verbose(
+        self, mock_debug_item, mock_debug_header, mock_get_diff, verbose_config
+    ):
+        """Log unexpected errors in verbose mode."""
+        mock_get_diff.side_effect = RuntimeError("unexpected")
+
+        with pytest.raises(GitError) as exc:
+            classify_commit_type(verbose_config)
+
+        assert "unexpected error" in str(exc.value)
+        mock_debug_header.assert_any_call("Unexpected Classification Error")
+        mock_debug_item.assert_any_call("Error Type", "RuntimeError")
+
+    @patch("git_acp.git.classification.get_diff")
+    def test_classify__unexpected_error_non_verbose(
+        self, mock_get_diff, mock_config
+    ):
+        """Handle unexpected errors in non-verbose mode."""
+        mock_get_diff.side_effect = ValueError("bad value")
+
+        with pytest.raises(GitError) as exc:
+            classify_commit_type(mock_config)
+
+        assert "unexpected error" in str(exc.value)
+
+    @patch("git_acp.git.classification.get_diff")
+    @patch(
+        "git_acp.git.classification.COMMIT_TYPE_PATTERNS", {"invalid_type": ["pattern"]}
+    )
+    def test_classify__invalid_commit_type_pattern(self, mock_get_diff, mock_config):
+        """Raise GitError when COMMIT_TYPE_PATTERNS contains invalid type."""
+        mock_get_diff.return_value = "pattern match"
+
+        with pytest.raises(GitError) as exc:
+            classify_commit_type(mock_config)
+
+        assert "Invalid commit type pattern" in str(exc.value)
+
+    @patch("git_acp.git.classification.get_diff")
+    @patch(
+        "git_acp.git.classification.COMMIT_TYPE_PATTERNS", {"invalid_type": ["pattern"]}
+    )
+    @patch("git_acp.git.classification.debug_header")
+    @patch("git_acp.git.classification.debug_item")
+    def test_classify__invalid_commit_type_verbose(
+        self, mock_debug_item, mock_debug_header, mock_get_diff, verbose_config
+    ):
+        """Log invalid commit type errors in verbose mode."""
+        mock_get_diff.return_value = "pattern match"
+
+        with pytest.raises(GitError):
+            classify_commit_type(verbose_config)
+
+        mock_debug_header.assert_any_call("Invalid Commit Type")
+
+    @patch("git_acp.git.classification.get_diff")
+    @patch("git_acp.git.classification.debug_header")
+    @patch("git_acp.git.classification.debug_item")
+    def test_classify__pattern_match_verbose(
+        self, mock_debug_item, mock_debug_header, mock_get_diff, verbose_config
+    ):
+        """Log matched keywords in verbose mode."""
+        mock_get_diff.return_value = "fix: resolved critical bug"
+
+        result = classify_commit_type(verbose_config)
+
+        assert result == CommitType.FIX
+        # Verify matched keywords are logged
+        matched_call = any(
+            "Matched Keywords" in str(call) for call in mock_debug_item.call_args_list
+        )
+        assert matched_call

@@ -357,3 +357,81 @@ class TestChangedFilesUnittest(
             ["git", "diff", "--staged", "--name-only"], mock_config
         )
         self.assertEqual(result, {"file1.py", "folder/file2.py"})
+
+
+class TestChangedFilesVerbose:
+    """Tests for get_changed_files with verbose mode."""
+
+    @patch("git_acp.git.git_operations.debug_item")
+    @patch("git_acp.git.git_operations.debug_header")
+    @patch("git_acp.git.git_operations.run_git_command")
+    def test_get_changed_files__verbose_staged_only(
+        self, mock_run, mock_debug_header, mock_debug_item
+    ) -> None:
+        """Log debug output for staged files in verbose mode."""
+        mock_config = GitConfig(verbose=True)
+        mock_run.return_value = ("file.py", "")
+
+        get_changed_files(config=mock_config, staged_only=True)
+
+        mock_debug_header.assert_called_once()
+        mock_debug_item.assert_called()
+
+    @patch("git_acp.git.git_operations.debug_item")
+    @patch("git_acp.git.git_operations.debug_header")
+    @patch("git_acp.git.git_operations.run_git_command")
+    def test_get_changed_files__verbose_status_mode(
+        self, mock_run, mock_debug_header, mock_debug_item
+    ) -> None:
+        """Log debug output for status mode in verbose mode."""
+        mock_config = GitConfig(verbose=True)
+        mock_run.return_value = (" M file.py", "")
+
+        get_changed_files(config=mock_config, staged_only=False)
+
+        mock_debug_header.assert_called_once()
+        assert mock_debug_item.call_count >= 2
+
+    @patch("git_acp.git.git_operations.debug_item")
+    @patch("git_acp.git.git_operations.debug_header")
+    @patch("git_acp.git.git_operations.run_git_command")
+    def test_get_changed_files__verbose_with_rename(
+        self, mock_run, mock_debug_header, mock_debug_item
+    ) -> None:
+        """Handle renamed files with arrow notation in verbose mode."""
+        mock_config = GitConfig(verbose=True)
+        mock_run.return_value = ("R  old.py -> new.py", "")
+
+        result = get_changed_files(config=mock_config, staged_only=False)
+
+        assert "new.py" in result
+        assert "old.py" not in result
+        mock_debug_item.assert_called()
+
+    @patch("git_acp.git.git_operations.debug_item")
+    @patch("git_acp.git.git_operations.debug_header")
+    @patch("git_acp.git.git_operations.run_git_command")
+    def test_get_changed_files__verbose_exclusion(
+        self, mock_run, mock_debug_header, mock_debug_item
+    ) -> None:
+        """Log exclusion in verbose mode."""
+        mock_config = GitConfig(verbose=True)
+        mock_run.return_value = (" M __pycache__/file.pyc", "")
+
+        get_changed_files(config=mock_config, staged_only=False)
+
+        # Should have logged exclusion
+        exclusion_logged = any(
+            "Excluding" in str(call) for call in mock_debug_item.call_args_list
+        )
+        assert exclusion_logged
+
+    @patch("git_acp.git.git_operations.run_git_command")
+    def test_get_changed_files__empty_line_handling(self, mock_run) -> None:
+        """Skip empty lines in status output."""
+        mock_config = GitConfig(verbose=False)
+        mock_run.return_value = (" M file1.py\n\n   \n M file2.py", "")
+
+        result = get_changed_files(config=mock_config, staged_only=False)
+
+        assert result == {"file1.py", "file2.py"}

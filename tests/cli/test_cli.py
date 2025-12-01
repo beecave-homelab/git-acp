@@ -21,7 +21,7 @@ class TestCli(unittest.TestCase):
     @patch("git_acp.cli.cli.git_push")
     @patch("git_acp.cli.cli.git_commit")
     @patch("git_acp.cli.cli.generate_commit_message")
-    @patch("git_acp.git.get_changed_files")  # Mocking the one in .git module
+    @patch("git_acp.cli.cli.get_changed_files")
     @patch("git_acp.cli.cli.git_add")
     @patch("glob.glob")
     def test_cli_add_path_has_changes(
@@ -64,7 +64,7 @@ class TestCli(unittest.TestCase):
     @patch("git_acp.cli.cli.git_push")  # Order matters for decorators, bottom up
     @patch("git_acp.cli.cli.git_commit")
     @patch("git_acp.cli.cli.generate_commit_message")
-    @patch("git_acp.git.get_changed_files")  # Mocking the one in .git module
+    @patch("git_acp.cli.cli.get_changed_files")
     @patch("git_acp.cli.cli.git_add")
     @patch("glob.glob")
     def test_cli_add_path_no_changes(
