@@ -4,31 +4,36 @@ This module contains tests for the AI utilities used in commit message generatio
 including AI client initialization, context gathering, and message generation.
 """
 
-from unittest.mock import Mock, patch, MagicMock
+from unittest.mock import MagicMock, Mock, patch
+
 import pytest
 
 from git_acp.ai.ai_utils import (
     AIClient,
     create_advanced_commit_message_prompt,
     create_simple_commit_message_prompt,
-    get_commit_context,
     edit_commit_message,
     generate_commit_message,
+    get_commit_context,
+)
+from git_acp.config import (
+    DEFAULT_AI_TIMEOUT,
+    DEFAULT_API_KEY,
+    DEFAULT_BASE_URL,
+    DEFAULT_FALLBACK_BASE_URL,
 )
 from git_acp.git import GitError
 from git_acp.utils import GitConfig
-from git_acp.config import (
-    DEFAULT_BASE_URL,
-    DEFAULT_FALLBACK_BASE_URL,
-    DEFAULT_API_KEY,
-    DEFAULT_AI_TIMEOUT,
-)
 
 
 # Test fixtures
 @pytest.fixture
 def mock_config():
-    """Create a mock GitConfig instance."""
+    """Create a mock GitConfig instance.
+
+    Returns:
+        A GitConfig object with test defaults.
+    """
     return GitConfig(
         files="test.py",
         message=None,
@@ -43,7 +48,11 @@ def mock_config():
 
 @pytest.fixture
 def mock_context():
-    """Create a mock git context dictionary."""
+    """Create a mock git context dictionary.
+
+    Returns:
+        A dictionary with staged_changes, recent_commits, etc.
+    """
     return {
         "staged_changes": "Modified: test.py\n+New line added",
         "recent_commits": [
@@ -57,7 +66,11 @@ def mock_context():
 
 @pytest.fixture
 def mock_openai_response():
-    """Create a mock OpenAI API response."""
+    """Create a mock OpenAI API response.
+
+    Returns:
+        A mock response object with choices.
+    """
     mock_message = Mock()
     mock_message.content = "feat: test commit message"
 

@@ -1,39 +1,43 @@
-from unittest.mock import patch
+"""Tests for git_acp.config.env_config module."""
+
 from pathlib import Path
+from unittest.mock import patch
+
 import pytest
+
 from git_acp.config.env_config import (
-    get_config_dir,
     ensure_config_dir,
-    load_env_config,
+    get_config_dir,
     get_env,
+    load_env_config,
 )
 
 
 class TestEnvConfig:
-    """Test suite for environment configuration handling"""
+    """Test suite for environment configuration handling."""
 
     @patch("pathlib.Path.home")
     def test_get_config_dir(self, mock_home):
-        """Should return correct config directory path"""
+        """Should return correct config directory path."""
         mock_home.return_value = Path("/test/home")
         assert get_config_dir() == Path("/test/home/.config/git-acp")
 
     @patch("pathlib.Path.mkdir")
     def test_ensure_config_dir_creation(self, mock_mkdir):
-        """Should create directory with parents if not exists"""
+        """Should create directory with parents if not exists."""
         ensure_config_dir()
         mock_mkdir.assert_called_once_with(parents=True, exist_ok=True)
 
     @patch("git_acp.config.env_config.load_dotenv")
     def test_load_env_config_with_existing_file(self, mock_load):
-        """Should load .env file when present"""
+        """Should load .env file when present."""
         with patch("pathlib.Path.exists", return_value=True):
             load_env_config()
             mock_load.assert_called_once_with(get_config_dir() / ".env")
 
     @patch("git_acp.config.env_config.load_dotenv")
     def test_load_env_config_missing_file(self, mock_load):
-        """Should not attempt load when .env missing"""
+        """Should not attempt load when .env missing."""
         with patch("pathlib.Path.exists", return_value=False):
             load_env_config()
             mock_load.assert_not_called()
@@ -49,17 +53,17 @@ class TestEnvConfig:
         ],
     )
     def test_get_env_type_casting(self, monkeypatch, env_value, cast_type, expected):
-        """Should correctly cast environment values to specified types"""
+        """Should correctly cast environment values to specified types."""
         monkeypatch.setenv("TEST_KEY", env_value)
         result = get_env("TEST_KEY", default=None, type_cast=cast_type)
         assert result == expected or (result is None and expected is None)
 
     def test_get_env_fallback_default(self):
-        """Should return default when env var not set"""
+        """Should return default when env var not set."""
         assert get_env("NON_EXISTENT_KEY", default="fallback") == "fallback"
 
     def test_bool_casting_edge_cases(self):
-        """Should handle various boolean representations"""
+        """Should handle various boolean representations."""
         for val in ["1", "yes", "Y", "True"]:
             assert get_env("TEST_BOOL", val, bool) is True
         for val in ["0", "no", "n", "false"]:

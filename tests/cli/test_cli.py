@@ -1,15 +1,21 @@
+"""Tests for git_acp.cli.cli module."""
+
 import unittest
 from unittest.mock import patch
+
 from click.testing import CliRunner
+
 from git_acp.cli.cli import main
 
 
 class TestCli(unittest.TestCase):
+    """Tests for the CLI entry point."""
+
     def setUp(self):
+        """Set up test fixtures."""
         self.runner = CliRunner()
-        # This self.mock_config can be a template, but often config is implicitly created
-        # by the CLI main function based on parameters. So, direct mocking of functions
-        # that would receive a config might be more straightforward than preparing one here.
+        # Config is implicitly created by the CLI main function based on parameters.
+        # Direct mocking of functions is more straightforward than preparing one here.
 
     @patch("git_acp.cli.cli.sys.exit")
     @patch("git_acp.cli.cli.git_push")
@@ -53,7 +59,6 @@ class TestCli(unittest.TestCase):
         mock_git_commit.assert_called()
         mock_git_push.assert_called()
         # If an error occurred, result.exit_code would be non-zero.
-        # If it exited due to "no changes", specific mocks downstream wouldn't be called.
 
     @patch("git_acp.cli.cli.sys.exit")
     @patch("git_acp.cli.cli.git_push")  # Order matters for decorators, bottom up

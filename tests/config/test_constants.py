@@ -1,3 +1,5 @@
+"""Tests for configuration constants in git_acp.config.constants."""
+
 import os
 
 import pytest
@@ -31,7 +33,12 @@ class TestConstants:
         ],
     )
     def test_environment_overrides(
-        self, monkeypatch, env_var, constant, default, cast_type
+        self,
+        monkeypatch: object,
+        env_var: str,
+        constant: str,
+        default: object,
+        cast_type: type,
     ) -> None:
         """Constants should reflect environment variables when set."""
         test_value = "test_value_123" if cast_type is str else "0.99"
@@ -75,7 +82,12 @@ class TestConstants:
             (None, 100),
         ],
     )
-    def test_terminal_width_handling(self, monkeypatch, width_env, expected) -> None:
+    def test_terminal_width_handling(
+        self,
+        monkeypatch: object,
+        width_env: str | None,
+        expected: int,
+    ) -> None:
         """Should handle valid/invalid terminal width values."""
         if width_env is not None:
             monkeypatch.setenv("GIT_ACP_TERMINAL_WIDTH", width_env)
