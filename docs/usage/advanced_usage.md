@@ -262,7 +262,7 @@ git-acp -nc -m "CI: Update dependencies" -t chore
 #### Version Bumping
 
 ```bash
-git-acp -a "version.txt" -m "chore(release): bump version to v1.0.0" -t chore
+git-acp -a "version.txt" -m "chore(release): bump version to v0.17.0" -t chore
 ```
 
 ### Batch Operations
