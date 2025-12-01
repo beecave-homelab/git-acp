@@ -1,7 +1,8 @@
+"""Core git command execution and error handling."""
+
 from __future__ import annotations
 
 import subprocess
-from typing import Tuple
 
 from git_acp.utils import OptionalConfig, debug_header, debug_item
 
@@ -12,8 +13,19 @@ class GitError(Exception):
 
 def run_git_command(
     command: list[str], config: OptionalConfig = None
-) -> Tuple[str, str]:
-    """Execute a git command and return its output."""
+) -> tuple[str, str]:
+    """Execute a git command and return its output.
+
+    Args:
+        command: List of command arguments to execute.
+        config: Optional configuration for verbose output.
+
+    Returns:
+        tuple[str, str]: Tuple of (stdout, stderr) from the command.
+
+    Raises:
+        GitError: If the command fails or git is not available.
+    """
     try:
         if config and config.verbose:
             debug_header("Git Command Execution")
@@ -32,15 +44,38 @@ def run_git_command(
                 debug_item("Error Output", stderr.strip())
 
             error_patterns = {
-                "not a git repository": "Not a git repository. Please run this command in a git repository.",
-                "did not match any files": "No files matched the specified pattern. Please check the file paths.",
-                "nothing to commit": "No changes to commit. Working directory is clean.",
-                "permission denied": "Permission denied. Please check your repository permissions.",
-                "remote: Repository not found": "Remote repository not found. Please check the repository URL and your access rights.",
-                "failed to push": "Failed to push changes. Please pull the latest changes and resolve any conflicts.",
-                "cannot lock ref": "Cannot lock ref. Another git process may be running.",
-                "refusing to merge unrelated histories": "Cannot merge unrelated histories. Use --allow-unrelated-histories if intended.",
-                "error: your local changes would be overwritten": "Local changes would be overwritten. Please commit or stash them first.",
+                "not a git repository": (
+                    "Not a git repository. Please run this command in a git repository."
+                ),
+                "did not match any files": (
+                    "No files matched the specified pattern. "
+                    "Please check the file paths."
+                ),
+                "nothing to commit": (
+                    "No changes to commit. Working directory is clean."
+                ),
+                "permission denied": (
+                    "Permission denied. Please check your repository permissions."
+                ),
+                "remote: Repository not found": (
+                    "Remote repository not found. "
+                    "Please check the repository URL and your access rights."
+                ),
+                "failed to push": (
+                    "Failed to push changes. "
+                    "Please pull the latest changes and resolve any conflicts."
+                ),
+                "cannot lock ref": (
+                    "Cannot lock ref. Another git process may be running."
+                ),
+                "refusing to merge unrelated histories": (
+                    "Cannot merge unrelated histories. "
+                    "Use --allow-unrelated-histories if intended."
+                ),
+                "error: your local changes would be overwritten": (
+                    "Local changes would be overwritten. "
+                    "Please commit or stash them first."
+                ),
             }
 
             for pattern, message in error_patterns.items():
@@ -67,7 +102,8 @@ def run_git_command(
             debug_item("Error Type", "PermissionError")
             debug_item("Command", " ".join(command))
         raise GitError(
-            "Permission denied while executing git command. Please check your permissions."
+            "Permission denied while executing git command. "
+            "Please check your permissions."
         )
     except Exception as e:
         if config and config.verbose:

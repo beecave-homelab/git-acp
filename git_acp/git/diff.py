@@ -1,17 +1,26 @@
-from __future__ import annotations
+"""Git diff and changed files operations."""
 
-from typing import Optional, Set
+from __future__ import annotations
 
 from git_acp.config import EXCLUDED_PATTERNS
 from git_acp.utils import DiffType, OptionalConfig, debug_header, debug_item
+
 from .core import GitError, run_git_command
 
 
 def get_changed_files(
     config: OptionalConfig = None, staged_only: bool = False
-) -> Set[str]:
-    """Get list of changed files."""
-    files: Set[str] = set()
+) -> set[str]:
+    """Get list of changed files.
+
+    Args:
+        config: Optional configuration for verbose output.
+        staged_only: If True, only return staged files.
+
+    Returns:
+        set[str]: Set of changed file paths.
+    """
+    files: set[str] = set()
     if config and config.verbose:
         debug_header(f"Getting {'staged ' if staged_only else ''}changed files")
 
@@ -29,7 +38,7 @@ def get_changed_files(
         if config and config.verbose:
             debug_item("Raw git status --porcelain -uall output", stdout_status)
 
-        def process_status_line(line: str) -> Optional[str]:
+        def process_status_line(line: str) -> str | None:
             if not line.strip():
                 return None
             if config and config.verbose:
@@ -68,7 +77,18 @@ def get_changed_files(
 
 
 def get_diff(diff_type: DiffType = "staged", config: OptionalConfig = None) -> str:
-    """Get the git diff output for staged or unstaged changes."""
+    """Get the git diff output for staged or unstaged changes.
+
+    Args:
+        diff_type: Type of diff to retrieve ('staged' or 'unstaged').
+        config: Optional configuration for verbose output.
+
+    Returns:
+        str: The diff output as a string.
+
+    Raises:
+        GitError: If the diff command fails.
+    """
     try:
         if config and config.verbose:
             debug_header(f"Getting {diff_type} diff")

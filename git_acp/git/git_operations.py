@@ -1,6 +1,7 @@
 """Compatibility layer for git operation helpers."""
 
 from git_acp.config import EXCLUDED_PATTERNS
+
 from .operations import (
     GitError,
     analyze_commit_patterns,

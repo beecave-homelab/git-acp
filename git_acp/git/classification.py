@@ -63,20 +63,16 @@ def get_changes() -> str:
             diff = get_diff("unstaged")
 
         if not diff:
-            raise GitError(
-                "No changes detected in the repository. Please make some changes first."
-            )
+            raise GitError("No changes detected in the repository.")
 
         return diff
     except GitError as e:
-        raise GitError(
-            "Failed to retrieve changes. Please ensure you have a valid Git repository with changes."
-        ) from e
+        msg = "Failed to retrieve changes. Ensure you have a valid Git repo."
+        raise GitError(msg) from e
 
 
 def classify_commit_type(config) -> CommitType:
-    """
-    Classify the commit type based on the git diff content.
+    """Classify the commit type based on the git diff content.
 
     Args:
         config: GitConfig instance containing configuration options
@@ -93,7 +89,15 @@ def classify_commit_type(config) -> CommitType:
         diff = get_changes()
 
         def check_pattern(keywords: list[str], diff_text: str) -> bool:
-            """Check if any of the keywords appear in the diff text."""
+            """Check if any of the keywords appear in the diff text.
+
+            Args:
+                keywords: List of keywords to search for.
+                diff_text: The diff text to search in.
+
+            Returns:
+                bool: True if any keyword is found, False otherwise.
+            """
             try:
                 matches = [k for k in keywords if k in diff_text.lower()]
                 if matches and config.verbose:
@@ -119,9 +123,11 @@ def classify_commit_type(config) -> CommitType:
                     debug_header("Invalid Commit Type")
                     debug_item("Type", commit_type)
                     debug_item("Error", str(e))
-                raise GitError(
-                    f"Invalid commit type pattern detected: {commit_type}. Please check commit type definitions."
-                ) from e
+                msg = (
+                    f"Invalid commit type pattern: {commit_type}. "
+                    "Check commit type definitions."
+                )
+                raise GitError(msg) from e
 
         if config.verbose:
             debug_header("No Specific Pattern Matched")

@@ -1,3 +1,5 @@
+"""Git staging, commit, and push operations."""
+
 from __future__ import annotations
 
 import shlex
@@ -10,13 +12,24 @@ from rich.panel import Panel
 
 from git_acp.config import DEFAULT_REMOTE
 from git_acp.utils import OptionalConfig, debug_header, debug_item, status, success
+
 from .core import GitError, run_git_command
 
 console = Console()
 
 
 def get_current_branch(config: OptionalConfig = None) -> str:
-    """Get the name of the current git branch."""
+    """Get the name of the current git branch.
+
+    Args:
+        config: Optional configuration object.
+
+    Returns:
+        The name of the current branch.
+
+    Raises:
+        GitError: If the branch cannot be determined.
+    """
     try:
         if config and config.verbose:
             debug_header("Getting Current Branch")
@@ -34,13 +47,20 @@ def get_current_branch(config: OptionalConfig = None) -> str:
         if config and config.verbose:
             debug_header("Branch Detection Failed")
             debug_item("Error", str(e))
-        raise GitError(
-            "Could not determine the current branch. Please ensure you're in a git repository."
-        ) from e
+        msg = "Could not determine the current branch. Ensure you're in a git repo."
+        raise GitError(msg) from e
 
 
 def git_add(files: str, config: OptionalConfig = None) -> None:
-    """Add files to git staging area."""
+    """Add files to git staging area.
+
+    Args:
+        files: Space-separated file paths or "." for all files.
+        config: Optional configuration object.
+
+    Raises:
+        GitError: If files cannot be added.
+    """
     try:
         if config and config.verbose:
             debug_header("Adding Files to Staging Area")
@@ -72,7 +92,15 @@ def git_add(files: str, config: OptionalConfig = None) -> None:
 
 
 def git_commit(message: str, config: OptionalConfig = None) -> None:
-    """Commit staged changes to the repository."""
+    """Commit staged changes to the repository.
+
+    Args:
+        message: The commit message.
+        config: Optional configuration object.
+
+    Raises:
+        GitError: If the commit fails.
+    """
     try:
         if config and config.verbose:
             debug_header("Committing Changes")
@@ -89,7 +117,15 @@ def git_commit(message: str, config: OptionalConfig = None) -> None:
 
 
 def git_push(branch: str, config: OptionalConfig = None) -> None:
-    """Push committed changes to the remote repository."""
+    """Push committed changes to the remote repository.
+
+    Args:
+        branch: The branch to push.
+        config: Optional configuration object.
+
+    Raises:
+        GitError: If the push fails or is rejected.
+    """
     try:
         if config and config.verbose:
             debug_header("Pushing Changes")
@@ -107,19 +143,30 @@ def git_push(branch: str, config: OptionalConfig = None) -> None:
             debug_item("Remote", DEFAULT_REMOTE)
 
         if "rejected" in str(e).lower():
-            raise GitError(
-                f"Push rejected. Please pull the latest changes first: git pull {DEFAULT_REMOTE} {branch}"
-            ) from e
+            msg = (
+                f"Push rejected. Pull latest changes first: "
+                f"git pull {DEFAULT_REMOTE} {branch}"
+            )
+            raise GitError(msg) from e
         elif "no upstream branch" in str(e).lower():
-            raise GitError(
-                f"No upstream branch. Set the remote with: git push --set-upstream {DEFAULT_REMOTE} {branch}"
-            ) from e
+            msg = (
+                f"No upstream branch. Set the remote with: "
+                f"git push --set-upstream {DEFAULT_REMOTE} {branch}"
+            )
+            raise GitError(msg) from e
         else:
             raise GitError(f"Failed to push changes: {str(e)}") from e
 
 
 def unstage_files(config: OptionalConfig = None) -> None:
-    """Unstage all files from the staging area."""
+    """Unstage all files from the staging area.
+
+    Args:
+        config: Optional configuration object.
+
+    Raises:
+        GitError: If unstaging fails.
+    """
     try:
         if config and config.verbose:
             debug_header("Unstaging all files")
