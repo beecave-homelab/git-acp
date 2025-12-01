@@ -83,14 +83,14 @@ class AIClient:
                     if self.config and self.config.verbose:
                         debug_header("Fallback AI Client Connection Failed")
                         debug_item("Base URL", DEFAULT_FALLBACK_BASE_URL)
-                    msg = "Could not connect to Ollama. Ensure it's running."
+                    msg = "Could not connect to Ollama server."
                     raise GitError(msg) from None
             else:
                 if self.config and self.config.verbose:
                     debug_header("AI Client Connection Failed")
                     debug_item("Error Type", "ConnectionError")
                     debug_item("Base URL", self.base_url)
-                msg = "Could not connect to Ollama. Ensure it's running."
+                msg = "Could not connect to Ollama server."
                 raise GitError(msg) from None
         except Exception as e:
             if self.config and self.config.verbose:

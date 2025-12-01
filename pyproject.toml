@@ -6,7 +6,7 @@ authors = [
 ]
 description = "Git Add-Commit-Push automation tool with AI-powered commit messages"
 readme = "README.md"
-requires-python = ">=3.10"
+requires-python = ">=3.10,<3.14"
 classifiers = [
     "Development Status :: 4 - Beta",
     "Intended Audience :: Developers",
@@ -21,7 +21,7 @@ dependencies = [
     "typing;python_version<'3.7'",
     "click==8.1.8",
     "rich==13.9.4",
-    "questionary==2.1.0",
+    "questionary>=2.1.1",
     "openai==1.59.3",
     "tqdm==4.67.1",
     "python-dotenv==1.0.1",
