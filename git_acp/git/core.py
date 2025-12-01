@@ -57,7 +57,7 @@ def run_git_command(
                 "permission denied": (
                     "Permission denied. Please check your repository permissions."
                 ),
-                "remote: Repository not found": (
+                "remote: repository not found": (
                     "Remote repository not found. "
                     "Please check the repository URL and your access rights."
                 ),
@@ -72,7 +72,7 @@ def run_git_command(
                     "Cannot merge unrelated histories. "
                     "Use --allow-unrelated-histories if intended."
                 ),
-                "error: your local changes would be overwritten": (
+                "your local changes would be overwritten": (
                     "Local changes would be overwritten. "
                     "Please commit or stash them first."
                 ),
