@@ -1,3 +1,3 @@
 #!/bin/bash
 
-eza -T --ignore-glob '*.pyc|__pycache__|.git|.venv|.ruff|.pytest'
+eza -T $1 --ignore-glob '*.pyc|__pycache__|.git|.venv|.ruff|.pytest'
