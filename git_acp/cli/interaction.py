@@ -129,9 +129,12 @@ class RichQuestionaryInteraction:
         choices.append({"name": "All files", "value": "All files"})
 
         selected = questionary.checkbox(
-            "Select files to commit (space to select, enter to confirm):",
+            "Select files to commit:",
             choices=choices,
             style=questionary.Style(QUESTIONARY_STYLE),
+            instruction=(
+                "(Use arrow keys to move, <space> to select, <enter> to confirm)"
+            ),
         ).ask()
 
         if selected is None:

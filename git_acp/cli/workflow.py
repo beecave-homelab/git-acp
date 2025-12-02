@@ -120,7 +120,11 @@ class GitWorkflow:
         Returns:
             True if files are ready to process, False to exit cleanly.
         """
-        # If files were specified via -a flag, they're already in config
+        # If files were specified via -a flag, accept them even if it is "."
+        if self._files_from_cli:
+            return True
+
+        # If files are set in config (not via CLI flag) and not default "."
         if self.config.files and self.config.files != ".":
             return True
 
