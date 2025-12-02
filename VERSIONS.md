@@ -67,7 +67,8 @@ Feature release including updates to the `eza` command support, fixes for AI cli
 
 ### Key Commits in v0.18.0
 
-`663b42e`, `1950266`, `4e77245`, `a59aaa3`, `cde5617`, `73acc5e`
+`663b42e`, `1950266`, `4e77245`, `a59aaa3`, `cde5617`, `73acc5e`,
+`c3db738`
 
 ---
 
