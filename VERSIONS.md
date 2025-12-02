@@ -2,7 +2,8 @@
 
 ## Table of Contents
 
-- [v0.17.0 (Current) - 10-08-2025](#v0170-current-10-08-2025)
+- [v0.18.0 (Current) - 02-12-2025](#v0180-current-02-12-2025)
+- [v0.17.0 - 10-08-2025](#v0170-10-08-2025)
 - [v0.16.0 - August 2025](#v0160-august-2025)
 - [v0.15.1 - June 2025](#v0151-june-2025)
 - [v0.15.0 - 01-02-2025](#v0150-01-02-2025)
@@ -28,7 +29,49 @@
 - [v0.6.0 - 21-12-2024](#v060-21-12-2024)
 - [v0.5.0 - 20-12-2024](#v050-20-12-2024)
 
-## v0.17.0 (Current) - *10-08-2025* {#v0170-current-10-08-2025}
+## v0.18.0 (Current) - *02-12-2025* {#v0180-current-02-12-2025}
+
+### Brief Description (v0.18.0)
+
+Feature release including updates to the `eza` command support, fixes for AI client connection messages and git error normalization, along with significant refactoring of AI utilities and enhanced test coverage.
+
+### New Features in v0.18.0
+
+- **Enhanced**: Update `eza` command to accept file pattern
+
+### Bug Fixes in v0.18.0
+
+- **Fixed**: Update AI client connection message and enhance git operations compatibility
+  - **Issue**: AI client connection message was not clear or compatible.
+  - **Root Cause**: Inconsistent message formatting.
+  - **Solution**: Updated message and compatibility.
+- **Fixed**: Normalize git error message patterns for case-insensitive matching
+  - **Issue**: Git error messages were not being matched correctly.
+  - **Root Cause**: Case sensitivity in regex.
+  - **Solution**: Added case-insensitive matching.
+- **Fixed**: Restore `-a .` functionality to select all files without interactive prompt
+  - **Issue**: Using `-a .` still triggered the interactive file selection menu.
+  - **Root Cause**: Workflow logic ignored CLI-provided files if they resolved to `.` (current directory) in a specific check.
+  - **Solution**: Explicitly check if files were provided via CLI to bypass interactive selection.
+
+### Improvements in v0.18.0
+
+- **Code Quality**: Complete codebase reformatting to strict Ruff standards (as defined in `pyproject.toml`), enforcing consistency and modern Python practices.
+- **UX**: Clarify file selection interaction instructions, replacing confusing toggle/invert help text with explicit navigation guidance and aligning the `-a .` flag with the interactive **All files** option by listing each staged file.
+- **Improved**: Enhance `AIClient` with dependency injection support, enabling better testability and increasing code coverage from ~70% to 97%.
+- **Improved**: Enhance `GitWorkflow` with dependency injection and add extensive test cases for better error handling and flow control, contributing to the significant coverage boost.
+- **Refactored**: AI utilities and improve error handling
+- **Refactored**: Git operations in git-acp
+- **Documentation**: Update project overview with architecture diagrams and design patterns
+- **Documentation**: Add comprehensive coding standards (AGENTS.md)
+
+### Key Commits in v0.18.0
+
+`663b42e`, `1950266`, `4e77245`, `a59aaa3`, `cde5617`, `73acc5e`
+
+---
+
+## v0.17.0 - *10-08-2025* {#v0170-10-08-2025}
 
 ### Brief Description (v0.17.0)
 

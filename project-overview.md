@@ -10,9 +10,9 @@ updated: 2025-12-02T21:58:00Z
 `git-acp` is a command-line tool that automates the `git add`, `commit`, and `push` workflow. It offers interactive file selection, AI-powered commit message generation via Ollama, and enforces Conventional Commits standards.
 
 ![Language](https://img.shields.io/badge/Python-3.10+-blue)
-[![Version](https://img.shields.io/badge/Version-0.17.0-brightgreen)](#version-summary)
+[![Version](https://img.shields.io/badge/Version-0.18.0-brightgreen)](#version-summary)
 [![CLI](https://img.shields.io/badge/CLI-Click-blue)](#cli)
-[![Coverage](https://img.shields.io/badge/Coverage-91%25-brightgreen)](#tests)
+[![Coverage](https://img.shields.io/badge/Coverage-97%25-brightgreen)](#tests)
 
 ## Table of Contents
 
@@ -44,6 +44,7 @@ pdm install -G dev && pdm run git-acp --help
 
 | Version | Date       | Type | Key Changes                |
 |---------|------------|------|----------------------------|
+| 0.18.0  | 02-12-2025 | ✨   | Fix -a flag logic, update eza, enhance tests & UX |
 | 0.17.0  | 10-08-2025 | ✨   | Add fallback Ollama server; git ops flattening |
 | 0.16.0  | 2025-08-08 | ✨   | Refactors and enhancements; feature work |
 | 0.15.1  | 2024-07-08 | 🐛   | Fixed -a flag logic, minor enhancements |
@@ -56,6 +57,7 @@ pdm install -G dev && pdm run git-acp --help
 - AI-generated commit messages using Ollama.
 - Automatic classification of commit types (feat, fix, etc.).
 - Support for Conventional Commits specification.
+- Consistent "all files" selection: choose **All files** in the prompt or use `-a .` to stage everything while still listing each file before commit.
 - Rich terminal output for better user experience.
 - Skipping confirmation prompts for faster workflow.
 - Verbose mode for debugging.
@@ -600,7 +602,7 @@ The main entry point is `git_acp.cli.cli.main`. It provides a set of options to 
 
 ## Tests
 
-Test coverage: **91%** (branch coverage enabled).
+Test coverage: **97%** (branch coverage enabled).
 
 **Test Structure:**
 
