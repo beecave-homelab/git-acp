@@ -196,7 +196,7 @@ def main(
     verbose: bool,
     prompt_type: str,
 ) -> None:
-    r"""Automate git add, commit, and push operations with smart features.
+    """Automate git add, commit, and push operations with smart features.
 
     This tool streamlines your git workflow by combining add, commit, and push
     operations with intelligent features like AI-powered commit messages and
@@ -215,7 +215,7 @@ def main(
     - Git Operations: Commands for basic git workflow (-a, -m, -b, -t)
     - AI Features: AI-powered commit message generation (-o, -i, -p)
     - General: Program behavior control (-nc, -v)
-    """
+    """  # noqa: D301
     setup_signal_handlers()
 
     try:
