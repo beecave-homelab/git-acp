@@ -16,67 +16,25 @@ import shlex
 import sys
 
 import click
-import questionary
 from rich import print as rprint
-from rich.console import Console
 from rich.panel import Panel
-from rich.prompt import Confirm
 
-from git_acp.ai import generate_commit_message
-from git_acp.config import COLORS, QUESTIONARY_STYLE
-from git_acp.git import (
-    CommitType,
-    GitError,
-    classify_commit_type,
-    get_changed_files,
-    get_current_branch,
-    git_add,
-    git_commit,
-    git_push,
-    setup_signal_handlers,
-    unstage_files,
-)
+from git_acp.cli.interaction import RichQuestionaryInteraction
+from git_acp.cli.workflow import GitWorkflow
+from git_acp.config import COLORS
+from git_acp.git import CommitType, setup_signal_handlers
 from git_acp.utils import GitConfig
-
-console = Console()
-
-
-def _error_panel(error_msg: str, suggestion: str, title: str) -> Panel:
-    """Create an error panel with consistent formatting.
-
-    Args:
-        error_msg: The error message to display.
-        suggestion: A suggestion for resolving the error.
-        title: The panel title.
-
-    Returns:
-        Panel: A Rich Panel with the error message.
-    """
-    err = COLORS["error"]
-    content = f"[{err}]{error_msg}[/{err}]\n\nSuggestion: {suggestion}"
-    return Panel(content, title=title, border_style="red")
-
-
-def debug_print(config: GitConfig, message: str) -> None:
-    """Print a debug message if verbose mode is enabled.
-
-    Args:
-        config: GitConfig instance containing configuration options
-        message: Debug message to print
-    """
-    if config.verbose:
-        rprint(f"[{COLORS['warning']}]Debug: {message}[/{COLORS['warning']}]")
 
 
 def format_commit_message(commit_type: CommitType, message: str) -> str:
     """Format a commit message according to conventional commits specification.
 
     Args:
-        commit_type: The type of commit
-        message: The commit message
+        commit_type: The type of commit.
+        message: The commit message.
 
     Returns:
-        str: The formatted commit message
+        The formatted commit message.
     """
     lines = message.split("\n")
     title = lines[0]
@@ -84,142 +42,59 @@ def format_commit_message(commit_type: CommitType, message: str) -> str:
     return f"{commit_type.value}: {title}\n\n{description}".strip()
 
 
-def select_files(changed_files: set[str]) -> str:
-    """Present an interactive selection menu for changed files.
+def _process_add_argument(add: str | None) -> tuple[str | None, bool]:
+    """Process the -a/--add argument, expanding globs.
 
     Args:
-        changed_files: Set of files with uncommitted changes
+        add: The raw -a argument value.
 
     Returns:
-        str: Space-separated list of selected files, with proper quoting
-
-    Raises:
-        GitError: If no files found, user cancels, or no selection made.
+        Tuple of (processed_files, should_exit_early).
+        processed_files is None if -a was not provided.
     """
-    if not changed_files:
-        raise GitError("No changed files found to commit.")
+    if add is None:
+        return None, False
 
-    if len(changed_files) == 1:
-        selected_file = next(iter(changed_files))
+    if not add.strip():
+        warn = COLORS["warning"]
         rprint(
-            f"[{COLORS['warning']}]Adding file:[/{COLORS['warning']}] {selected_file}"
+            f"[{warn}]The -a flag was used with an empty string. "
+            f"No files will be staged based on this argument.[/{warn}]"
         )
-        return f'"{selected_file}"' if " " in selected_file else selected_file
+        return "", False
 
-    # Create choices with the original filenames
-    choices = []
-    for file in sorted(list(changed_files)):
-        choices.append({
-            "name": file,  # Display name
-            "value": file,  # Actual value
-        })
+    items_to_process = shlex.split(add)
+    resolved_paths: list[str] = []
+    unmatched_items: list[str] = []
 
-    # Add "All files" as the last option
-    choices.append({"name": "All files", "value": "All files"})
-
-    # Use a wider display for the checkbox prompt
-    selected = questionary.checkbox(
-        "Select files to commit (space to select, enter to confirm):",
-        choices=choices,
-        style=questionary.Style(QUESTIONARY_STYLE),
-    ).ask()
-
-    if selected is None:  # User cancelled
-        raise GitError("Operation cancelled by user.")
-    elif not selected:  # No selection made
-        raise GitError("No files selected.")
-
-    if "All files" in selected:
-        rprint(f"[{COLORS['warning']}]Adding all files[/{COLORS['warning']}]")
-        return "."
-
-    # Print selected files for user feedback
-    rprint(f"[{COLORS['warning']}]Adding files:[/{COLORS['warning']}]")
-    for file in selected:
-        rprint(f"  - {file}")
-
-    # Return files as a space-separated string, properly quoted if needed
-    return " ".join(f'"{f}"' if " " in f else f for f in selected)
-
-
-def select_commit_type(config: GitConfig, suggested_type: CommitType) -> CommitType:
-    """Present an interactive selection menu for commit types.
-
-    If no_confirm is True, automatically selects the suggested type.
-
-    Args:
-        config: GitConfig instance containing configuration options
-        suggested_type: The suggested commit type based on changes
-
-    Returns:
-        CommitType: The selected commit type
-
-    Raises:
-        GitError: If no commit type is selected
-    """
-    if config.skip_confirmation or suggested_type.value in [
-        "feat",
-        "fix",
-        "docs",
-        "style",
-        "refactor",
-        "test",
-        "chore",
-        "revert",
-    ]:
-        if config.verbose:
-            debug_print(config, f"Auto-selecting commit type: {suggested_type.value}")
-        return suggested_type
-
-    # Create choices list with suggested type highlighted
-    commit_type_choices = []
-    for commit_type in CommitType:
-        # Add (suggested) tag for the suggested type
-        name = (
-            f"{commit_type.value} (suggested)"
-            if commit_type == suggested_type
-            else commit_type.value
-        )
-        choice = {
-            "name": name,
-            "value": commit_type,
-            "checked": False,  # Don't pre-select any option
-        }
-        if commit_type == suggested_type:
-            commit_type_choices.insert(0, choice)  # Put suggested type at the top
+    for item in items_to_process:
+        expanded_paths = glob.glob(item, recursive=True)
+        if not expanded_paths:
+            unmatched_items.append(item)
         else:
-            commit_type_choices.append(choice)
+            resolved_paths.extend(expanded_paths)
 
-    if config.verbose:
-        debug_print(config, f"Suggested commit type: {suggested_type.value}")
+    if unmatched_items:
+        warn = COLORS["warning"]
+        unmatched = ", ".join(unmatched_items)
+        rprint(
+            f"[{warn}]Warning: The following patterns/files "
+            f"provided via -a did not match any filesystem "
+            f"paths: {unmatched}[/{warn}]"
+        )
 
-    def validate_single_selection(selected_types: list[CommitType]) -> str | bool:
-        """Validate that exactly one commit type is selected.
+    if not resolved_paths:
+        info = COLORS["info"]
+        rprint(
+            f"[{info}]No files or directories matched the "
+            f"criteria from the -a argument. "
+            f"No files will be staged.[/{info}]"
+        )
+        return "", False
 
-        Args:
-            selected_types: List of selected commit types
-
-        Returns:
-            str | bool: True if valid, error message string if invalid
-        """
-        if len(selected_types) != 1:
-            return "Please select exactly one commit type"
-        return True
-
-    selected_types = questionary.checkbox(
-        "Select commit type (space to select, enter to confirm):",
-        choices=commit_type_choices,
-        style=questionary.Style(QUESTIONARY_STYLE),
-        instruction=" (suggested type marked)",
-        validate=validate_single_selection,
-    ).ask()
-
-    if selected_types is None:  # User cancelled
-        raise GitError("Operation cancelled by user.")
-    elif not selected_types or len(selected_types) != 1:  # No selection made
-        raise GitError("No commit type selected.")
-
-    return selected_types[0]
+    # Remove duplicates while preserving order
+    unique_paths = list(dict.fromkeys(resolved_paths))
+    return " ".join(f'"{p}"' if " " in p else p for p in unique_paths), False
 
 
 @click.command()
@@ -340,108 +215,15 @@ def main(
     - Git Operations: Commands for basic git workflow (-a, -m, -b, -t)
     - AI Features: AI-powered commit message generation (-o, -i, -p)
     - General: Program behavior control (-nc, -v)
-
-    Raises:
-        GitError: For various git operation failures.
     """
-    # Set up signal handler for graceful interruption
     setup_signal_handlers()
 
     try:
-        processed_add_argument: str | None = None
-        if add is not None:
-            if not add.strip():
-                warn = COLORS["warning"]
-                rprint(
-                    f"[{warn}]The -a flag was used with an empty string. "
-                    f"No files will be staged based on this argument.[/{warn}]"
-                )
-                processed_add_argument = ""
-            else:
-                items_to_process = shlex.split(add)
-                resolved_paths: list[str] = []
-                unmatched_items: list[str] = []
-                for item in items_to_process:
-                    expanded_paths = glob.glob(item, recursive=True)
-                    if not expanded_paths:
-                        unmatched_items.append(item)
-                    else:
-                        resolved_paths.extend(expanded_paths)
+        # Process -a argument (glob expansion)
+        processed_files, _ = _process_add_argument(add)
 
-                if unmatched_items:
-                    warn = COLORS["warning"]
-                    unmatched = ", ".join(unmatched_items)
-                    rprint(
-                        f"[{warn}]Warning: The following patterns/files "
-                        f"provided via -a did not match any filesystem "
-                        f"paths: {unmatched}[/{warn}]"
-                    )
-
-                if not resolved_paths:
-                    info = COLORS["info"]
-                    rprint(
-                        f"[{info}]No files or directories matched the "
-                        f"criteria from the -a argument. "
-                        f"No files will be staged.[/{info}]"
-                    )
-                    processed_add_argument = ""
-                else:
-                    unique_paths = list(
-                        dict.fromkeys(resolved_paths)
-                    )  # Remove duplicates while preserving order
-                    processed_add_argument = " ".join(
-                        f'"{p}"' if " " in p else p for p in unique_paths
-                    )
-
-        config = GitConfig(
-            files=processed_add_argument if processed_add_argument is not None else ".",
-            message=message or "Automated commit",
-            branch=branch,
-            use_ollama=ollama,
-            interactive=interactive,
-            skip_confirmation=no_confirm,
-            verbose=verbose,
-            prompt_type=prompt_type.lower(),
-        )
-
-        if add is None:  # Only run interactive selection if -a was not provided
-            try:
-                changed_files = get_changed_files(config)  # config is used for verbose
-                if not changed_files:
-                    if config.skip_confirmation:
-                        rprint(
-                            Panel(
-                                "No changes detected in the repository. Nothing to do.",
-                                title="No Changes",
-                                border_style="yellow",
-                            )
-                        )
-                        sys.exit(0)
-                    # If not skipping confirmation, select_files will
-                    # handle empty changed_files by raising an error
-
-                # This line updates config.files with the interactive selection
-                config.files = select_files(changed_files)
-            except GitError as e:
-                if "cancelled by user" in str(e).lower():
-                    unstage_files()
-                    rprint(
-                        Panel(
-                            "Operation cancelled by user.",
-                            title="Cancelled",
-                            border_style="yellow",
-                        )
-                    )
-                else:
-                    rprint(
-                        _error_panel(
-                            f"Error during file selection:\n{e}",
-                            "Check file paths and try again.",
-                            "File Selection Failed",
-                        )
-                    )
-                sys.exit(1)
-        elif processed_add_argument == "":  # -a was used but resulted in no files
+        # Handle case where -a was provided but matched no files
+        if processed_files == "":
             rprint(
                 Panel(
                     "The -a argument resulted in no files to stage. Nothing to commit.",
@@ -451,199 +233,36 @@ def main(
             )
             sys.exit(0)
 
-        if not config.branch:
-            try:
-                config.branch = get_current_branch()
-            except GitError as e:
-                rprint(
-                    _error_panel(
-                        f"Error getting current branch:\n{e}",
-                        "Ensure you're in a git repository with a valid branch.",
-                        "Branch Detection Failed",
-                    )
-                )
-                sys.exit(1)
+        # Build configuration
+        config = GitConfig(
+            files=processed_files if processed_files is not None else ".",
+            message=message if not ollama else None,
+            branch=branch,
+            use_ollama=ollama,
+            interactive=interactive,
+            skip_confirmation=no_confirm,
+            verbose=verbose,
+            prompt_type=prompt_type.lower(),
+        )
 
-        # Add files first
-        try:
-            git_add(config.files, config)  # Pass config for verbose/debug
-            # Check if files were staged when -a is used
-            if add is not None:  # -a was used
-                staged_files = get_changed_files(config, staged_only=True)
-                if not staged_files:
-                    # No actual changes in specified files
-                    msg = (
-                        f"No actual changes were found in the files/patterns "
-                        f"specified by -a (resolved to: '{config.files}'). "
-                        "Nothing was staged."
-                    )
-                    rprint(
-                        Panel(
-                            msg, title="No Changes Staged via -a", border_style="yellow"
-                        )
-                    )
-                    sys.exit(0)
-        except GitError as e:
-            rprint(
-                _error_panel(
-                    f"Error adding files:\n{e}",
-                    "Check file paths and repository permissions.",
-                    "Git Add Failed",
-                )
-            )
-            sys.exit(1)
+        # Create interaction layer and workflow
+        interaction = RichQuestionaryInteraction()
+        workflow = GitWorkflow(
+            config,
+            interaction,
+            files_from_cli=(add is not None),
+            commit_type_override=commit_type,
+        )
 
-        try:
-            if config.use_ollama:
-                try:
-                    config.message = generate_commit_message(config)
-                except GitError as e:
-                    rprint(
-                        _error_panel(
-                            f"AI commit message generation failed:\n{e}",
-                            "Check Ollama server status and configuration.",
-                            "AI Generation Failed",
-                        )
-                    )
-                    if not Confirm.ask(
-                        "Would you like to continue with a manual commit message?"
-                    ):
-                        unstage_files()
-                        sys.exit(1)
-
-            if not config.message:
-                raise GitError(
-                    "No commit message provided. "
-                    "Please specify a message with -m or use --ollama."
-                )
-
-            # Get suggested commit type
-            try:
-                suggested_type = (
-                    CommitType.from_str(commit_type)
-                    if commit_type
-                    else classify_commit_type(config)
-                )
-            except GitError as e:
-                rprint(
-                    _error_panel(
-                        f"Error determining commit type:\n{e}",
-                        "Check your changes or specify a commit type with -t.",
-                        "Commit Type Error",
-                    )
-                )
-                sys.exit(1)
-
-            # Let user select commit type, unless it was specified with -t flag
-            bold = COLORS["bold"]
-            rprint(f"[{bold}]🤖 Analyzing changes to suggest commit type...[/{bold}]")
-            success = COLORS["success"]
-            if commit_type:
-                selected_type = suggested_type
-                rprint(
-                    f"[{success}]✓ Using specified commit type: "
-                    f"{selected_type.value}[/{success}]"
-                )
-            else:
-                try:
-                    selected_type = select_commit_type(config, suggested_type)
-                    rprint(
-                        f"[{success}]✓ Commit type selected successfully[/{success}]"
-                    )
-                except GitError as e:
-                    if "cancelled by user" in str(e).lower():
-                        rprint(
-                            Panel(
-                                "Operation cancelled by user.",
-                                title="Cancelled",
-                                border_style="yellow",
-                            )
-                        )
-                    else:
-                        rprint(
-                            _error_panel(
-                                f"Error selecting commit type:\n{e}",
-                                "Try again or specify a commit type with -t.",
-                                "Commit Type Selection Failed",
-                            )
-                        )
-                    unstage_files()
-                    sys.exit(1)
-
-            formatted_message = format_commit_message(selected_type, config.message)
-
-            header = COLORS["ai_message_header"]
-            border = COLORS["ai_message_border"]
-            if not config.skip_confirmation:
-                rprint(
-                    Panel.fit(
-                        formatted_message,
-                        title=f"[{header}]Commit Message[/{header}]",
-                        border_style=border,
-                    )
-                )
-                if not Confirm.ask("Do you want to proceed?"):
-                    unstage_files()
-                    rprint(
-                        Panel(
-                            "Operation cancelled by user.",
-                            title="Cancelled",
-                            border_style="yellow",
-                        )
-                    )
-                    sys.exit(0)
-            else:
-                rprint(
-                    Panel.fit(
-                        formatted_message,
-                        title=f"[{header}]Auto-committing with message[/{header}]",
-                        border_style=border,
-                    )
-                )
-
-            try:
-                git_commit(formatted_message)
-            except GitError as e:
-                rprint(
-                    _error_panel(
-                        f"Error committing changes:\n{e}",
-                        "Check if there are changes to commit and try again.",
-                        "Commit Failed",
-                    )
-                )
-                sys.exit(1)
-
-            try:
-                git_push(config.branch)
-            except GitError as e:
-                rprint(
-                    _error_panel(
-                        f"Error pushing changes:\n{e}",
-                        "Pull latest changes, resolve conflicts, and try again.",
-                        "Push Failed",
-                    )
-                )
-                sys.exit(1)
-
-        except Exception as e:
-            unstage_files()
-            rprint(
-                _error_panel(
-                    f"An unexpected error occurred:\n{e}",
-                    "Please report this issue if it persists.",
-                    "Unexpected Error",
-                )
-            )
-            sys.exit(1)
+        # Run workflow and exit with its return code
+        exit_code = workflow.run()
+        sys.exit(exit_code)
 
     except Exception as e:
-        rprint(
-            _error_panel(
-                f"Critical error:\n{e}",
-                "Please check your git repository and configuration.",
-                "Critical Error",
-            )
-        )
+        err = COLORS["error"]
+        content = f"[{err}]Critical error:\n{e}[/{err}]\n\nSuggestion: "
+        content += "Please check your git repository and configuration."
+        rprint(Panel(content, title="Critical Error", border_style="red"))
         sys.exit(1)
 
 
