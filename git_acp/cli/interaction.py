@@ -142,9 +142,15 @@ class RichQuestionaryInteraction:
         elif not selected:
             raise GitError("No files selected.")
 
+        # If "All files" is selected, stage and display all changed files.
         if "All files" in selected:
-            rprint(f"[{COLORS['warning']}]Adding all files[/{COLORS['warning']}]")
-            return "."
+            selected_files = sorted(changed_files)
+            rprint(f"[{COLORS['warning']}]Adding files:[/{COLORS['warning']}]")
+            for file in selected_files:
+                rprint(f"  - {file}")
+            return " ".join(
+                f'"{f}"' if " " in f else f for f in selected_files
+            )
 
         rprint(f"[{COLORS['warning']}]Adding files:[/{COLORS['warning']}]")
         for file in selected:

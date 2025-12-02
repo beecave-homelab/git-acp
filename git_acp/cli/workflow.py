@@ -187,6 +187,19 @@ class GitWorkflow:
             True if successful, False on error.
         """
         try:
+            # When files were provided via -a, mirror the interactive
+            # "All files" UX by listing the files being staged.
+            if self._files_from_cli:
+                try:
+                    changed_files = get_changed_files(self.config)
+                except GitError:
+                    changed_files = set()
+
+                if changed_files:
+                    self.interaction.print_message("Adding files:")
+                    for file in sorted(changed_files):
+                        self.interaction.print_message(f"  - {file}")
+
             git_add(self.config.files, self.config)
             return True
         except GitError as e:
