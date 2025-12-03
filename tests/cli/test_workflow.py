@@ -216,6 +216,44 @@ class TestGitWorkflow:
 
         assert exit_code == 1
 
+    @patch("git_acp.cli.workflow.classify_commit_type")
+    @patch("git_acp.cli.workflow.generate_commit_message")
+    @patch("git_acp.cli.workflow.git_add")
+    @patch("git_acp.cli.workflow.git_commit")
+    @patch("git_acp.cli.workflow.git_push")
+    def test_workflow__ai_failure_user_accepts_manual(
+        self,
+        mock_push: MagicMock,
+        mock_commit: MagicMock,
+        mock_add: MagicMock,
+        mock_generate: MagicMock,
+        mock_classify: MagicMock,
+        mock_config: GitConfig,
+    ) -> None:
+        """Handle AI failure when user accepts manual message fallback."""
+        from git_acp.cli.interaction import TestInteraction
+        from git_acp.cli.workflow import GitWorkflow
+
+        mock_config.use_ollama = True
+        mock_config.message = None
+        mock_generate.side_effect = GitError("AI unavailable")
+        mock_classify.return_value = CommitType.CHORE
+
+        interaction = TestInteraction(
+            confirm_response=True,
+            manual_message_response="Manual commit message",
+        )
+        workflow = GitWorkflow(mock_config, interaction)
+
+        exit_code = workflow.run()
+
+        assert exit_code == 0
+        assert mock_config.message == "Manual commit message"
+        mock_generate.assert_called_once_with(mock_config)
+        mock_add.assert_called_once()
+        mock_commit.assert_called_once()
+        mock_push.assert_called_once()
+
     @patch("git_acp.cli.workflow.git_add")
     @patch("git_acp.cli.workflow.git_commit")
     def test_workflow_run__git_commit_failure(

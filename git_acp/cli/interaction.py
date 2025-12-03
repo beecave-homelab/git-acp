@@ -258,6 +258,15 @@ class RichQuestionaryInteraction:
         """
         rprint(Panel(content, title=title, border_style=style))
 
+    def _prompt_manual_commit_message(self) -> str | None:
+        message = questionary.text(
+            "Enter commit message:",
+            style=questionary.Style(QUESTIONARY_STYLE),
+        ).ask()
+        if message and message.strip():
+            return message.strip()
+        return None
+
 
 class TestInteraction:
     """Test double for UserInteraction that returns canned responses.
@@ -271,6 +280,7 @@ class TestInteraction:
         files_response: str = ".",
         commit_type_response: CommitType = CommitType.CHORE,
         confirm_response: bool = True,
+        manual_message_response: str | None = None,
     ) -> None:
         """Initialize with canned responses.
 
@@ -278,10 +288,12 @@ class TestInteraction:
             files_response: Value to return from select_files.
             commit_type_response: Value to return from select_commit_type.
             confirm_response: Value to return from confirm.
+            manual_message_response: Value to return from manual commit message prompt.
         """
         self._files_response = files_response
         self._commit_type_response = commit_type_response
         self._confirm_response = confirm_response
+        self._manual_message_response = manual_message_response
         self.messages: list[str] = []
         self.errors: list[tuple[str, str, str]] = []
         self.panels: list[tuple[str, str, str]] = []
@@ -349,3 +361,6 @@ class TestInteraction:
             style: Border style to record.
         """
         self.panels.append((content, title, style))
+
+    def _prompt_manual_commit_message(self) -> str | None:
+        return self._manual_message_response

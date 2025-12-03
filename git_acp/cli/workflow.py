@@ -272,6 +272,24 @@ class GitWorkflow:
                     unstage_files()
                     return False
 
+                manual_message: str | None = None
+                prompt_manual = getattr(
+                    self.interaction, "_prompt_manual_commit_message", None
+                )
+                if callable(prompt_manual):
+                    manual_message = prompt_manual()
+
+                if not manual_message:
+                    unstage_files()
+                    self.interaction.print_error(
+                        "No commit message provided.",
+                        "Please specify a message with -m or use --ollama.",
+                        "Missing Message",
+                    )
+                    return False
+
+                self.config.message = manual_message
+
         if not self.config.message:
             self.interaction.print_error(
                 "No commit message provided.",
