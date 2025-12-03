@@ -161,6 +161,7 @@ class TestGitWorkflow:
         mock_commit.assert_called_once()
         mock_push.assert_called_once()
 
+    @patch("git_acp.cli.workflow.classify_commit_type")
     @patch("git_acp.cli.workflow.get_changed_files")
     @patch("git_acp.cli.workflow.git_add")
     @patch("git_acp.cli.workflow.git_commit")
@@ -171,6 +172,7 @@ class TestGitWorkflow:
         mock_commit: MagicMock,
         mock_add: MagicMock,
         mock_get_changed: MagicMock,
+        mock_classify: MagicMock,
         interactive_config: GitConfig,
     ) -> None:
         """Use interaction.select_files when files not specified."""
@@ -178,6 +180,7 @@ class TestGitWorkflow:
         from git_acp.cli.workflow import GitWorkflow
 
         mock_get_changed.return_value = {"file1.py", "file2.py"}
+        mock_classify.return_value = CommitType.FEAT
 
         interaction = TestInteraction(
             files_response="file1.py",
