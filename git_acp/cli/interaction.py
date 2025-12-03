@@ -148,9 +148,7 @@ class RichQuestionaryInteraction:
             rprint(f"[{COLORS['warning']}]Adding files:[/{COLORS['warning']}]")
             for file in selected_files:
                 rprint(f"  - {file}")
-            return " ".join(
-                f'"{f}"' if " " in f else f for f in selected_files
-            )
+            return " ".join(f'"{f}"' if " " in f else f for f in selected_files)
 
         rprint(f"[{COLORS['warning']}]Adding files:[/{COLORS['warning']}]")
         for file in selected:
@@ -175,7 +173,14 @@ class RichQuestionaryInteraction:
         """
         # Auto-select if skip_confirmation or if it's a valid type
         if config.skip_confirmation or suggested_type.value in [
-            "feat", "fix", "docs", "style", "refactor", "test", "chore", "revert",
+            "feat",
+            "fix",
+            "docs",
+            "style",
+            "refactor",
+            "test",
+            "chore",
+            "revert",
         ]:
             return suggested_type
 

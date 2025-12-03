@@ -6,6 +6,8 @@ workflow using injected dependencies for user interaction.
 
 from __future__ import annotations
 
+import shlex
+
 from typing import TYPE_CHECKING
 
 from git_acp.ai import generate_commit_message
@@ -196,9 +198,29 @@ class GitWorkflow:
                     changed_files = set()
 
                 if changed_files:
-                    self.interaction.print_message("Adding files:")
-                    for file in sorted(changed_files):
-                        self.interaction.print_message(f"  - {file}")
+                    cli_targets = shlex.split(self.config.files or "")
+                    files_to_list = set(changed_files)
+
+                    # When using -a . (or equivalent), show all changed files.
+                    if cli_targets and not any(
+                        target in {".", "./"} for target in cli_targets
+                    ):
+                        # Otherwise, only list files that would be affected by
+                        # the resolved CLI targets (files/dirs).
+                        files_to_list = {
+                            path
+                            for path in changed_files
+                            if any(
+                                path == target
+                                or path.startswith(target.rstrip("/") + "/")
+                                for target in cli_targets
+                            )
+                        }
+
+                    if files_to_list:
+                        self.interaction.print_message("Adding files:")
+                        for file in sorted(files_to_list):
+                            self.interaction.print_message(f"  - {file}")
 
             git_add(self.config.files, self.config)
             return True
@@ -226,9 +248,7 @@ class GitWorkflow:
                 f"specified by -a (resolved to: '{self.config.files}'). "
                 "Nothing was staged."
             )
-            self.interaction.print_panel(
-                msg, "No Changes Staged via -a", "yellow"
-            )
+            self.interaction.print_panel(msg, "No Changes Staged via -a", "yellow")
             return False
         return True
 
