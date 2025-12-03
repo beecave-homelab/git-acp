@@ -271,14 +271,7 @@ class GitWorkflow:
                 ):
                     unstage_files()
                     return False
-
-                manual_message: str | None = None
-                prompt_manual = getattr(
-                    self.interaction, "_prompt_manual_commit_message", None
-                )
-                if callable(prompt_manual):
-                    manual_message = prompt_manual()
-
+                manual_message = self._prompt_manual_message()
                 if not manual_message:
                     unstage_files()
                     self.interaction.print_error(
@@ -291,14 +284,31 @@ class GitWorkflow:
                 self.config.message = manual_message
 
         if not self.config.message:
-            self.interaction.print_error(
-                "No commit message provided.",
-                "Please specify a message with -m or use --ollama.",
-                "Missing Message",
-            )
-            return False
+            manual_message = self._prompt_manual_message()
+            if manual_message:
+                self.config.message = manual_message
+            else:
+                unstage_files()
+                self.interaction.print_error(
+                    "No commit message provided.",
+                    "Please specify a message with -m or use --ollama.",
+                    "Missing Message",
+                )
+                return False
 
         return True
+
+    def _prompt_manual_message(self) -> str | None:
+        """Prompt the user for a manual commit message if supported.
+
+        Returns:
+            The commit message entered by the user, or None if prompting is not
+            supported.
+        """
+        prompt_manual = getattr(self.interaction, "_prompt_manual_commit_message", None)
+        if callable(prompt_manual):
+            return prompt_manual()
+        return None
 
     def _handle_commit_type(self) -> CommitType | None:
         """Classify and select commit type.
