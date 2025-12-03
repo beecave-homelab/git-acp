@@ -53,6 +53,10 @@ Feature release including updates to the `eza` command support, fixes for AI cli
   - **Issue**: Using `-a .` still triggered the interactive file selection menu.
   - **Root Cause**: Workflow logic ignored CLI-provided files if they resolved to `.` (current directory) in a specific check.
   - **Solution**: Explicitly check if files were provided via CLI to bypass interactive selection.
+- **Fixed**: Ensure `-a <pattern>` lists only files matching the resolved CLI targets
+  - **Issue**: Using patterns such as `-a "tests/"` caused the CLI to list all changed files in the repository instead of only those under `tests/`.
+  - **Root Cause**: The workflow printed every changed file discovered by `get_changed_files` without respecting the resolved `-a` targets.
+  - **Solution**: Updated `GitWorkflow` to filter the "Adding files:" list to only those paths affected by the resolved `-a` patterns, while preserving the `-a .` behavior of listing all changed files.
 
 ### Improvements in v0.18.0
 
@@ -62,6 +66,7 @@ Feature release including updates to the `eza` command support, fixes for AI cli
 - **Improved**: Enhance `GitWorkflow` with dependency injection and add extensive test cases for better error handling and flow control, contributing to the significant coverage boost.
 - **Refactored**: AI utilities and improve error handling
 - **Refactored**: Git operations in git-acp
+- **Refactored**: File selection UX in `RichQuestionaryInteraction` and `GitWorkflow` to better align CLI `-a` usage with interactive "All files" behavior.
 - **Documentation**: Update project overview with architecture diagrams and design patterns
 - **Documentation**: Add comprehensive coding standards (AGENTS.md)
 
