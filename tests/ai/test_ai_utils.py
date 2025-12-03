@@ -259,7 +259,11 @@ class TestVerboseMode:
 
     @pytest.fixture
     def verbose_config(self):
-        """Create a verbose GitConfig instance."""
+        """Create a verbose GitConfig instance.
+
+        Returns:
+            GitConfig: A verbose GitConfig instance.
+        """
         return GitConfig(
             files="test.py",
             message=None,
@@ -273,7 +277,11 @@ class TestVerboseMode:
 
     @pytest.fixture
     def mock_context(self):
-        """Create a mock git context dictionary."""
+        """Create a mock git context dictionary.
+
+        Returns:
+            dict: A mock git context dictionary.
+        """
         return {
             "staged_changes": "Modified: test.py",
             "recent_commits": [{"message": "feat: test"}],
@@ -412,7 +420,11 @@ class TestEditCommitMessageVerbose:
 
     @pytest.fixture
     def interactive_verbose_config(self):
-        """Create an interactive verbose GitConfig instance."""
+        """Create an interactive verbose GitConfig instance.
+
+        Returns:
+            GitConfig: An interactive verbose GitConfig instance.
+        """
         return GitConfig(
             files="test.py",
             message=None,

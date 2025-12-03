@@ -194,9 +194,7 @@ class TestClassifyCommitTypeEdgeCases:
         mock_debug_item.assert_any_call("Error Type", "RuntimeError")
 
     @patch("git_acp.git.classification.get_diff")
-    def test_classify__unexpected_error_non_verbose(
-        self, mock_get_diff, mock_config
-    ):
+    def test_classify__unexpected_error_non_verbose(self, mock_get_diff, mock_config):
         """Handle unexpected errors in non-verbose mode."""
         mock_get_diff.side_effect = ValueError("bad value")
 

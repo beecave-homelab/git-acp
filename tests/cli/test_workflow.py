@@ -333,6 +333,45 @@ class TestGitWorkflow:
         assert exit_code == 0
         mock_classify.assert_called_once()
 
+    @patch("git_acp.cli.workflow.get_changed_files")
+    @patch("git_acp.cli.workflow.git_add")
+    def test_handle_git_add__cli_add_filters_to_cli_targets(
+        self,
+        mock_add: MagicMock,
+        mock_get_changed: MagicMock,
+        mock_config: GitConfig,
+    ) -> None:
+        """List only files matching CLI -a targets when files_from_cli is True."""
+        from git_acp.cli.interaction import TestInteraction
+        from git_acp.cli.workflow import GitWorkflow
+
+        mock_config.files = "tests"
+        mock_config.message = "Test commit"
+        mock_config.use_ollama = False
+
+        mock_get_changed.return_value = {
+            "tests/ai/test_ai_utils.py",
+            "tests/git/test_history.py",
+            "git_acp/cli/workflow.py",
+        }
+
+        interaction = TestInteraction()
+        workflow = GitWorkflow(mock_config, interaction, files_from_cli=True)
+
+        result = workflow._handle_git_add()
+
+        assert result is True
+        mock_add.assert_called_once_with(mock_config.files, mock_config)
+
+        # First message is the header, followed by per-file lines.
+        assert interaction.messages[0] == "Adding files:"
+        listed_files = interaction.messages[1:]
+        assert any("tests/ai/test_ai_utils.py" in msg for msg in listed_files)
+        assert any("tests/git/test_history.py" in msg for msg in listed_files)
+        assert all(
+            "git_acp/cli/workflow.py" not in msg for msg in listed_files
+        )
+
 
 # -----------------------------------------------------------------------------
 # Tests for format_commit_message (pure function, easy to test)

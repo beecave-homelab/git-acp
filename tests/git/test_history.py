@@ -67,8 +67,7 @@ class TestGetRecentCommits:
     ) -> None:
         """Skip lines that cannot be parsed as JSON."""
         valid_1 = (
-            '{"hash":"abc1234","message":"valid",'
-            '"author":"Dev","date":"2024-01-01"}'
+            '{"hash":"abc1234","message":"valid","author":"Dev","date":"2024-01-01"}'
         )
         valid_2 = (
             '{"hash":"def5678","message":"also valid",'
