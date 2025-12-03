@@ -7,7 +7,6 @@ workflow using injected dependencies for user interaction.
 from __future__ import annotations
 
 import shlex
-
 from typing import TYPE_CHECKING
 
 from git_acp.ai import generate_commit_message

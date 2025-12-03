@@ -368,9 +368,7 @@ class TestGitWorkflow:
         listed_files = interaction.messages[1:]
         assert any("tests/ai/test_ai_utils.py" in msg for msg in listed_files)
         assert any("tests/git/test_history.py" in msg for msg in listed_files)
-        assert all(
-            "git_acp/cli/workflow.py" not in msg for msg in listed_files
-        )
+        assert all("git_acp/cli/workflow.py" not in msg for msg in listed_files)
 
 
 # -----------------------------------------------------------------------------
