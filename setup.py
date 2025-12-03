@@ -39,6 +39,7 @@ setup(
         "click==8.1.8",
         "rich==13.9.4",
         "questionary==2.1.0",
+        "prompt-toolkit<3.0.50",
         "openai==1.59.3",
         "tqdm==4.67.1",
         "python-dotenv==1.0.1",

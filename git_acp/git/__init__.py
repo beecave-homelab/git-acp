@@ -18,6 +18,11 @@ from git_acp.git.operations import (
     setup_signal_handlers,
     unstage_files,
 )
+from git_acp.git.history import (
+    analyze_commit_patterns,
+    find_related_commits,
+    get_recent_commits,
+)
 
 __all__ = [
     "GitError",
