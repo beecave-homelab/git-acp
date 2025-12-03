@@ -40,6 +40,18 @@ pip install pdm # if not already installed
 pdm install -G dev && pdm run git-acp --help
 ```
 
+### Exporting Requirements Files
+
+Always regenerate the lock-style requirement files from `pyproject.toml` using `pdm`:
+
+```bash
+# Production requirements
+pdm export --pyproject --no-hashes --prod -o requirements.txt
+
+# Dev / lint / test requirements
+pdm export --pyproject --no-hashes -G lint,test -o requirements.dev.txt
+```
+
 ## Version Summary
 
 | Version | Date       | Type | Key Changes                |
