@@ -260,6 +260,7 @@ class TestGitWorkflow:
 
         assert exit_code == 1
 
+    @patch("git_acp.cli.workflow.classify_commit_type")
     @patch("git_acp.cli.workflow.git_add")
     @patch("git_acp.cli.workflow.git_commit")
     @patch("git_acp.cli.workflow.git_push")
@@ -268,6 +269,7 @@ class TestGitWorkflow:
         mock_push: MagicMock,
         mock_commit: MagicMock,
         mock_add: MagicMock,
+        mock_classify: MagicMock,
         mock_config: GitConfig,
     ) -> None:
         """Return zero exit code when user cancels at confirmation."""
@@ -275,6 +277,7 @@ class TestGitWorkflow:
         from git_acp.cli.workflow import GitWorkflow
 
         mock_config.skip_confirmation = False
+        mock_classify.return_value = CommitType.CHORE
 
         interaction = TestInteraction(confirm_response=False)
         workflow = GitWorkflow(mock_config, interaction)
