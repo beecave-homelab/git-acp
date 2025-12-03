@@ -133,6 +133,7 @@ class TestGitWorkflow:
         assert workflow.config is mock_config
         assert workflow.interaction is interaction
 
+    @patch("git_acp.cli.workflow.classify_commit_type")
     @patch("git_acp.cli.workflow.git_add")
     @patch("git_acp.cli.workflow.git_commit")
     @patch("git_acp.cli.workflow.git_push")
@@ -141,11 +142,14 @@ class TestGitWorkflow:
         mock_push: MagicMock,
         mock_commit: MagicMock,
         mock_add: MagicMock,
+        mock_classify: MagicMock,
         mock_config: GitConfig,
     ) -> None:
         """Run workflow successfully in non-interactive mode."""
         from git_acp.cli.interaction import TestInteraction
         from git_acp.cli.workflow import GitWorkflow
+
+        mock_classify.return_value = CommitType.CHORE
 
         interaction = TestInteraction()
         workflow = GitWorkflow(mock_config, interaction)
