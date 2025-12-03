@@ -288,6 +288,7 @@ class TestGitWorkflow:
         mock_commit.assert_not_called()
         mock_push.assert_not_called()
 
+    @patch("git_acp.cli.workflow.classify_commit_type")
     @patch("git_acp.cli.workflow.generate_commit_message")
     @patch("git_acp.cli.workflow.git_add")
     @patch("git_acp.cli.workflow.git_commit")
@@ -298,6 +299,7 @@ class TestGitWorkflow:
         mock_commit: MagicMock,
         mock_add: MagicMock,
         mock_generate: MagicMock,
+        mock_classify: MagicMock,
         mock_config: GitConfig,
     ) -> None:
         """Use AI to generate commit message when use_ollama is True."""
@@ -307,6 +309,7 @@ class TestGitWorkflow:
         mock_config.use_ollama = True
         mock_config.message = None
         mock_generate.return_value = "AI generated message"
+        mock_classify.return_value = CommitType.CHORE
 
         interaction = TestInteraction()
         workflow = GitWorkflow(mock_config, interaction)
