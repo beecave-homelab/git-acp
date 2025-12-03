@@ -1,13 +1,24 @@
+"""Git branch, tag, remote, and stash management operations."""
+
 from __future__ import annotations
 
-from typing import Literal, Optional
+from typing import Literal
 
 from git_acp.utils import OptionalConfig, debug_header, debug_item
+
 from .core import GitError, run_git_command
 
 
 def create_branch(branch_name: str, config: OptionalConfig = None) -> None:
-    """Create a new git branch."""
+    """Create a new git branch.
+
+    Args:
+        branch_name: Name of the branch to create.
+        config: Optional configuration for verbose output.
+
+    Raises:
+        GitError: If branch creation fails.
+    """
     try:
         if config and config.verbose:
             debug_header("Creating branch")
@@ -17,8 +28,19 @@ def create_branch(branch_name: str, config: OptionalConfig = None) -> None:
         raise GitError(f"Failed to create branch: {str(e)}") from e
 
 
-def delete_branch(branch_name: str, force: bool = False, config: OptionalConfig = None) -> None:
-    """Delete a git branch."""
+def delete_branch(
+    branch_name: str, force: bool = False, config: OptionalConfig = None
+) -> None:
+    """Delete a git branch.
+
+    Args:
+        branch_name: Name of the branch to delete.
+        force: If True, force delete even if not merged.
+        config: Optional configuration for verbose output.
+
+    Raises:
+        GitError: If branch deletion fails.
+    """
     try:
         if config and config.verbose:
             debug_header("Deleting branch")
@@ -32,7 +54,15 @@ def delete_branch(branch_name: str, force: bool = False, config: OptionalConfig 
 
 
 def merge_branch(source_branch: str, config: OptionalConfig = None) -> None:
-    """Merge a branch into the current branch."""
+    """Merge a branch into the current branch.
+
+    Args:
+        source_branch: Name of the branch to merge from.
+        config: Optional configuration for verbose output.
+
+    Raises:
+        GitError: If merge fails.
+    """
     try:
         if config and config.verbose:
             debug_header("Merging branch")
@@ -45,10 +75,20 @@ def merge_branch(source_branch: str, config: OptionalConfig = None) -> None:
 def manage_remote(
     operation: Literal["add", "remove", "set-url"],
     remote_name: str,
-    url: Optional[str] = None,
+    url: str | None = None,
     config: OptionalConfig = None,
 ) -> None:
-    """Manage git remotes (add, remove, set-url)."""
+    """Manage git remotes (add, remove, set-url).
+
+    Args:
+        operation: The remote operation to perform.
+        remote_name: Name of the remote.
+        url: URL for the remote (required for 'add' and 'set-url').
+        config: Optional configuration for verbose output.
+
+    Raises:
+        GitError: If the remote operation fails.
+    """
     try:
         if config and config.verbose:
             debug_item(f"Remote operation: {operation}", f"{remote_name} {url or ''}")
@@ -70,10 +110,20 @@ def manage_remote(
 def manage_tags(
     operation: Literal["create", "delete", "push"],
     tag_name: str,
-    message: Optional[str] = None,
+    message: str | None = None,
     config: OptionalConfig = None,
 ) -> None:
-    """Manage git tags (create, delete, push)."""
+    """Manage git tags (create, delete, push).
+
+    Args:
+        operation: The tag operation to perform.
+        tag_name: Name of the tag.
+        message: Optional message for annotated tags.
+        config: Optional configuration for verbose output.
+
+    Raises:
+        GitError: If the tag operation fails.
+    """
     try:
         if config and config.verbose:
             debug_item(f"Tag operation: {operation}", tag_name)
@@ -93,14 +143,29 @@ def manage_tags(
 
 def manage_stash(
     operation: Literal["save", "pop", "apply", "drop", "list"],
-    message: Optional[str] = None,
-    stash_id: Optional[str] = None,
+    message: str | None = None,
+    stash_id: str | None = None,
     config: OptionalConfig = None,
-) -> Optional[str]:
-    """Manage git stash operations."""
+) -> str | None:
+    """Manage git stash operations.
+
+    Args:
+        operation: The stash operation to perform.
+        message: Optional message for 'save' operation.
+        stash_id: Stash identifier for 'pop', 'apply', 'drop' operations.
+        config: Optional configuration for verbose output.
+
+    Returns:
+        str | None: Stash list output for 'list' operation, None otherwise.
+
+    Raises:
+        GitError: If the stash operation fails.
+    """
     try:
         if config and config.verbose:
-            debug_item(f"Stash operation: {operation}", f"{message or ''} {stash_id or ''}")
+            debug_item(
+                f"Stash operation: {operation}", f"{message or ''} {stash_id or ''}"
+            )
 
         if operation == "save":
             cmd = ["git", "stash", "push"]

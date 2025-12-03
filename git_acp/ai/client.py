@@ -5,13 +5,13 @@ OpenAI-compatible endpoints. It is responsible solely for network interaction
 and leaves prompt construction and message handling to other modules.
 """
 
+from collections.abc import Callable
 from threading import Event, Thread
 from time import sleep
 from typing import Any
 
-from rich.progress import Progress
-
 from openai import OpenAI
+from rich.progress import Progress
 
 from git_acp.config import (
     DEFAULT_AI_MODEL,
@@ -24,21 +24,41 @@ from git_acp.config import (
 from git_acp.git import GitError
 from git_acp.utils import OptionalConfig, debug_header, debug_item
 
+# Type alias for progress factory injection
+ProgressFactory = Callable[[], Progress]
+
 
 class AIClient:
     """Client for interacting with AI models via the OpenAI package."""
 
-    def __init__(self, config: OptionalConfig = None) -> None:
+    def __init__(
+        self,
+        config: OptionalConfig = None,
+        *,
+        _openai_client: OpenAI | None = None,
+        _progress_factory: ProgressFactory | None = None,
+    ) -> None:
         """Initialize the AI client.
 
         Args:
-            config (OptionalConfig | None): Optional configuration settings.
+            config: Optional configuration settings.
+            _openai_client: Injected OpenAI client for testing. When provided,
+                skips default client creation.
+            _progress_factory: Injected factory for Progress instances. Defaults
+                to ``rich.progress.Progress``.
 
-        Returns:
-            None
+        Raises:
+            GitError: If connection to AI server fails or configuration is invalid.
         """
         self.config = config
         self.base_url = DEFAULT_BASE_URL
+        self._progress_factory = _progress_factory or Progress
+
+        # Use injected client if provided (for testing)
+        if _openai_client is not None:
+            self.client = _openai_client
+            return
+
         if self.config and self.config.verbose:
             debug_header("Initializing AI client")
             debug_item("Base URL", self.base_url)
@@ -84,17 +104,15 @@ class AIClient:
                     if self.config and self.config.verbose:
                         debug_header("Fallback AI Client Connection Failed")
                         debug_item("Base URL", DEFAULT_FALLBACK_BASE_URL)
-                    raise GitError(
-                        "Could not connect to Ollama server. Please ensure it's running."
-                    ) from None
+                    msg = "Could not connect to Ollama server."
+                    raise GitError(msg) from None
             else:
                 if self.config and self.config.verbose:
                     debug_header("AI Client Connection Failed")
                     debug_item("Error Type", "ConnectionError")
                     debug_item("Base URL", self.base_url)
-                raise GitError(
-                    "Could not connect to Ollama server. Please ensure it's running."
-                ) from None
+                msg = "Could not connect to Ollama server."
+                raise GitError(msg) from None
         except Exception as e:
             if self.config and self.config.verbose:
                 debug_header("AI Client Initialization Failed")
@@ -122,6 +140,7 @@ class AIClient:
 
         Raises:
             GitError: With specific error context for failure scenarios.
+            TimeoutError: If the request exceeds the configured timeout.
         """
         try:
             if self.config and self.config.verbose:
@@ -134,7 +153,7 @@ class AIClient:
                 debug_item("Base URL", self.base_url)
                 debug_item("Timeout", f"{DEFAULT_AI_TIMEOUT}s")
 
-            with Progress() as progress:
+            with self._progress_factory() as progress:
                 task = progress.add_task(
                     "Waiting for AI response...",
                     total=100,
@@ -216,6 +235,9 @@ class AIClient:
                     "install it."
                 ) from e
             raise GitError(f"Invalid AI request parameters: {str(e)}") from e
+        except GitError:
+            # Re-raise GitError without wrapping (e.g., empty response error)
+            raise
         except Exception as e:
             if self.config and self.config.verbose:
                 debug_header("AI Request Failed")

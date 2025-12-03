@@ -26,10 +26,10 @@ The tool provides several options grouped into three categories:
 
 #### Git Operations
 
-- `-a, --add <file>`: Specify files to stage for commit. Shows interactive selection if omitted
+ - `-a, --add <file>`: Specify files or glob patterns to stage (e.g., `"file1.py *.py folder/"`). Patterns are resolved recursively (e.g., `**/*.py`). Shows interactive selection if omitted.
 - `-m, --message <message>`: Custom commit message (defaults to 'Automated commit' without --ollama)
 - `-b, --branch <branch>`: Target branch for push operation
-- `-t, --type <type>`: Manually specify the commit type
+- `-t, --type <type>`: Manually specify the commit type (`feat`, `fix`, `docs`, `style`, `refactor`, `test`, `chore`, `revert`)
 
 #### AI Features
 
@@ -115,9 +115,9 @@ git-acp -a "*.css" -t style -m "Update button styles"
 
 ### Pattern Matching
 
-- Use wildcards: `*.py`, `src/**/*.js`
+- Use wildcards: `*.py`, `src/**/*.js` (recursive globbing is supported)
 - Multiple patterns: `"*.md" "src/*.py"`
-- Exclude patterns: `"src/*" "!src/test/*"`
+- Exclude patterns like `!src/test/*` are not supported
 
 ## Commit Messages
 

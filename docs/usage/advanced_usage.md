@@ -19,7 +19,7 @@ Then edit the `.env` file to customize your settings.
 
 #### Model Selection
 
-The AI model selection determines which Ollama model will be used for generating commit messages. Different models have different capabilities, sizes, and performance characteristics. The default model `mevatron/diffsense:1.5b` is optimized for understanding code changes and generating relevant commit messages.
+The AI model selection determines which model will be used for generating commit messages. Different models have different capabilities, sizes, and performance characteristics. The default model `mevatron/diffsense:1.5b` is optimized for understanding code changes and generating relevant commit messages.
 
 **Tested Models:**
 - `mevatron/diffsense:0.5b`
@@ -51,11 +51,12 @@ GIT_ACP_TEMPERATURE=0.7
 - **OpenAI**: Cloud-based service with GPT models
 - **Anthropic**: Cloud-based service with Claude models
 
-The base URL and API key settings allow you to configure your preferred AI service. For local installations using Ollama, the default values are typically sufficient.
+The base URL and API key settings allow you to configure your preferred AI service. You can also set a fallback base URL that will be used if the primary service is unavailable. For local installations using Ollama, the default values are typically sufficient.
 
 ```ini
 # Ollama API settings (default)
 GIT_ACP_BASE_URL=http://localhost:11434/v1
+GIT_ACP_FALLBACK_BASE_URL=https://diffsense.onrender.com/v1
 GIT_ACP_API_KEY=ollama
 
 # Example for OpenAI
@@ -261,7 +262,7 @@ git-acp -nc -m "CI: Update dependencies" -t chore
 #### Version Bumping
 
 ```bash
-git-acp -a "version.txt" -m "chore(release): bump version to v1.0.0" -t chore
+git-acp -a "version.txt" -m "chore(release): bump version to v0.17.0" -t chore
 ```
 
 ### Batch Operations
@@ -275,8 +276,10 @@ git-acp -a "*.py src/*.js tests/*.py" -t refactor -o
 #### Complex Patterns
 
 ```bash
-git-acp -a "src/**/*.{js,ts} !src/vendor/*" -t feat
+git-acp -a "src/**/*.js src/**/*.ts" -t feat
 ```
+
+Exclude patterns (e.g., `!src/vendor/*`) are not supported.
 
 ## Performance Optimization
 
@@ -288,9 +291,9 @@ git-acp -a "src/**/*.{js,ts} !src/vendor/*" -t feat
 
 ### AI Generation
 
-- Adjust temperature for faster responses
-- Use local Ollama instance
-- Cache common commit patterns
+ - Choose a smaller or faster model
+ - Use a local Ollama instance
+ - Lower temperature for more deterministic responses
 
 ## Troubleshooting
 

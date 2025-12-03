@@ -12,7 +12,7 @@ Categories:
     - Terminal: Terminal-specific configurations
 """
 
-from typing import Dict, Final, List
+from typing import Final
 
 from git_acp.config.env_config import get_env, load_env_config
 
@@ -45,7 +45,7 @@ MAX_DIFF_PREVIEW_LINES: Final[int] = get_env("GIT_ACP_MAX_DIFF_PREVIEW_LINES", 1
 
 # File patterns to exclude from git operations
 # These patterns match common build artifacts and environment-specific files
-EXCLUDED_PATTERNS: Final[List[str]] = [
+EXCLUDED_PATTERNS: Final[list[str]] = [
     "__pycache__",  # Python bytecode cache
     ".pyc",  # Compiled Python files
     ".pyo",  # Optimized Python files
@@ -56,7 +56,7 @@ EXCLUDED_PATTERNS: Final[List[str]] = [
 ]
 
 # Commit type definitions with their corresponding emojis
-COMMIT_TYPES: Final[Dict[str, str]] = {
+COMMIT_TYPES: Final[dict[str, str]] = {
     "FEAT": get_env("GIT_ACP_COMMIT_TYPE_FEAT", "feat ✨"),
     "FIX": get_env("GIT_ACP_COMMIT_TYPE_FIX", "fix 🐛"),
     "DOCS": get_env("GIT_ACP_COMMIT_TYPE_DOCS", "docs 📝"),
@@ -68,7 +68,7 @@ COMMIT_TYPES: Final[Dict[str, str]] = {
 }
 
 # Patterns for classifying commits based on file changes and commit messages
-COMMIT_TYPE_PATTERNS: Final[Dict[str, List[str]]] = {
+COMMIT_TYPE_PATTERNS: Final[dict[str, list[str]]] = {
     "docs": ["docs/", ".md", "readme", "documentation", "license"],
     "test": ["test", ".test.", "_test", "test_"],
     "style": ["style", "format", "whitespace", "lint", "prettier", "eslint"],
@@ -90,7 +90,7 @@ COMMIT_TYPE_PATTERNS: Final[Dict[str, List[str]]] = {
 
 # Formatting Configuration
 # Color settings for terminal output using rich library
-COLORS: Final[Dict[str, str]] = {
+COLORS: Final[dict[str, str]] = {
     "debug_header": get_env("GIT_ACP_DEBUG_HEADER_COLOR", "blue"),
     "debug_value": get_env("GIT_ACP_DEBUG_VALUE_COLOR", "cyan"),
     "success": get_env("GIT_ACP_SUCCESS_COLOR", "green"),

@@ -1,6 +1,11 @@
 """Git operations package for git-acp."""
 
 from git_acp.git.classification import CommitType, classify_commit_type
+from git_acp.git.history import (
+    analyze_commit_patterns,
+    find_related_commits,
+    get_recent_commits,
+)
 from git_acp.git.operations import (
     GitError,
     get_changed_files,
@@ -12,11 +17,6 @@ from git_acp.git.operations import (
     run_git_command,
     setup_signal_handlers,
     unstage_files,
-)
-from git_acp.git.history import (
-    analyze_commit_patterns,
-    find_related_commits,
-    get_recent_commits,
 )
 
 __all__ = [

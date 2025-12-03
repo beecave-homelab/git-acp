@@ -1,0 +1,51 @@
+name: PR validation
+
+on:
+  pull_request:
+    branches:
+      - main
+      - dev
+
+jobs:
+  pr-checks:
+    name: Lint, format, and tests
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install PDM
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install pdm
+
+      - name: Cache PDM virtualenv
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/pdm
+          key: ${{ runner.os }}-pdm-${{ hashFiles('**/pdm.lock', '**/pyproject.toml') }}
+          restore-keys: |
+            ${{ runner.os }}-pdm-
+
+      - name: Install dependencies (dev, lint, spacy)
+        run: |
+          pdm config python.use_venv true
+          pdm install -G lint,test,spacy
+
+      - name: Run lint with autofix
+        run: pdm run lint --fix
+
+      - name: Run formatter
+        run: pdm run format
+
+      - name: Run tests
+        run: pdm run test
+
+      - name: Run tests with coverage
+        run: pdm run test-cov

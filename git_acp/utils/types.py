@@ -5,7 +5,7 @@ including configuration types, git operation types, and AI-related types.
 """
 
 from dataclasses import dataclass
-from typing import Any, Dict, Literal, Optional
+from typing import Any, Literal, Optional
 
 
 # Configuration type
@@ -35,7 +35,7 @@ class GitConfig:
 
 
 # Git operations types
-CommitDict = Dict[str, str]
+CommitDict = dict[str, str]
 DiffType = Literal["staged", "unstaged"]
 RemoteOperation = Literal["add", "remove", "set-url"]
 TagOperation = Literal["create", "delete", "push"]
@@ -43,8 +43,8 @@ StashOperation = Literal["save", "pop", "apply", "drop", "list"]
 
 # AI types
 PromptType = Literal["simple", "advanced"]
-Message = Dict[str, str]
-CommitContext = Dict[str, Any]
+Message = dict[str, str]
+CommitContext = dict[str, Any]
 
 # Common type aliases
-OptionalConfig = Optional[GitConfig]
+OptionalConfig = GitConfig | None

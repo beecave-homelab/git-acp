@@ -15,6 +15,13 @@
 !VERSIONS.md
 !to-do/
 !to-do/*.md
+!AGENTS.md
+!scripts/
+!scripts/*.sh
+!scripts/*.py
+!.github/
+!.github/workflows/
+!.github/workflows/*.yaml
 
 # Allow the package directory and Python files
 !git_acp/

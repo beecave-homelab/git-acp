@@ -6,13 +6,17 @@ and provides fallback values from constants.
 
 import os
 from pathlib import Path
-from typing import Any, Optional
+from typing import Any
 
 from dotenv import load_dotenv
 
 
 def get_config_dir() -> Path:
-    """Get the configuration directory path."""
+    """Get the configuration directory path.
+
+    Returns:
+        Path: The path to the configuration directory.
+    """
     return Path.home() / ".config" / "git-acp"
 
 
@@ -32,9 +36,8 @@ def load_env_config() -> None:
         load_dotenv(env_file)
 
 
-def get_env(key: str, default: Any = None, type_cast: Optional[type] = None) -> Any:
-    """
-    Get an environment variable with optional type casting.
+def get_env(key: str, default: Any = None, type_cast: type | None = None) -> Any:
+    """Get an environment variable with optional type casting.
 
     Args:
         key: The environment variable key

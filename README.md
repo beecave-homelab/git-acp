@@ -5,7 +5,7 @@ A Python tool to automate Git add, commit, and push actions with optional AI-gen
 ![GIT-ACP logo](./assets/logo/git-acp-logo-textonly.png)
 
 ![Python](https://img.shields.io/badge/python-3.10%2B-blue)
-![Version](https://img.shields.io/badge/version-0.17.0-brightgreen)
+![Version](https://img.shields.io/badge/version-0.18.0-brightgreen)
 ![License](https://img.shields.io/badge/license-MIT-green)
 
 ## Table of Contents
@@ -23,6 +23,7 @@ A Python tool to automate Git add, commit, and push actions with optional AI-gen
 - AI-powered commit messages via Ollama
 - Interactive file selection and type suggestions
 - Conventional commits with emoji support
+- Consistent "all files" selection: choose **All files** in the prompt or use `-a .` to stage everything while still listing each file before commit.
 - Color-coded terminal interface
 - Configurable through CLI options and environment variables
 

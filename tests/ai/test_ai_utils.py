@@ -4,34 +4,36 @@ This module contains tests for the AI utilities used in commit message generatio
 including AI client initialization, context gathering, and message generation.
 """
 
-import json
-from unittest.mock import Mock, patch, MagicMock
+from unittest.mock import MagicMock, Mock, patch
+
 import pytest
-from openai import OpenAI
-from rich.panel import Panel
 
 from git_acp.ai.ai_utils import (
     AIClient,
     create_advanced_commit_message_prompt,
     create_simple_commit_message_prompt,
-    get_commit_context,
     edit_commit_message,
     generate_commit_message,
+    get_commit_context,
 )
-from git_acp.git import GitError
-from git_acp.utils import GitConfig, PromptType
 from git_acp.config import (
+    DEFAULT_AI_TIMEOUT,
+    DEFAULT_API_KEY,
     DEFAULT_BASE_URL,
     DEFAULT_FALLBACK_BASE_URL,
-    DEFAULT_API_KEY,
-    DEFAULT_AI_TIMEOUT,
 )
+from git_acp.git import GitError
+from git_acp.utils import GitConfig
 
 
 # Test fixtures
 @pytest.fixture
 def mock_config():
-    """Create a mock GitConfig instance."""
+    """Create a mock GitConfig instance.
+
+    Returns:
+        A GitConfig object with test defaults.
+    """
     return GitConfig(
         files="test.py",
         message=None,
@@ -46,7 +48,11 @@ def mock_config():
 
 @pytest.fixture
 def mock_context():
-    """Create a mock git context dictionary."""
+    """Create a mock git context dictionary.
+
+    Returns:
+        A dictionary with staged_changes, recent_commits, etc.
+    """
     return {
         "staged_changes": "Modified: test.py\n+New line added",
         "recent_commits": [
@@ -60,7 +66,11 @@ def mock_context():
 
 @pytest.fixture
 def mock_openai_response():
-    """Create a mock OpenAI API response."""
+    """Create a mock OpenAI API response.
+
+    Returns:
+        A mock response object with choices.
+    """
     mock_message = Mock()
     mock_message.content = "feat: test commit message"
 
@@ -241,3 +251,232 @@ def test_generate_commit_message_error(mock_config):
     with patch("git_acp.ai.ai_utils.AIClient", side_effect=GitError("Test error")):
         with pytest.raises(GitError, match="Failed to generate commit message"):
             generate_commit_message(mock_config)
+
+
+# Verbose Mode Tests
+class TestVerboseMode:
+    """Tests for verbose mode debugging output."""
+
+    @pytest.fixture
+    def verbose_config(self):
+        """Create a verbose GitConfig instance.
+
+        Returns:
+            GitConfig: A verbose GitConfig instance.
+        """
+        return GitConfig(
+            files="test.py",
+            message=None,
+            branch="main",
+            use_ollama=True,
+            interactive=False,
+            skip_confirmation=False,
+            verbose=True,
+            prompt_type="advanced",
+        )
+
+    @pytest.fixture
+    def mock_context(self):
+        """Create a mock git context dictionary.
+
+        Returns:
+            dict: A mock git context dictionary.
+        """
+        return {
+            "staged_changes": "Modified: test.py",
+            "recent_commits": [{"message": "feat: test"}],
+            "related_commits": [{"message": "fix: related"}],
+            "commit_patterns": {"types": {"feat": 1}, "scopes": {"api": 1}},
+        }
+
+    @patch("git_acp.ai.ai_utils.debug_preview")
+    @patch("git_acp.ai.ai_utils.debug_header")
+    def test_create_advanced_prompt__verbose_logs(
+        self, mock_header, mock_preview, verbose_config, mock_context
+    ):
+        """Log debug output when creating advanced prompt in verbose mode."""
+        create_advanced_commit_message_prompt(mock_context, verbose_config)
+
+        mock_header.assert_called()
+        mock_preview.assert_called()
+
+    @patch("git_acp.ai.ai_utils.debug_preview")
+    @patch("git_acp.ai.ai_utils.debug_header")
+    def test_create_simple_prompt__verbose_logs(
+        self, mock_header, mock_preview, verbose_config, mock_context
+    ):
+        """Log debug output when creating simple prompt in verbose mode."""
+        create_simple_commit_message_prompt(mock_context, verbose_config)
+
+        mock_header.assert_called()
+        mock_preview.assert_called()
+
+    @patch("git_acp.ai.ai_utils.debug_item")
+    @patch("git_acp.ai.ai_utils.debug_header")
+    @patch("git_acp.ai.ai_utils.find_related_commits")
+    @patch("git_acp.ai.ai_utils.analyze_commit_patterns")
+    @patch("git_acp.ai.ai_utils.get_recent_commits")
+    @patch("git_acp.ai.ai_utils.get_diff")
+    def test_get_commit_context__verbose_logs_all_steps(
+        self,
+        mock_diff,
+        mock_commits,
+        mock_analyze,
+        mock_related,
+        mock_header,
+        mock_item,
+        verbose_config,
+    ):
+        """Log all context gathering steps in verbose mode."""
+        mock_diff.return_value = "diff content"
+        mock_commits.return_value = [{"message": "feat: test"}]
+        mock_analyze.return_value = {"types": {"feat": 1}, "scopes": {"api": 1}}
+        mock_related.return_value = []
+
+        get_commit_context(verbose_config)
+
+        # Should have multiple debug header calls
+        assert mock_header.call_count >= 4
+        assert mock_item.call_count >= 3
+
+    @patch("git_acp.ai.ai_utils.debug_header")
+    @patch("git_acp.ai.ai_utils.find_related_commits")
+    @patch("git_acp.ai.ai_utils.analyze_commit_patterns")
+    @patch("git_acp.ai.ai_utils.get_recent_commits")
+    @patch("git_acp.ai.ai_utils.get_diff")
+    def test_get_commit_context__fallback_to_unstaged(
+        self,
+        mock_diff,
+        mock_commits,
+        mock_analyze,
+        mock_related,
+        mock_header,
+        verbose_config,
+    ):
+        """Fall back to unstaged diff when staged is empty in verbose mode."""
+        # First call returns empty (staged), second returns content (unstaged)
+        mock_diff.side_effect = ["", "unstaged content"]
+        mock_commits.return_value = []
+        mock_analyze.return_value = {"types": {}, "scopes": {}}
+        mock_related.return_value = []
+
+        context = get_commit_context(verbose_config)
+
+        assert context["staged_changes"] == "unstaged content"
+        # Should have logged the fallback (message says "working directory")
+        header_calls = [str(call) for call in mock_header.call_args_list]
+        assert any("working directory" in call.lower() for call in header_calls)
+
+    @patch("git_acp.ai.ai_utils.debug_preview")
+    @patch("git_acp.ai.ai_utils.debug_header")
+    @patch("git_acp.ai.ai_utils.edit_commit_message")
+    @patch("git_acp.ai.ai_utils.get_commit_context")
+    @patch("git_acp.ai.ai_utils.AIClient")
+    def test_generate_commit_message__verbose_logs(
+        self,
+        mock_client_class,
+        mock_context,
+        mock_edit,
+        mock_header,
+        mock_preview,
+        verbose_config,
+    ):
+        """Log all generation steps in verbose mode."""
+        mock_client = MagicMock()
+        mock_client.chat_completion.return_value = "feat: test"
+        mock_client_class.return_value = mock_client
+        mock_context.return_value = {
+            "staged_changes": "diff",
+            "recent_commits": [],
+            "related_commits": [],
+            "commit_patterns": {"types": {}, "scopes": {}},
+        }
+        mock_edit.return_value = "feat: test"
+
+        generate_commit_message(verbose_config)
+
+        assert mock_header.call_count >= 3
+        assert mock_preview.call_count >= 1
+
+    @patch("git_acp.ai.ai_utils.debug_item")
+    @patch("git_acp.ai.ai_utils.debug_header")
+    @patch("git_acp.ai.ai_utils.AIClient")
+    def test_generate_commit_message__verbose_logs_error(
+        self, mock_client_class, mock_header, mock_item, verbose_config
+    ):
+        """Log error details in verbose mode when generation fails."""
+        mock_client_class.side_effect = GitError("connection failed")
+
+        with pytest.raises(GitError):
+            generate_commit_message(verbose_config)
+
+        # Should have logged the error
+        header_calls = [str(call) for call in mock_header.call_args_list]
+        assert any("error" in call.lower() for call in header_calls)
+
+
+class TestEditCommitMessageVerbose:
+    """Tests for edit_commit_message with verbose mode."""
+
+    @pytest.fixture
+    def interactive_verbose_config(self):
+        """Create an interactive verbose GitConfig instance.
+
+        Returns:
+            GitConfig: An interactive verbose GitConfig instance.
+        """
+        return GitConfig(
+            files="test.py",
+            message=None,
+            branch="main",
+            use_ollama=True,
+            interactive=True,
+            skip_confirmation=False,
+            verbose=True,
+            prompt_type="simple",
+        )
+
+    @patch("git_acp.ai.ai_utils.debug_preview")
+    @patch("git_acp.ai.ai_utils.debug_header")
+    @patch("questionary.text")
+    @patch("questionary.confirm")
+    def test_edit_commit_message__verbose_logs_edit(
+        self,
+        mock_confirm,
+        mock_text,
+        mock_header,
+        mock_preview,
+        interactive_verbose_config,
+    ):
+        """Log editing in verbose mode."""
+        mock_confirm.return_value.ask.return_value = True
+        mock_text.return_value.ask.return_value = "feat: edited"
+
+        edit_commit_message("feat: original", interactive_verbose_config)
+
+        mock_header.assert_called()
+        mock_preview.assert_called()
+
+    @patch("questionary.confirm")
+    def test_edit_commit_message__no_edit_returns_original(
+        self, mock_confirm, interactive_verbose_config
+    ):
+        """Return original message when user declines to edit."""
+        mock_confirm.return_value.ask.return_value = False
+
+        result = edit_commit_message("feat: original", interactive_verbose_config)
+
+        assert result == "feat: original"
+
+    @patch("questionary.text")
+    @patch("questionary.confirm")
+    def test_edit_commit_message__empty_edit_returns_original(
+        self, mock_confirm, mock_text, interactive_verbose_config
+    ):
+        """Return original message when edit is empty."""
+        mock_confirm.return_value.ask.return_value = True
+        mock_text.return_value.ask.return_value = ""
+
+        result = edit_commit_message("feat: original", interactive_verbose_config)
+
+        assert result == "feat: original"
