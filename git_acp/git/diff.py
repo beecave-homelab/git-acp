@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from pathlib import Path
+
 from git_acp.config import EXCLUDED_PATTERNS
 from git_acp.utils import DiffType, OptionalConfig, debug_header, debug_item
 
@@ -60,6 +62,17 @@ def get_changed_files(
         excluded_files = set()
         for f in files:
             for pattern in EXCLUDED_PATTERNS:
+                if pattern == "/.env$":
+                    if Path(f).name == ".env":
+                        if config and config.verbose:
+                            debug_item(
+                                "Excluding file based on pattern",
+                                f"Pattern '{pattern}' matched '{f}'",
+                            )
+                        excluded_files.add(f)
+                        break
+                    continue
+
                 if pattern in f:
                     if config and config.verbose:
                         debug_item(

@@ -506,7 +506,7 @@ Internal modules (`core.py`, `staging.py`, `diff.py`, etc.) remain implementatio
 class GitConfig:
     files: str = "."
     message: str = "Automated commit"
-    branch: Optional[str] = None
+    branch: str | None = None
     use_ollama: bool = False
     interactive: bool = False
     skip_confirmation: bool = False
