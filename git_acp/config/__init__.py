@@ -15,8 +15,11 @@ from git_acp.config.constants import (
     DEFAULT_REMOTE,
     DEFAULT_TEMPERATURE,
     EXCLUDED_PATTERNS,
+    PROJECT_ROOT,
     QUESTIONARY_STYLE,
     TERMINAL_WIDTH,
+    USER_CONFIG_DIR,
+    USER_ENV_FILE,
 )
 from git_acp.config.env_config import get_env, load_env_config
 
@@ -37,6 +40,9 @@ __all__ = [
     "DEFAULT_PROMPT_TYPE",
     "DEFAULT_AI_TIMEOUT",
     "TERMINAL_WIDTH",
+    "PROJECT_ROOT",
+    "USER_CONFIG_DIR",
+    "USER_ENV_FILE",
     "get_env",
     "load_env_config",
 ]

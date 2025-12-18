@@ -84,6 +84,7 @@ testpaths = ["tests"]
 distribution = true
 
 [tool.pdm.scripts]
+setup-config = "python scripts/setup-config.py"
 lint = "ruff check ."
 format = "ruff format ."
 fix = "ruff check --fix ."

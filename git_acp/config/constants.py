@@ -12,12 +12,19 @@ Categories:
     - Terminal: Terminal-specific configurations
 """
 
+from pathlib import Path
 from typing import Final
 
-from git_acp.config.env_config import get_env, load_env_config
+from git_acp.config.env_config import get_config_dir, get_env, load_env_config
 
 # Load environment variables at module import
 load_env_config()
+
+# Path Configuration
+# These are primarily used by setup scripts and for locating the user .env file.
+PROJECT_ROOT: Final[Path] = Path(__file__).resolve().parents[2]
+USER_CONFIG_DIR: Final[Path] = get_config_dir()
+USER_ENV_FILE: Final[Path] = USER_CONFIG_DIR / ".env"
 
 # AI Configuration
 # Settings for OpenAI-compatible API interaction
