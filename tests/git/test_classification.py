@@ -208,6 +208,30 @@ class TestClassification:
         result = classify_commit_type(mock_config, commit_message="fix: correct test")
         assert result == CommitType.FIX
 
+    @patch("git_acp.git.classification.get_changed_files")
+    def test_message_prefix_with_emoji_takes_highest_priority(
+        self, mock_get_files, mock_config
+    ):
+        """Explicit emoji-style prefix takes highest priority."""
+        mock_get_files.return_value = {"tests/test_module.py"}
+        result = classify_commit_type(
+            mock_config,
+            commit_message="fix 🐛: correct test",
+        )
+        assert result == CommitType.FIX
+
+    @patch("git_acp.git.classification.get_changed_files")
+    def test_message_prefix_with_scope_and_emoji_takes_highest_priority(
+        self, mock_get_files, mock_config
+    ):
+        """Explicit emoji-style prefix with scope takes highest priority."""
+        mock_get_files.return_value = {"tests/test_module.py"}
+        result = classify_commit_type(
+            mock_config,
+            commit_message="refactor(core) ♻️: reorganize test",
+        )
+        assert result == CommitType.REFACTOR
+
 
 class TestGetChanges:
     """Tests for get_changes helper."""
