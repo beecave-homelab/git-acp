@@ -91,7 +91,7 @@ class TestTestInteraction:
         from git_acp.cli.interaction import TestInteraction
 
         interaction = TestInteraction(commit_type_response=CommitType.FEAT)
-        result = interaction.select_commit_type(CommitType.CHORE, mock_config)
+        result = interaction.select_commit_type(CommitType.CHORE, mock_config, "Test")
 
         assert result == CommitType.FEAT
 
