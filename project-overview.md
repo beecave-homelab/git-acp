@@ -535,7 +535,7 @@ The `classify_commit_type()` function uses a priority-based approach:
 
 | Priority | Source | Description |
 |----------|--------|-------------|
-| 1 | Message prefix | Explicit `feat:`, `fix:`, etc. in commit message |
+| 1 | Message prefix | Explicit `feat:`, `feat ✨:`, `fix:`, `fix 🐛:`, etc. in commit message |
 | 2 | File paths | `tests/` → test, `docs/` → docs, `.github/` → chore |
 | 3 | Message keywords | Semantic hints like "implement", "fix", "refactor" |
 | 4 | Diff keywords | Fallback pattern matching in git diff |
