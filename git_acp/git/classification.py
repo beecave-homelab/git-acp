@@ -167,6 +167,61 @@ def _check_keyword_pattern(
     return matches
 
 
+def _parse_message_prefix(commit_title: str, config) -> CommitType | None:
+    """Parse a conventional commit type from the message prefix.
+
+    This supports prefixes like:
+        - ``feat: ...``
+        - ``feat(scope): ...``
+        - ``feat ✨: ...``
+        - ``feat(scope) ✨: ...``
+
+    Args:
+        commit_title: First line of the commit message.
+        config: GitConfig instance for verbose logging.
+
+    Returns:
+        Parsed commit type, or None if no valid prefix is present.
+    """
+    if ":" not in commit_title:
+        return None
+
+    prefix = commit_title.split(":", maxsplit=1)[0].strip()
+    if not prefix:
+        return None
+
+    match = re.match(r"^(?P<type>[a-z]+)(?P<rest>.*)$", prefix, flags=re.IGNORECASE)
+    if not match:
+        return None
+
+    type_str = match.group("type")
+    rest = match.group("rest").strip()
+
+    # Strip optional (scope)
+    if rest.startswith("("):
+        scope_match = re.match(r"^\([^\)]+\)", rest)
+        if not scope_match:
+            return None
+        rest = rest[scope_match.end() :].strip()
+
+    # Remaining characters (if any) must be non-alphanumeric. This prevents
+    # false positives like "feat update: ...".
+    if rest and re.search(r"[A-Za-z0-9_]", rest):
+        return None
+
+    try:
+        parsed_type = CommitType.from_str(type_str)
+    except GitError:
+        return None
+
+    if config.verbose:
+        debug_header("Commit Classification Result")
+        debug_item("Selected Type", type_str.lower())
+        debug_item("Source", "message_prefix")
+
+    return parsed_type
+
+
 def classify_commit_type(config, commit_message: str | None = None) -> CommitType:
     """Classify the commit type based on file paths, message, and diff content.
 
@@ -195,21 +250,8 @@ def classify_commit_type(config, commit_message: str | None = None) -> CommitTyp
         commit_title = (commit_message or "").strip()
         commit_title = commit_title.split("\n", maxsplit=1)[0].strip()
         if commit_title:
-            type_prefix_pattern = (
-                r"^(?P<type>feat|fix|docs|style|refactor|test|chore|revert)"
-                r"(\([^\)]+\))?:\s+"
-            )
-            match = re.match(
-                type_prefix_pattern,
-                commit_title,
-                flags=re.IGNORECASE,
-            )
-            if match:
-                parsed_type = CommitType.from_str(match.group("type"))
-                if config.verbose:
-                    debug_header("Commit Classification Result")
-                    debug_item("Selected Type", match.group("type").lower())
-                    debug_item("Source", "message_prefix")
+            parsed_type = _parse_message_prefix(commit_title, config)
+            if parsed_type is not None:
                 return parsed_type
 
         # Priority 2: Classify by file paths (most reliable heuristic)
