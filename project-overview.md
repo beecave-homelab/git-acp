@@ -67,7 +67,7 @@ pdm export --pyproject --no-hashes -G lint,test -o requirements.dev.txt
 
 - Interactive staging of changed files.
 - AI-generated commit messages using Ollama.
-- Automatic classification of commit types (feat, fix, etc.).
+- **Smart commit type classification** using file-path-first heuristics with keyword fallback.
 - Support for Conventional Commits specification.
 - Consistent "all files" selection: choose **All files** in the prompt or use `-a .` to stage everything while still listing each file before commit.
 - Rich terminal output for better user experience.
@@ -99,7 +99,7 @@ git_acp/
 │   └── env_config.py       # Manages loading of environment variables.
 ├── git/
 │   ├── __init__.py         # Exposes all public Git operation functions (facade).
-│   ├── classification.py   # Classifies commit types based on file changes.
+│   ├── classification.py   # File-path-first commit type classification.
 │   ├── core.py             # Core git utilities and error handling.
 │   ├── diff.py             # Diff generation and formatting.
 │   ├── git_operations.py   # Compatibility layer for testable git helpers.
@@ -455,7 +455,7 @@ The `UserInteraction` protocol in `interaction.py` defines an interface for user
 ```python
 class UserInteraction(Protocol):
     def select_files(self, changed_files: set[str]) -> str: ...
-    def select_commit_type(self, suggested_type: CommitType, config: GitConfig) -> CommitType: ...
+    def select_commit_type(self, suggested_type: CommitType, config: GitConfig, commit_message: str) -> CommitType: ...
     def confirm(self, message: str) -> bool: ...
     def print_message(self, message: str) -> None: ...
     def print_error(self, error_msg: str, suggestion: str, title: str) -> None: ...
@@ -528,6 +528,21 @@ class CommitType(Enum):
     def from_str(cls, value: str) -> "CommitType":
         # Converts string to enum, raises GitError on invalid input
 ```
+
+### Commit Type Classification
+
+The `classify_commit_type()` function uses a priority-based approach:
+
+| Priority | Source | Description |
+|----------|--------|-------------|
+| 1 | Message prefix | Explicit `feat:`, `fix:`, etc. in commit message |
+| 2 | File paths | `tests/` → test, `docs/` → docs, `.github/` → chore |
+| 3 | Message keywords | Semantic hints like "implement", "fix", "refactor" |
+| 4 | Diff keywords | Fallback pattern matching in git diff |
+| 5 | Default | Returns `CHORE` when no patterns match |
+
+File path patterns are defined in `FILE_PATH_PATTERNS` (constants.py) and provide
+the most reliable classification signal.
 
 ## Coding Standards
 
