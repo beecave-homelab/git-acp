@@ -2,12 +2,20 @@
 
 This module provides functionality for classifying commit types and analyzing
 changes in the repository to suggest appropriate commit types.
+
+Classification Priority:
+    1. Message prefix (e.g., "feat:", "fix:") - highest priority
+    2. File path patterns - deterministic and highly accurate
+    3. Message keyword matching - medium priority
+    4. Diff-based keyword matching - fallback
+    5. Default to CHORE - lowest priority
 """
 
+import re
 from enum import Enum
 
-from git_acp.config import COMMIT_TYPE_PATTERNS, COMMIT_TYPES
-from git_acp.git.git_operations import GitError, get_diff
+from git_acp.config import COMMIT_TYPE_PATTERNS, COMMIT_TYPES, FILE_PATH_PATTERNS
+from git_acp.git.git_operations import GitError, get_changed_files, get_diff
 from git_acp.utils import debug_header, debug_item
 
 
@@ -71,52 +79,192 @@ def get_changes() -> str:
         raise GitError(msg) from e
 
 
-def classify_commit_type(config) -> CommitType:
-    """Classify the commit type based on the git diff content.
+def _classify_by_file_paths(
+    changed_files: set[str],
+    config,
+) -> CommitType | None:
+    """Classify commit type based on changed file paths.
 
     Args:
-        config: GitConfig instance containing configuration options
+        changed_files: Set of changed file paths.
+        config: GitConfig instance for verbose logging.
 
     Returns:
-        CommitType: The classified commit type
+        CommitType if a match is found, None otherwise.
+    """
+    if not changed_files:
+        return None
+
+    # Count matches for each type
+    type_scores: dict[str, int] = {}
+
+    for file_path in changed_files:
+        file_lower = file_path.lower()
+        for commit_type, patterns in FILE_PATH_PATTERNS.items():
+            for pattern in patterns:
+                pattern_lower = pattern.lower()
+                if pattern_lower in file_lower:
+                    type_scores[commit_type] = type_scores.get(commit_type, 0) + 1
+                    break  # One match per file per type is enough
+
+    if not type_scores:
+        return None
+
+    # Check if all files match a single type (strong signal)
+    total_files = len(changed_files)
+    for commit_type, count in sorted(type_scores.items(), key=lambda x: -x[1]):
+        # If majority of files match this type, use it
+        if count >= total_files * 0.5 or count == total_files:
+            if config.verbose:
+                debug_header("Commit Classification Result")
+                debug_item("Selected Type", commit_type.upper())
+                debug_item("Source", "file_paths")
+                debug_item("Matched Files", f"{count}/{total_files}")
+            try:
+                return CommitType[commit_type.upper()]
+            except KeyError:
+                continue
+
+    return None
+
+
+def _check_keyword_pattern(
+    keywords: list[str],
+    text: str,
+    *,
+    use_word_boundaries: bool,
+    config,
+) -> list[str]:
+    """Return the list of matched keywords.
+
+    Args:
+        keywords: Keywords to search for.
+        text: Text to search in.
+        use_word_boundaries: Whether to apply word boundary matching.
+        config: GitConfig instance for verbose logging.
+
+    Returns:
+        List of matched keywords.
+    """
+    lowered = text.lower()
+    matches: list[str] = []
+
+    for keyword in keywords:
+        key = keyword.lower()
+        if not key:
+            continue
+
+        is_plain_word = bool(re.fullmatch(r"[a-z0-9]+(?: [a-z0-9]+)*", key))
+        if use_word_boundaries and is_plain_word:
+            pattern = rf"\b{re.escape(key)}\b"
+            if re.search(pattern, lowered):
+                matches.append(keyword)
+        elif key in lowered:
+            matches.append(keyword)
+
+    if matches and config.verbose:
+        debug_item("Matched Keywords", ", ".join(matches))
+    return matches
+
+
+def classify_commit_type(config, commit_message: str | None = None) -> CommitType:
+    """Classify the commit type based on file paths, message, and diff content.
+
+    Classification priority:
+        1. Message prefix (e.g., "feat:", "fix:") - explicit intent
+        2. File path patterns - deterministic and highly accurate
+        3. Message keyword matching - semantic hints
+        4. Diff-based keyword matching - fallback
+        5. Default to CHORE
+
+    Args:
+        config: GitConfig instance containing configuration options.
+        commit_message: The generated (and possibly edited) commit message.
+
+    Returns:
+        CommitType: The classified commit type.
 
     Raises:
-        GitError: If unable to classify commit type or if changes cannot be retrieved
+        GitError: If unable to classify commit type or if changes cannot be retrieved.
     """
     try:
         if config.verbose:
             debug_header("Starting Commit Classification")
+
+        # Priority 1: Check for explicit type prefix in commit message
+        commit_title = (commit_message or "").strip()
+        commit_title = commit_title.split("\n", maxsplit=1)[0].strip()
+        if commit_title:
+            type_prefix_pattern = (
+                r"^(?P<type>feat|fix|docs|style|refactor|test|chore|revert)"
+                r"(\([^\)]+\))?:\s+"
+            )
+            match = re.match(
+                type_prefix_pattern,
+                commit_title,
+                flags=re.IGNORECASE,
+            )
+            if match:
+                parsed_type = CommitType.from_str(match.group("type"))
+                if config.verbose:
+                    debug_header("Commit Classification Result")
+                    debug_item("Selected Type", match.group("type").lower())
+                    debug_item("Source", "message_prefix")
+                return parsed_type
+
+        # Priority 2: Classify by file paths (most reliable heuristic)
+        try:
+            changed_files = get_changed_files(config, staged_only=True)
+            if not changed_files:
+                changed_files = get_changed_files(config, staged_only=False)
+        except GitError:
+            changed_files = set()
+
+        if changed_files:
+            file_based_type = _classify_by_file_paths(changed_files, config)
+            if file_based_type is not None:
+                return file_based_type
+
+        # Priority 3: Message keyword matching
+        if commit_message and commit_message.strip():
+            for commit_type, keywords in COMMIT_TYPE_PATTERNS.items():
+                try:
+                    matches = _check_keyword_pattern(
+                        keywords,
+                        commit_message,
+                        use_word_boundaries=True,
+                        config=config,
+                    )
+                    if matches:
+                        if config.verbose:
+                            debug_header("Commit Classification Result")
+                            debug_item("Selected Type", commit_type.upper())
+                            debug_item("Source", "commit_message")
+                        return CommitType[commit_type.upper()]
+                except KeyError as e:
+                    if config.verbose:
+                        debug_header("Invalid Commit Type")
+                        debug_item("Type", commit_type)
+                        debug_item("Error", str(e))
+                    msg = (
+                        f"Invalid commit type pattern: {commit_type}. "
+                        "Check commit type definitions."
+                    )
+                    raise GitError(msg) from e
+
+        # Priority 4: Diff-based keyword matching (fallback)
         diff = get_changes()
 
-        def check_pattern(keywords: list[str], diff_text: str) -> bool:
-            """Check if any of the keywords appear in the diff text.
-
-            Args:
-                keywords: List of keywords to search for.
-                diff_text: The diff text to search in.
-
-            Returns:
-                bool: True if any keyword is found, False otherwise.
-            """
-            try:
-                matches = [k for k in keywords if k in diff_text.lower()]
-                if matches and config.verbose:
-                    debug_item("Matched Keywords", ", ".join(matches))
-                return bool(matches)
-            except Exception as e:
-                if config.verbose:
-                    debug_header("Pattern Matching Error")
-                    debug_item("Error Type", e.__class__.__name__)
-                    debug_item("Error Message", str(e))
-                return False
-
-        # Use patterns from constants
         for commit_type, keywords in COMMIT_TYPE_PATTERNS.items():
             try:
-                if check_pattern(keywords, diff):
+                matches = _check_keyword_pattern(
+                    keywords, diff, use_word_boundaries=False, config=config
+                )
+                if matches:
                     if config.verbose:
                         debug_header("Commit Classification Result")
                         debug_item("Selected Type", commit_type.upper())
+                        debug_item("Source", "git_diff")
                     return CommitType[commit_type.upper()]
             except KeyError as e:
                 if config.verbose:
@@ -129,6 +277,7 @@ def classify_commit_type(config) -> CommitType:
                 )
                 raise GitError(msg) from e
 
+        # Priority 5: Default to CHORE
         if config.verbose:
             debug_header("No Specific Pattern Matched")
             debug_item("Default Type", "CHORE")

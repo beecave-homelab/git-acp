@@ -74,25 +74,45 @@ COMMIT_TYPES: Final[dict[str, str]] = {
     "REVERT": get_env("GIT_ACP_COMMIT_TYPE_REVERT", "revert ⏪"),
 }
 
-# Patterns for classifying commits based on file changes and commit messages
-COMMIT_TYPE_PATTERNS: Final[dict[str, list[str]]] = {
-    "docs": ["docs/", ".md", "readme", "documentation", "license"],
-    "test": ["test", ".test.", "_test", "test_"],
-    "style": ["style", "format", "whitespace", "lint", "prettier", "eslint"],
-    "refactor": ["refactor", "restructure", "cleanup", "clean up", "reorganize"],
-    "fix": ["fix", "bug", "patch", "issue", "error", "crash", "problem", "resolve"],
-    "feat": [
-        "add",
-        "new",
-        "feature",
-        "update",
-        "introduce",
-        "implement",
-        "enhance",
-        "create",
-        "improve",
-        "support",
+# File path patterns for commit type classification (highest priority)
+# These patterns match against changed file paths for accurate classification
+FILE_PATH_PATTERNS: Final[dict[str, list[str]]] = {
+    "test": ["tests/", "test/", "test_", "_test.py", ".test.", "conftest.py"],
+    "docs": ["docs/", "doc/", "README", "CHANGELOG", "VERSIONS", "LICENSE"],
+    "chore": [
+        ".github/",
+        ".gitignore",
+        "requirements",
+        "pyproject.toml",
+        "setup.py",
+        "setup.cfg",
+        ".pre-commit",
+        "Makefile",
+        ".env",
     ],
+    "style": [".pylintrc", ".flake8", "ruff.toml", ".prettierrc", ".eslintrc"],
+}
+
+# Keyword patterns for commit message classification (medium priority)
+# Used when file paths don't provide a clear signal
+COMMIT_TYPE_PATTERNS: Final[dict[str, list[str]]] = {
+    "test": ["test", "tests", "testing", "coverage"],
+    "docs": ["documentation", "readme", "docstring"],
+    "chore": [
+        "bump",
+        "version",
+        "release",
+        "dependency",
+        "dependencies",
+        "changelog",
+        "gitignore",
+        "ci",
+        "cd",
+    ],
+    "style": ["format", "formatting", "whitespace", "lint", "linting", "prettier"],
+    "refactor": ["refactor", "restructure", "cleanup", "clean up", "reorganize"],
+    "fix": ["fix", "bug", "patch", "issue", "error", "crash", "resolve", "correct"],
+    "feat": ["feature", "introduce", "implement", "create"],
 }
 
 # Formatting Configuration
