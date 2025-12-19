@@ -341,7 +341,8 @@ class GitWorkflow:
 
         # Auto-classify commit type
         try:
-            suggested_type = classify_commit_type(self.config)
+            commit_message = self.config.message or ""
+            suggested_type = classify_commit_type(self.config, commit_message)
         except GitError as e:
             self.interaction.print_error(
                 f"Error determining commit type:\n{e}",
@@ -356,7 +357,7 @@ class GitWorkflow:
 
         try:
             selected_type = self.interaction.select_commit_type(
-                suggested_type, self.config
+                suggested_type, self.config, commit_message
             )
             self.interaction.print_message(
                 f"[{success}]✓ Commit type selected successfully[/{success}]"
