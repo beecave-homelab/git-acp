@@ -156,7 +156,7 @@ def _classify_by_file_paths(
     total_files = len(changed_files)
     for commit_type, count in sorted(type_scores.items(), key=lambda x: -x[1]):
         # If majority of files match this type, use it
-        if count >= total_files * 0.5 or count == total_files:
+        if count >= total_files * 0.5:
             if config.verbose:
                 debug_header("Commit Classification Result")
                 debug_item("Selected Type", commit_type.upper())
