@@ -316,9 +316,9 @@ Exclude patterns (e.g., `!src/vendor/*`) are not supported.
 
 ### AI Generation
 
- - Choose a smaller or faster model
- - Use a local Ollama instance
- - Lower temperature for more deterministic responses
+- Choose a smaller or faster model
+- Use a local Ollama instance
+- Lower temperature for more deterministic responses
 
 ## Troubleshooting
 

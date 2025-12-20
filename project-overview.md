@@ -127,8 +127,6 @@ tests/
 └── utils/                  # Utility function tests.
 ```
 
-:::
-
 ## Architecture Highlights
 
 - **CLI Layer**: Built with `click`, delegates to `GitWorkflow` orchestrator.
@@ -137,8 +135,6 @@ tests/
 - **Dependency Injection**: `AIClient` and `GitWorkflow` accept injected dependencies for testing.
 - **Modular Design**: Separate packages for AI, CLI, git operations, and configuration.
 - **SOLID Principles**: Single Responsibility (workflow vs CLI), Dependency Inversion (protocols).
-
-::: details
 
 ### Component Interaction Diagram
 
@@ -360,46 +356,59 @@ classDiagram
 
 ### Deep Dive: AI Prompt Types
 
-The AI layer supports two prompt generation modes with different complexity levels:
+The AI layer supports two prompt generation modes with different complexity levels and context window management:
 
 ```mermaid
 flowchart TD
     A[generate_commit_message] --> B[get_commit_context]
-    B --> C{prompt_type?}
+    B --> C[calculate_context_budget]
+    C --> D[truncate_context_for_window]
+    D --> E[prompt_type?]
     
-    C -->|simple| D[create_simple_commit_message_prompt]
-    C -->|advanced| E[create_advanced_commit_message_prompt]
+    E -->|simple| F[create_structured_simple_commit_message_prompt]
+    E -->|advanced| G[create_structured_advanced_commit_message_prompt]
     
-    D --> F["Basic prompt:<br/>• Staged changes only<br/>• 3 requirements<br/>• Generic format"]
-    E --> G["Advanced prompt:<br/>• Staged changes<br/>• Recent commits<br/>• Commit patterns<br/>• Related commits<br/>• 4 requirements<br/>• Repository style"]
+    F --> H["Structured XML prompt:<br/>• Context-aware truncation<br/>• 65% context window usage<br/>• Local-first optimization<br/>• 4 structured sections"]
+    G --> I["Structured XML prompt:<br/>• Full context utilization<br/>• 80% context window usage<br/>• Repository pattern matching<br/>• 5 structured sections"]
     
-    F --> H[ai_client.chat_completion]
-    G --> H
+    H --> J[ai_client.chat_completion]
+    I --> J
     
-    H --> I[edit_commit_message<br/>if interactive]
-    I --> J[Return formatted message]
+    J --> K[edit_commit_message<br/>if interactive]
+    K --> L[Return formatted message]
     
-    style D fill:#e1f5fe
-    style E fill:#f3e5f5
-    style F fill:#e8f5e9
-    style G fill:#fff3e0
+    style F fill:#e1f5fe
+    style G fill:#f3e5f5
+    style H fill:#e8f5e9
+    style I fill:#fff3e0
 ```
 
-**Simple Mode (`simple`)**
+**Simple Mode (`simple`) - Local-First Design**
 
-- Uses only staged changes
-- 3 basic requirements (conventional format, specificity, conciseness)
-- Faster generation with minimal context
-- Good for straightforward changes
+- **Context Window Strategy**: Uses 65% of available context window (leaving 35% for response)
+- **Smart Truncation**: Priority-based context reduction (related commits → recent commits → patterns)
+- **XML-Structured Prompts**: Clear sections with `<task>`, `<changes>`, `<requirements>`, `<output_format>`
+- **Local Optimization**: Designed for smaller local models (4K-8K context windows)
+- **Minimum Context Guarantee**: Ensures at least 2000 tokens of staged changes are preserved
 
-**Advanced Mode (`advanced`) - Default**
+**Advanced Mode (`advanced`) - Context-Optimized**
 
-- Rich repository context including:
+- **Context Window Strategy**: Uses 80% of available context window (leaving 20% for response)
+- **Rich Repository Context**:
   - Recent commit history and patterns
-  - Most used commit types
+  - Most used commit types and scopes
   - Related commits for similar files
-- 4 detailed requirements with style guidance
-- Generates contextually aware messages matching repository patterns
+  - Repository style guidance
+- **XML-Structured Prompts**: Enhanced with `<repository_context>` and `<style_guide>` sections
+- **Cloud & Local Support**: Optimized for both large cloud models and capable local models
+- **Pattern Matching**: Generates messages that match repository conventions
+
+**Context Window Management:**
+
+- **Token Estimation**: Simple 4-characters-per-token approximation
+- **Priority-Based Truncation**: Preserves most important context first
+- **Dynamic Adjustment**: Adapts to different context window sizes
+- **Configuration**: Environment variables for fine-tuning (`GIT_ACP_SIMPLE_CONTEXT_RATIO`, `GIT_ACP_ADVANCED_CONTEXT_RATIO`)
 
 ### Deep Dive: AI Layer
 
@@ -497,14 +506,10 @@ classDiagram
     RichQuestionaryInteraction ..> Questionary : uses
 ```
 
-:::
-
 ## Design Patterns
 
 - Protocol-based user I/O for testability.
 - Dependency injection for AI client/workflow.
-
-::: details
 
 ### Protocol Pattern (Structural Typing)
 
@@ -690,8 +695,6 @@ DiffType = Literal["staged", "unstaged"]
 
 The main entry point is `git_acp.cli.cli.main`. It provides a set of options to control the git workflow.
 
-::: details
-
 **Options:**
 
 - `-a, --add`: Specify files to stage.
@@ -702,12 +705,11 @@ The main entry point is `git_acp.cli.cli.main`. It provides a set of options to 
 - `-i, --interactive`: Interactively edit AI-generated message.
 - `-nc, --no-confirm`: Skip confirmation prompts.
 - `-v, --verbose`: Enable verbose output.
+- `-dr, --dry-run`: Show what would be committed without actually committing or pushing.
 - `-p, --prompt`: Override the prompt sent to the AI model.
 - `-pt, --prompt-type`: Select AI prompt complexity.
 - `-m, --model`: Override the default AI model.
 - `-ct, --context-window`: Override the AI context window size (num_ctx).
-
-:::
 
 ## API
 
@@ -729,8 +731,6 @@ This section is not implemented in the current codebase.
 ## Tests
 
 Test coverage: **97%** (branch coverage enabled).
-
-::: details
 
 **Test Structure:**
 
