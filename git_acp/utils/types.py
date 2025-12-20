@@ -35,6 +35,7 @@ class GitConfig:
     prompt: str | None = None
     ai_model: str | None = None
     context_window: int | None = None
+    dry_run: bool = False
 
 
 # Git operations types

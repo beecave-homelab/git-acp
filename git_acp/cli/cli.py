@@ -216,6 +216,15 @@ def _process_add_argument(add: str | None) -> tuple[str | None, bool]:
         "during execution."
     ),
 )
+@click.option(
+    "-dr",
+    "--dry-run",
+    is_flag=True,
+    help=(
+        "Show what would be committed without actually committing or pushing. "
+        "Stops after showing the suggested commit type."
+    ),
+)
 def main(
     add: str | None,
     message: str | None,
@@ -229,6 +238,7 @@ def main(
     prompt_type: str,
     model: str | None,
     context_window: int | None,
+    dry_run: bool,
 ) -> None:
     """Automate git add, commit, and push operations with smart features.
 
@@ -280,6 +290,7 @@ def main(
             prompt_type=prompt_type.lower(),
             ai_model=model,
             context_window=context_window,
+            dry_run=dry_run,
         )
 
         # Create interaction layer and workflow
