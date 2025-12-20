@@ -56,6 +56,12 @@ class TestFilePathClassification:
         result = _classify_by_file_paths(doc_files, mock_config)
         assert result == CommitType.DOCS
 
+    def test_classify_docs_files__does_not_match_readme_generator(self, mock_config):
+        """Avoid false positives when a segment contains "readme" as a substring."""
+        files = {"src/readme_generator.py"}
+        result = _classify_by_file_paths(files, mock_config)
+        assert result is None
+
     def test_classify_chore_files(self, mock_config):
         """Classify commits with config/build files as CHORE."""
         chore_files = {
@@ -64,6 +70,20 @@ class TestFilePathClassification:
         }
         result = _classify_by_file_paths(chore_files, mock_config)
         assert result == CommitType.CHORE
+
+    def test_classify_test_files__does_not_false_positive_on_contest_dir(
+        self, mock_config
+    ):
+        """Avoid matching "test/" patterns inside unrelated segments like "contest"."""
+        files = {"src/contest/module.py"}
+        result = _classify_by_file_paths(files, mock_config)
+        assert result is None
+
+    def test_classify_test_files__normalizes_path_separators(self, mock_config):
+        """Support Windows-style path separators when matching directory patterns."""
+        files = {"tests\\test_utils.py", "tests\\cli\\test_workflow.py"}
+        result = _classify_by_file_paths(files, mock_config)
+        assert result == CommitType.TEST
 
     def test_classify_mixed_files__majority_wins(self, mock_config):
         """Return type matching majority of files."""
