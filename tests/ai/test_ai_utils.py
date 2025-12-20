@@ -246,6 +246,42 @@ def test_generate_commit_message(mock_config, mock_context, mock_openai_response
         assert message == "feat: generated message"
 
 
+def test_generate_commit_message__uses_prompt_override(mock_context) -> None:
+    """Use explicit prompt override instead of simple/advanced templates."""
+    override_prompt = "Write a commit message for these changes."
+    config = GitConfig(
+        files="test.py",
+        message=None,
+        branch="main",
+        use_ollama=True,
+        interactive=False,
+        skip_confirmation=False,
+        verbose=False,
+        prompt=override_prompt,
+        prompt_type="advanced",
+    )
+
+    with (
+        patch("git_acp.ai.ai_utils.AIClient") as mock_client_class,
+        patch("git_acp.ai.ai_utils.get_commit_context") as mock_get_context,
+        patch("git_acp.ai.ai_utils.create_advanced_commit_message_prompt") as mock_adv,
+        patch("git_acp.ai.ai_utils.create_simple_commit_message_prompt") as mock_simple,
+    ):
+        mock_client = Mock()
+        mock_client.chat_completion.return_value = "feat: generated message"
+        mock_client_class.return_value = mock_client
+        mock_get_context.return_value = mock_context
+
+        result = generate_commit_message(config)
+
+        assert result == "feat: generated message"
+        mock_adv.assert_not_called()
+        mock_simple.assert_not_called()
+
+        call_args = mock_client.chat_completion.call_args
+        assert call_args.args[0][0]["content"] == override_prompt
+
+
 def test_generate_commit_message_error(mock_config):
     """Test commit message generation with error."""
     with patch("git_acp.ai.ai_utils.AIClient", side_effect=GitError("Test error")):

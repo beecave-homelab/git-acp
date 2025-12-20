@@ -14,6 +14,7 @@ from git_acp.ai.client import AIClient
 from git_acp.config import (
     DEFAULT_AI_MODEL,
     DEFAULT_BASE_URL,
+    DEFAULT_CONTEXT_WINDOW,
     DEFAULT_TEMPERATURE,
 )
 from git_acp.git import GitError
@@ -190,6 +191,92 @@ class TestChatCompletionWithInjection:
         call_kwargs = mock_openai_client.chat.completions.create.call_args
         assert call_kwargs.kwargs["model"] == DEFAULT_AI_MODEL
         assert call_kwargs.kwargs["temperature"] == DEFAULT_TEMPERATURE
+
+    def test_chat_completion__uses_config_model_override(
+        self,
+        mock_openai_client: MagicMock,
+        mock_progress_factory: MagicMock,
+    ) -> None:
+        """Use config-provided ai_model override."""
+        config = GitConfig(
+            files="test.py",
+            message=None,
+            branch="main",
+            use_ollama=True,
+            interactive=False,
+            skip_confirmation=False,
+            verbose=False,
+            prompt_type="simple",
+            ai_model="custom/model:latest",
+        )
+
+        client = AIClient(
+            config,
+            _openai_client=mock_openai_client,
+            _progress_factory=mock_progress_factory,
+        )
+        client.chat_completion([{"role": "user", "content": "test"}])
+
+        call_kwargs = mock_openai_client.chat.completions.create.call_args
+        assert call_kwargs.kwargs["model"] == "custom/model:latest"
+
+    def test_chat_completion__passes_num_ctx_for_local_ollama_endpoint(
+        self,
+        mock_openai_client: MagicMock,
+        mock_progress_factory: MagicMock,
+    ) -> None:
+        """Pass num_ctx via extra_body for localhost Ollama endpoints."""
+        config = GitConfig(
+            files="test.py",
+            message=None,
+            branch="main",
+            use_ollama=True,
+            interactive=False,
+            skip_confirmation=False,
+            verbose=False,
+            prompt_type="simple",
+            context_window=4096,
+        )
+        client = AIClient(
+            config,
+            _openai_client=mock_openai_client,
+            _progress_factory=mock_progress_factory,
+        )
+
+        assert DEFAULT_BASE_URL
+        client.chat_completion([{"role": "user", "content": "test"}])
+
+        call_kwargs = mock_openai_client.chat.completions.create.call_args
+        assert call_kwargs.kwargs["extra_body"]["options"]["num_ctx"] == 4096
+
+    def test_chat_completion__does_not_pass_num_ctx_for_non_local_endpoint(
+        self,
+        mock_openai_client: MagicMock,
+        mock_progress_factory: MagicMock,
+    ) -> None:
+        """Avoid sending num_ctx for strict OpenAI-compatible servers."""
+        config = GitConfig(
+            files="test.py",
+            message=None,
+            branch="main",
+            use_ollama=True,
+            interactive=False,
+            skip_confirmation=False,
+            verbose=False,
+            prompt_type="simple",
+            context_window=DEFAULT_CONTEXT_WINDOW,
+        )
+        client = AIClient(
+            config,
+            _openai_client=mock_openai_client,
+            _progress_factory=mock_progress_factory,
+        )
+
+        client.base_url = "https://api.openai.com/v1"
+        client.chat_completion([{"role": "user", "content": "test"}])
+
+        call_kwargs = mock_openai_client.chat.completions.create.call_args
+        assert call_kwargs.kwargs["extra_body"] == {}
 
     def test_chat_completion__raises_on_empty_response(
         self,

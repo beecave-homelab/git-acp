@@ -22,6 +22,7 @@ class TestConstants:
         [
             ("GIT_ACP_AI_MODEL", "DEFAULT_AI_MODEL", "mevatron/diffsense:1.5b", str),
             ("GIT_ACP_TEMPERATURE", "DEFAULT_TEMPERATURE", 0.7, float),
+            ("GIT_ACP_CONTEXT_WINDOW", "DEFAULT_CONTEXT_WINDOW", 8192, int),
             ("GIT_ACP_DEFAULT_BRANCH", "DEFAULT_BRANCH", "main", str),
             ("GIT_ACP_DEBUG_HEADER_COLOR", "COLORS", "blue", dict),
             (
@@ -41,7 +42,12 @@ class TestConstants:
         cast_type: type,
     ) -> None:
         """Constants should reflect environment variables when set."""
-        test_value = "test_value_123" if cast_type is str else "0.99"
+        if cast_type is str:
+            test_value = "test_value_123"
+        elif cast_type is int:
+            test_value = "123"
+        else:
+            test_value = "0.99"
         monkeypatch.setenv(env_var, test_value)
 
         # Reload module to pick up new env vars
