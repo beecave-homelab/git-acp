@@ -222,7 +222,7 @@ git-acp -b feature/new-feature -t feat -o
 
 ```bash
 # After resolving conflicts
-git-acp -m "Merge conflict resolution" -t fix
+git-acp -mb "Merge conflict resolution" -t fix
 ```
 
 ### Remote Operations
@@ -256,13 +256,13 @@ nano ~/.config/git-acp/.env
 #### Automated Commits
 
 ```bash
-git-acp -nc -m "CI: Update dependencies" -t chore
+git-acp -nc -mb "CI: Update dependencies" -t chore
 ```
 
 #### Version Bumping
 
 ```bash
-git-acp -a "version.txt" -m "chore(release): bump version to v0.17.0" -t chore
+git-acp -a "version.txt" -mb "chore(release): bump version to v0.17.0" -t chore
 ```
 
 ### Batch Operations

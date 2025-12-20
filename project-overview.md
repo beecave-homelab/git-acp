@@ -1,10 +1,10 @@
 ---
 repo: https://github.com/beecave-homelab/git-acp.git
-commit: 87e03843527213bbc4fd30ae1946754351595cba
-updated: 2025-12-20T09:45:46Z
+commit: 82bae40aa2d79374787c784142cf7fa507bb3666
+updated: 2025-12-20T14:43:20Z
 ---
 <!-- markdownlint-disable-file MD033 -->
-<!-- SECTIONS:CLI,API,TESTS -->
+<!-- SECTIONS:API,CLI,WEBUI,CI,DOCKER,TESTS -->
 
 # Project Overview | git-acp
 
@@ -30,6 +30,8 @@ updated: 2025-12-20T09:45:46Z
 
 ## Quickstart for Developers
 
+::: details
+
 ```bash
 # Recommended installation with pipx
 pipx install "git+https://github.com/beecave-homelab/git-acp.git"
@@ -52,6 +54,8 @@ pdm export --pyproject --no-hashes --prod -o requirements.txt
 # Dev / lint / test requirements
 pdm export --pyproject --no-hashes -G lint,test -o requirements.dev.txt
 ```
+
+:::
 
 ## Version Summary
 
@@ -78,7 +82,7 @@ pdm export --pyproject --no-hashes -G lint,test -o requirements.dev.txt
 
 ## Project Structure
 
-<details><summary>Show tree</summary>
+::: details
 
 ```text
 git_acp/
@@ -123,7 +127,7 @@ tests/
 └── utils/                  # Utility function tests.
 ```
 
-</details>
+:::
 
 ## Architecture Highlights
 
@@ -133,6 +137,8 @@ tests/
 - **Dependency Injection**: `AIClient` and `GitWorkflow` accept injected dependencies for testing.
 - **Modular Design**: Separate packages for AI, CLI, git operations, and configuration.
 - **SOLID Principles**: Single Responsibility (workflow vs CLI), Dependency Inversion (protocols).
+
+::: details
 
 ### Component Interaction Diagram
 
@@ -448,7 +454,14 @@ classDiagram
     RichQuestionaryInteraction ..> Questionary : uses
 ```
 
+:::
+
 ## Design Patterns
+
+- Protocol-based user I/O for testability.
+- Dependency injection for AI client/workflow.
+
+::: details
 
 ### Protocol Pattern (Structural Typing)
 
@@ -628,29 +641,53 @@ PromptType = Literal["simple", "advanced"]
 DiffType = Literal["staged", "unstaged"]
 ```
 
+:::
+
 ## CLI
 
 The main entry point is `git_acp.cli.cli.main`. It provides a set of options to control the git workflow.
 
+::: details
+
 **Options:**
 
 - `-a, --add`: Specify files to stage.
-- `-m, --message`: Provide a custom commit message.
+- `-mb, --message-body`: Provide a custom commit message body.
 - `-b, --branch`: Target branch for push.
 - `-t, --type`: Manually specify commit type.
 - `-o, --ollama`: Use AI to generate commit message.
 - `-i, --interactive`: Interactively edit AI-generated message.
 - `-nc, --no-confirm`: Skip confirmation prompts.
 - `-v, --verbose`: Enable verbose output.
-- `-p, --prompt-type`: Select AI prompt complexity.
+- `-p, --prompt`: Override the prompt sent to the AI model.
+- `-pt, --prompt-type`: Select AI prompt complexity.
+- `-m, --model`: Override the default AI model.
+- `-ct, --context-window`: Override the AI context window size (num_ctx).
+
+:::
 
 ## API
 
 > This project does not expose a public API. It is intended to be used as a command-line tool.
 
+## WEBUI
+
+This section is not implemented in the current codebase.
+
+## CI
+
+- GitHub Actions workflow: `/blob/82bae40aa2d79374787c784142cf7fa507bb3666/.github/workflows/pr-ci.yaml`
+- Runs Ruff (lint/format) and Pytest (with coverage) on PRs.
+
+## DOCKER
+
+This section is not implemented in the current codebase.
+
 ## Tests
 
 Test coverage: **97%** (branch coverage enabled).
+
+::: details
 
 **Test Structure:**
 
@@ -665,5 +702,7 @@ Test coverage: **97%** (branch coverage enabled).
 ```bash
 pdm run pytest --cov=git_acp --cov-branch --cov-report=term-missing
 ```
+
+:::
 
 **Always update this file when code or configuration changes.**

@@ -44,7 +44,7 @@ For other installation methods and detailed instructions, see [`installation.md`
 git-acp
 
 # Commit specific files with message
-git-acp -a "README.md src/*.py" -m "Update documentation"
+git-acp -a "README.md src/*.py" -mb "Update documentation"
 
 # AI-generated commit message
 git-acp -o

@@ -26,8 +26,8 @@ The tool provides several options grouped into three categories:
 
 #### Git Operations
 
- - `-a, --add <file>`: Specify files or glob patterns to stage (e.g., `"file1.py *.py folder/"`). Patterns are resolved recursively (e.g., `**/*.py`). Shows interactive selection if omitted.
-- `-m, --message <message>`: Custom commit message (defaults to 'Automated commit' without --ollama)
+- `-a, --add <file>`: Specify files or glob patterns to stage (e.g., `"file1.py *.py folder/"`). Patterns are resolved recursively (e.g., `**/*.py`). Shows interactive selection if omitted.
+- `-mb, --message-body <message>`: Custom commit message (defaults to 'Automated commit' without --ollama)
 - `-b, --branch <branch>`: Target branch for push operation
 - `-t, --type <type>`: Manually specify the commit type (`feat`, `fix`, `docs`, `style`, `refactor`, `test`, `chore`, `revert`)
 
@@ -35,7 +35,8 @@ The tool provides several options grouped into three categories:
 
 - `-o, --ollama`: Use Ollama AI to generate descriptive commit messages
 - `-i, --interactive`: Review and edit AI-generated messages (requires --ollama)
-- `-p, --prompt-type <type>`: Select AI prompt complexity ('simple' or 'advanced')
+- `-p, --prompt <prompt>`: Override the prompt sent to the AI model
+- `-pt, --prompt-type <type>`: Select AI prompt complexity ('simple' or 'advanced')
 
 #### General Options
 
@@ -47,7 +48,7 @@ The tool provides several options grouped into three categories:
 To quickly commit specific files with a message:
 
 ```bash
-git-acp -a "README.md docs/*" -m "Update documentation"
+git-acp -a "README.md docs/*" -mb "Update documentation"
 ```
 
 ### Using AI-Generated Messages
@@ -77,7 +78,7 @@ git-acp -b feature/new-branch -t feat
 ### 1. Documentation Updates
 
 ```bash
-git-acp -a "docs/*" -t docs -m "Update installation instructions"
+git-acp -a "docs/*" -t docs -mb "Update installation instructions"
 ```
 
 ### 2. Bug Fixes
@@ -95,13 +96,13 @@ git-acp -a "src/features/*" -t feat -o -i
 ### 4. Quick Fixes
 
 ```bash
-git-acp -nc -m "Quick fix" -a .
+git-acp -a . -nc -mb "Quick fix"
 ```
 
 ### 5. Style Changes
 
 ```bash
-git-acp -a "*.css" -t style -m "Update button styles"
+git-acp -a "*.css" -t style -mb "Update button styles"
 ```
 
 ## File Selection
@@ -131,7 +132,7 @@ git-acp -a "*.css" -t style -m "Update button styles"
 
 - Use `-o` for AI generation
 - `-i` allows editing before commit
-- Choose prompt type with `-p`
+- Choose prompt type with `-pt`
 
 ## Confirmation and Safety
 
@@ -146,7 +147,7 @@ git-acp -a "*.css" -t style -m "Update button styles"
 Use `-nc` to skip all confirmations:
 
 ```bash
-git-acp -nc -a . -m "Quick update"
+git-acp -nc -a . -mb "Quick update"
 ```
 
 ## Error Handling

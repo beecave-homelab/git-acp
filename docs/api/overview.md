@@ -153,7 +153,7 @@ Implements the `main` command via Click decorators and subcommands/options.
   **Options**:
   1. `-a, --add <file>`  
      Specify which files to stage. If not provided, an interactive file selection is displayed.
-  2. `-m, --message <message>`  
+  2. `-mb, --message-body <message>`  
      Specify a commit message directly.
   3. `-b, --branch <branch>`  
      Specify a branch to push to. Defaults to current branch if not provided.
@@ -163,11 +163,17 @@ Implements the `main` command via Click decorators and subcommands/options.
      Toggle AI-based commit message generation.
   6. `-i, --interactive`  
      If set, allows editing the AI-generated commit message.
-  7. `-p, --prompt-type [simple|advanced]`  
+  7. `-p, --prompt <prompt>`  
+     Override the prompt sent to the AI model.
+  8. `-pt, --prompt-type [simple|advanced]`  
      Choose AI prompt style. Defaults to `advanced`.
-  8. `-nc, --no-confirm`  
+  9. `-m, --model <model>`  
+     Override the default AI model.
+  10. `-ct, --context-window <tokens>`  
+     Override the AI context window size (num_ctx).
+  11. `-nc, --no-confirm`  
      Skip confirmations.
-  9. `-v, --verbose`  
+  12. `-v, --verbose`  
      Print debug info.
 
 **Primary Workflow**:
@@ -321,7 +327,7 @@ Provides functionality for printing styled debug and status messages using [Rich
 
 Defines custom data classes and type aliases used throughout `git_acp`.
 
-  - **Dataclass**: `GitConfig`
+- **Dataclass**: `GitConfig`
     Holds settings for Git operations:
 
     ```python
@@ -337,16 +343,16 @@ Defines custom data classes and type aliases used throughout `git_acp`.
         prompt_type: str = "advanced"
     ```
 
-  - **Type Aliases**:
-    - `OptionalConfig = Optional[GitConfig]`
-    - `DiffType = Literal["staged", "unstaged"]`
-    - `RemoteOperation = Literal["add", "remove", "set-url"]`
-    - `TagOperation = Literal["create", "delete", "push"]`
-    - `StashOperation = Literal["save", "pop", "apply", "drop", "list"]`
-    - `CommitDict = Dict[str, str]`
-    - `PromptType = Literal["simple", "advanced"]`
-    - `Message = Dict[str, str]`
-    - `CommitContext = Dict[str, Any]`
+- **Type Aliases**:
+  - `OptionalConfig = Optional[GitConfig]`
+  - `DiffType = Literal["staged", "unstaged"]`
+  - `RemoteOperation = Literal["add", "remove", "set-url"]`
+  - `TagOperation = Literal["create", "delete", "push"]`
+  - `StashOperation = Literal["save", "pop", "apply", "drop", "list"]`
+  - `CommitDict = Dict[str, str]`
+  - `PromptType = Literal["simple", "advanced"]`
+  - `Message = Dict[str, str]`
+  - `CommitContext = Dict[str, Any]`
 
 ---
 
