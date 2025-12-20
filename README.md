@@ -20,7 +20,9 @@ A Python tool to automate Git add, commit, and push actions with optional AI-gen
 ## Features
 
 - Single-command Git workflow automation
-- AI-powered commit messages via Ollama
+- AI-powered commit messages via Ollama with two prompt modes:
+  - **Simple**: Fast generation with basic context
+  - **Advanced**: Rich repository context for style-aware messages (default)
 - Interactive file selection and type suggestions
 - Conventional commits with emoji support
 - Consistent "all files" selection: choose **All files** in the prompt or use `-a .` to stage everything while still listing each file before commit.

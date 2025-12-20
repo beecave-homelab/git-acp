@@ -358,6 +358,49 @@ classDiagram
     Core ..> Subprocess : executes
 ```
 
+### Deep Dive: AI Prompt Types
+
+The AI layer supports two prompt generation modes with different complexity levels:
+
+```mermaid
+flowchart TD
+    A[generate_commit_message] --> B[get_commit_context]
+    B --> C{prompt_type?}
+    
+    C -->|simple| D[create_simple_commit_message_prompt]
+    C -->|advanced| E[create_advanced_commit_message_prompt]
+    
+    D --> F["Basic prompt:<br/>• Staged changes only<br/>• 3 requirements<br/>• Generic format"]
+    E --> G["Advanced prompt:<br/>• Staged changes<br/>• Recent commits<br/>• Commit patterns<br/>• Related commits<br/>• 4 requirements<br/>• Repository style"]
+    
+    F --> H[ai_client.chat_completion]
+    G --> H
+    
+    H --> I[edit_commit_message<br/>if interactive]
+    I --> J[Return formatted message]
+    
+    style D fill:#e1f5fe
+    style E fill:#f3e5f5
+    style F fill:#e8f5e9
+    style G fill:#fff3e0
+```
+
+**Simple Mode (`simple`)**
+
+- Uses only staged changes
+- 3 basic requirements (conventional format, specificity, conciseness)
+- Faster generation with minimal context
+- Good for straightforward changes
+
+**Advanced Mode (`advanced`) - Default**
+
+- Rich repository context including:
+  - Recent commit history and patterns
+  - Most used commit types
+  - Related commits for similar files
+- 4 detailed requirements with style guidance
+- Generates contextually aware messages matching repository patterns
+
 ### Deep Dive: AI Layer
 
 AI-powered commit message generation with fallback support.
