@@ -2,7 +2,8 @@
 
 ## Table of Contents
 
-- [v0.18.0 (Current) - 02-12-2025](#v0180-current-02-12-2025)
+- [v0.19.0 (Current) - 19-12-2025](#v0190-current-19-12-2025)
+- [v0.18.0 - 02-12-2025](#v0180-02-12-2025)
 - [v0.17.0 - 10-08-2025](#v0170-10-08-2025)
 - [v0.16.0 - August 2025](#v0160-august-2025)
 - [v0.15.1 - June 2025](#v0151-june-2025)
@@ -29,7 +30,33 @@
 - [v0.6.0 - 21-12-2024](#v060-21-12-2024)
 - [v0.5.0 - 20-12-2024](#v050-20-12-2024)
 
-## v0.18.0 (Current) - *02-12-2025* {#v0180-current-02-12-2025}
+## v0.19.0 (Current) - *19-12-2025* {#v0190-current-19-12-2025}
+
+### ✨ Brief Description (v0.19.0)
+
+Feature release improving commit type recommendations by prioritizing file-path heuristics and correctly parsing the repository's emoji-style conventional commit prefixes.
+
+### ✨ New Features in v0.19.0
+
+- **Added**: `FILE_PATH_PATTERNS` classification rules to reliably infer commit types from changed file paths.
+- **Enhanced**: Commit type classification priority order to prefer message prefix, then file paths, then keyword fallbacks.
+
+### 🔧 Improvements in v0.19.0
+
+- **Improved**: Commit message prefix parsing to support repo-style prefixes such as `feat ✨:` and `fix 🐛:` (including optional scopes).
+- **Improved**: User interaction commit type selection flow to accept and display the generated/edited commit message context.
+
+### 🧪 Testing improvements in v0.19.0
+
+- **Updated**: Classification test coverage to validate file-path-first behavior and emoji-style prefix parsing.
+
+### 📝 Key Commits in v0.19.0
+
+`1e591db`, `928d382`, `6e60688`, `867861c`, `9982df8`
+
+---
+
+## v0.18.0 - *02-12-2025* {#v0180-02-12-2025}
 
 ### Brief Description (v0.18.0)
 
