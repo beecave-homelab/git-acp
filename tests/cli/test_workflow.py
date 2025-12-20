@@ -574,7 +574,7 @@ class TestWorkflowErrorPaths:
         # Create interaction that raises on select_commit_type
         class CancellingInteraction(TestInteraction):
             def select_commit_type(
-                self, suggested: CommitType, config: GitConfig
+                self, suggested: CommitType, config: GitConfig, commit_message: str
             ) -> CommitType:
                 raise GitError("Operation cancelled by user.")
 
