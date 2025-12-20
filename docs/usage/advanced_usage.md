@@ -22,6 +22,7 @@ Then edit the `.env` file to customize your settings.
 The AI model selection determines which model will be used for generating commit messages. Different models have different capabilities, sizes, and performance characteristics. The default model `mevatron/diffsense:1.5b` is optimized for understanding code changes and generating relevant commit messages.
 
 **Tested Models:**
+
 - `mevatron/diffsense:0.5b`
 - `mevatron/diffsense:1.5b`
 - `tavernari/git-commit-message:latest`
@@ -135,7 +136,31 @@ The timeout setting (`GIT_ACP_AI_TIMEOUT`) controls how long to wait for AI resp
 # AI generation settings
 GIT_ACP_PROMPT_TYPE=simple  # or 'advanced' for more context
 GIT_ACP_AI_TIMEOUT=120.0    # timeout in seconds
+GIT_ACP_CONTEXT_WINDOW=8192 # context window size in tokens for Ollama requests
 ```
+
+### Per-Run CLI Overrides
+
+You can override AI settings for individual runs without modifying your configuration file:
+
+- `--model <model>`: Override the AI model for this run (e.g., `--model granite4:latest`)
+- `--context-window <tokens>`: Override the context window size for this run (e.g., `--context-window 4096`)
+- `--prompt <prompt>`: Provide a custom prompt that replaces the built-in templates for this run
+
+Example usage:
+
+```bash
+# Use a different model with larger context for a complex change
+git-acp -o --model granite4:latest --context-window 16384
+
+# Use a custom prompt for specific commit style
+git-acp -o --prompt "Generate a commit message in the format: type(scope): description"
+
+# Combine overrides
+git-acp -o --model llama3.2:latest --context-window 4096 --prompt "Generate a concise commit message focusing on the 'why' rather than the 'what'"
+```
+
+These flags take precedence over environment variables and defaults for the current invocation only.
 
 ## Git Configuration
 
