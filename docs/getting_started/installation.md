@@ -153,7 +153,7 @@ mkdir -p ~/.config/git-acp
 
 Create `~/.config/git-acp/.env`:
 
-```ini
+```env
 # Basic Configuration
 GIT_ACP_DEFAULT_BRANCH=main
 GIT_ACP_DEFAULT_REMOTE=origin

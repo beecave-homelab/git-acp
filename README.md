@@ -71,7 +71,7 @@ nano ~/.config/git-acp/.env  # Adjust values as needed
 
 Example configuration (`~/.config/git-acp/.env`):
 
-```ini
+```env
 # Example configuration
 GIT_ACP_AI_MODEL=mevatron/diffsense:1.5b
 GIT_ACP_DEFAULT_BRANCH=main
