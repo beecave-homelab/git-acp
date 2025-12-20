@@ -65,7 +65,7 @@ def test_gitconfig_type_annotations() -> None:
 
     # Accept both old-style (typing.Optional) and new-style (X | None) representations
     branch_annotation = str(annotations["branch"])
-    assert "GitConfig" in branch_annotation
+    assert "str" in branch_annotation
     assert "None" in branch_annotation or "Optional" in branch_annotation
 
     assert annotations["use_ollama"] is bool

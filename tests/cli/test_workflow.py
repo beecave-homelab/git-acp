@@ -91,7 +91,7 @@ class TestTestInteraction:
         from git_acp.cli.interaction import TestInteraction
 
         interaction = TestInteraction(commit_type_response=CommitType.FEAT)
-        result = interaction.select_commit_type(CommitType.CHORE, mock_config)
+        result = interaction.select_commit_type(CommitType.CHORE, mock_config, "Test")
 
         assert result == CommitType.FEAT
 
@@ -574,7 +574,7 @@ class TestWorkflowErrorPaths:
         # Create interaction that raises on select_commit_type
         class CancellingInteraction(TestInteraction):
             def select_commit_type(
-                self, suggested: CommitType, config: GitConfig
+                self, suggested: CommitType, config: GitConfig, commit_message: str
             ) -> CommitType:
                 raise GitError("Operation cancelled by user.")
 

@@ -1,8 +1,9 @@
 ---
 repo: https://github.com/beecave-homelab/git-acp.git
-commit: a59aaa3d9e9fa4e70455fd9c99d62c4a57070f94
-updated: 2025-12-02T21:58:00Z
+commit: 87e03843527213bbc4fd30ae1946754351595cba
+updated: 2025-12-20T09:45:46Z
 ---
+<!-- markdownlint-disable-file MD033 -->
 <!-- SECTIONS:CLI,API,TESTS -->
 
 # Project Overview | git-acp
@@ -10,7 +11,7 @@ updated: 2025-12-02T21:58:00Z
 `git-acp` is a command-line tool that automates the `git add`, `commit`, and `push` workflow. It offers interactive file selection, AI-powered commit message generation via Ollama, and enforces Conventional Commits standards.
 
 ![Language](https://img.shields.io/badge/Python-3.10+-blue)
-[![Version](https://img.shields.io/badge/Version-0.18.0-brightgreen)](#version-summary)
+[![Version](https://img.shields.io/badge/Version-0.19.0-brightgreen)](#version-summary)
 [![CLI](https://img.shields.io/badge/CLI-Click-blue)](#cli)
 [![Coverage](https://img.shields.io/badge/Coverage-97%25-brightgreen)](#tests)
 
@@ -42,7 +43,7 @@ pdm install -G dev && pdm run git-acp --help
 
 ### Exporting Requirements Files
 
-Always regenerate the lock-style requirement files from `pyproject.toml` using `pdm`:
+Always regenerate the lock-style requirement files from [`pyproject.toml`](pyproject.toml) using `pdm`:
 
 ```bash
 # Production requirements
@@ -56,6 +57,7 @@ pdm export --pyproject --no-hashes -G lint,test -o requirements.dev.txt
 
 | Version | Date       | Type | Key Changes                |
 |---------|------------|------|----------------------------|
+| 0.19.0  | 19-12-2025 | ✨   | Improve commit type recommendation (file paths + emoji prefix) |
 | 0.18.0  | 02-12-2025 | ✨   | Fix -a flag logic, update eza, enhance tests & UX |
 | 0.17.0  | 10-08-2025 | ✨   | Add fallback Ollama server; git ops flattening |
 | 0.16.0  | 2025-08-08 | ✨   | Refactors and enhancements; feature work |
@@ -67,7 +69,7 @@ pdm export --pyproject --no-hashes -G lint,test -o requirements.dev.txt
 
 - Interactive staging of changed files.
 - AI-generated commit messages using Ollama.
-- Automatic classification of commit types (feat, fix, etc.).
+- **Smart commit type classification** using file-path-first heuristics with keyword fallback.
 - Support for Conventional Commits specification.
 - Consistent "all files" selection: choose **All files** in the prompt or use `-a .` to stage everything while still listing each file before commit.
 - Rich terminal output for better user experience.
@@ -99,7 +101,7 @@ git_acp/
 │   └── env_config.py       # Manages loading of environment variables.
 ├── git/
 │   ├── __init__.py         # Exposes all public Git operation functions (facade).
-│   ├── classification.py   # Classifies commit types based on file changes.
+│   ├── classification.py   # File-path-first commit type classification.
 │   ├── core.py             # Core git utilities and error handling.
 │   ├── diff.py             # Diff generation and formatting.
 │   ├── git_operations.py   # Compatibility layer for testable git helpers.
@@ -295,7 +297,7 @@ classDiagram
 
 ### Deep Dive: GitOps (Facade)
 
-The `operations.py` facade re-exports functions from internal modules.
+The [`operations.py`](git_acp/git/operations.py) facade re-exports functions from internal modules.
 
 ```mermaid
 classDiagram
@@ -450,12 +452,12 @@ classDiagram
 
 ### Protocol Pattern (Structural Typing)
 
-The `UserInteraction` protocol in `interaction.py` defines an interface for user I/O:
+The `UserInteraction` protocol in [`interaction.py`](git_acp/cli/interaction.py) defines an interface for user I/O:
 
 ```python
 class UserInteraction(Protocol):
     def select_files(self, changed_files: set[str]) -> str: ...
-    def select_commit_type(self, suggested_type: CommitType, config: GitConfig) -> CommitType: ...
+    def select_commit_type(self, suggested_type: CommitType, config: GitConfig, commit_message: str) -> CommitType: ...
     def confirm(self, message: str) -> bool: ...
     def print_message(self, message: str) -> None: ...
     def print_error(self, error_msg: str, suggestion: str, title: str) -> None: ...
@@ -485,7 +487,7 @@ class AIClient:
 
 ### Facade Pattern
 
-The `git/__init__.py` and `git/operations.py` modules expose a unified API:
+The [`git/__init__.py`](git_acp/git/__init__.py) and [`git/operations.py`](git_acp/git/operations.py) modules expose a unified API:
 
 ```python
 # git/__init__.py re-exports all public functions
@@ -495,18 +497,18 @@ from git_acp.git.operations import (
 )
 ```
 
-Internal modules (`core.py`, `staging.py`, `diff.py`, etc.) remain implementation details.
+Internal modules ([`core.py`](git_acp/git/core.py), [`staging.py`](git_acp/git/staging.py), [`diff.py`](git_acp/git/diff.py), etc.) remain implementation details.
 
 ### Dataclass Configuration
 
-`GitConfig` in `utils/types.py` uses `@dataclass` for immutable configuration:
+`GitConfig` in [`utils/types.py`](git_acp/utils/types.py) uses `@dataclass` for immutable configuration:
 
 ```python
 @dataclass
 class GitConfig:
     files: str = "."
     message: str = "Automated commit"
-    branch: Optional[str] = None
+    branch: str | None = None
     use_ollama: bool = False
     interactive: bool = False
     skip_confirmation: bool = False
@@ -516,7 +518,7 @@ class GitConfig:
 
 ### Enum for Commit Types
 
-`CommitType` in `classification.py` uses `Enum` with a factory method:
+`CommitType` in [`classification.py`](git_acp/git/classification.py) uses `Enum` with a factory method:
 
 ```python
 class CommitType(Enum):
@@ -529,11 +531,45 @@ class CommitType(Enum):
         # Converts string to enum, raises GitError on invalid input
 ```
 
+### Commit Type Classification
+
+The `classify_commit_type()` function uses a priority-based approach:
+
+| Priority | Source | Description |
+|----------|--------|-------------|
+| 1 | Message prefix | Explicit `feat:`, `feat ✨:`, `fix:`, `fix 🐛:`, etc. in commit message |
+| 2 | File paths | `tests/` → test, `docs/` → docs, `.github/` → chore |
+| 3 | Message keywords | Semantic hints like "implement", "fix", "refactor" |
+| 4 | Diff keywords | Fallback pattern matching in git diff |
+| 5 | Default | Returns `CHORE` when no patterns match |
+
+The implementation lives in [`git_acp/git/classification.py`](git_acp/git/classification.py).
+File path patterns are defined in [`git_acp/config/constants.py`](git_acp/config/constants.py) (`FILE_PATH_PATTERNS`).
+
+```mermaid
+flowchart TD
+    A[Start: classify_commit_type] --> B{Commit message has a title line?}
+    B -->|yes| C[Parse prefix<br/>feat:, fix:, feat(scope) ✨: ...]
+    C -->|parsed| R1[Return parsed type]
+    C -->|not parsed| D[Get changed files<br/>(staged then unstaged)]
+    B -->|no| D
+    D --> E{File path patterns match?}
+    E -->|yes (majority)| R2[Return file-based type]
+    E -->|no| F{Commit message provided?}
+    F -->|yes| G[Keyword match in commit message]
+    G -->|matched| R3[Return matched type]
+    G -->|no match| H[Get diff<br/>(staged then unstaged)]
+    F -->|no| H
+    H --> I[Keyword match in diff]
+    I -->|matched| R4[Return matched type]
+    I -->|no match| R5[Return CHORE]
+```
+
 ## Coding Standards
 
 ### Linting & Formatting (Ruff)
 
-Configured in `pyproject.toml`:
+Configured in [`pyproject.toml`](pyproject.toml):
 
 ```toml
 [tool.ruff]
@@ -561,7 +597,7 @@ convention = "google"
 
 | Principle | Application |
 |-----------|-------------|
-| **SRP** | `cli.py` handles CLI parsing only; `workflow.py` handles orchestration. |
+| **SRP** | [`cli.py`](git_acp/cli/cli.py) handles CLI parsing only; [`workflow.py`](git_acp/cli/workflow.py) handles orchestration. |
 | **OCP** | `UserInteraction` protocol allows new implementations without modifying `GitWorkflow`. |
 | **LSP** | `TestInteraction` is substitutable for `RichQuestionaryInteraction`. |
 | **ISP** | Protocol methods are minimal and focused. |
@@ -584,7 +620,7 @@ def get_changed_files(
 ) -> set[str]: ...
 ```
 
-Type aliases in `utils/types.py`:
+Type aliases in [`utils/types.py`](git_acp/utils/types.py):
 
 ```python
 OptionalConfig = GitConfig | None
@@ -618,7 +654,7 @@ Test coverage: **97%** (branch coverage enabled).
 
 **Test Structure:**
 
-- `tests/ai/` — AIClient and AI utilities tests (96% coverage on client.py)
+- `tests/ai/` — AIClient and AI utilities tests (96% coverage on [`client.py`](git_acp/ai/client.py))
 - `tests/cli/` — CLI entry point and GitWorkflow tests (85-87% coverage)
 - `tests/git/` — Git operations tests (92-98% coverage)
 - `tests/config/` — Configuration tests

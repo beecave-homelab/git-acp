@@ -9,6 +9,7 @@
 !requirements.dev.txt
 !setup.py
 !.env.example
+!.markdownlint.json
 !pyproject.toml
 !project-overview.md
 !refactor-summary.md

@@ -13,6 +13,7 @@ import questionary
 from rich import print as rprint
 from rich.panel import Panel
 from rich.prompt import Confirm
+from rich.text import Text
 
 from git_acp.config import COLORS, QUESTIONARY_STYLE
 from git_acp.git import CommitType, GitError
@@ -41,13 +42,14 @@ class UserInteraction(Protocol):
         ...
 
     def select_commit_type(
-        self, suggested_type: CommitType, config: GitConfig
+        self, suggested_type: CommitType, config: GitConfig, commit_message: str
     ) -> CommitType:
         """Present commit type selection.
 
         Args:
             suggested_type: The suggested commit type based on changes.
             config: Configuration options.
+            commit_message: The generated (and possibly edited) commit message.
 
         Returns:
             The selected commit type.
@@ -157,13 +159,14 @@ class RichQuestionaryInteraction:
         return " ".join(f'"{f}"' if " " in f else f for f in selected)
 
     def select_commit_type(
-        self, suggested_type: CommitType, config: GitConfig
+        self, suggested_type: CommitType, config: GitConfig, commit_message: str
     ) -> CommitType:
         """Present an interactive selection menu for commit types.
 
         Args:
             suggested_type: The suggested commit type based on changes.
             config: Configuration options.
+            commit_message: The generated (and possibly edited) commit message.
 
         Returns:
             The selected commit type.
@@ -171,18 +174,18 @@ class RichQuestionaryInteraction:
         Raises:
             GitError: If no commit type is selected.
         """
-        # Auto-select if skip_confirmation or if it's a valid type
-        if config.skip_confirmation or suggested_type.value in [
-            "feat",
-            "fix",
-            "docs",
-            "style",
-            "refactor",
-            "test",
-            "chore",
-            "revert",
-        ]:
+        # Auto-select if skip_confirmation
+        if config.skip_confirmation:
             return suggested_type
+
+        if commit_message.strip():
+            rprint(
+                Panel(
+                    Text(commit_message),
+                    title="Generated Commit Message",
+                    border_style=COLORS["ai_message_border"],
+                )
+            )
 
         commit_type_choices = []
         for commit_type in CommitType:
@@ -310,13 +313,14 @@ class TestInteraction:
         return self._files_response
 
     def select_commit_type(
-        self, suggested_type: CommitType, config: GitConfig
+        self, suggested_type: CommitType, config: GitConfig, commit_message: str
     ) -> CommitType:
         """Return canned commit type.
 
         Args:
             suggested_type: Ignored in test double.
             config: Ignored in test double.
+            commit_message: Ignored in test double.
 
         Returns:
             The configured commit_type_response.

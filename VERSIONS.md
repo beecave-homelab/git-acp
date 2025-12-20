@@ -2,7 +2,8 @@
 
 ## Table of Contents
 
-- [v0.18.0 (Current) - 02-12-2025](#v0180-current-02-12-2025)
+- [v0.19.0 (Current) - 19-12-2025](#v0190-current-19-12-2025)
+- [v0.18.0 - 02-12-2025](#v0180-02-12-2025)
 - [v0.17.0 - 10-08-2025](#v0170-10-08-2025)
 - [v0.16.0 - August 2025](#v0160-august-2025)
 - [v0.15.1 - June 2025](#v0151-june-2025)
@@ -29,7 +30,33 @@
 - [v0.6.0 - 21-12-2024](#v060-21-12-2024)
 - [v0.5.0 - 20-12-2024](#v050-20-12-2024)
 
-## v0.18.0 (Current) - *02-12-2025* {#v0180-current-02-12-2025}
+## v0.19.0 (Current) - *19-12-2025* {#v0190-current-19-12-2025}
+
+### ✨ Brief Description (v0.19.0)
+
+Feature release improving commit type recommendations by prioritizing file-path heuristics and correctly parsing the repository's emoji-style conventional commit prefixes.
+
+### ✨ New Features in v0.19.0
+
+- **Added**: `FILE_PATH_PATTERNS` classification rules to reliably infer commit types from changed file paths.
+- **Enhanced**: Commit type classification priority order to prefer message prefix, then file paths, then keyword fallbacks.
+
+### 🔧 Improvements in v0.19.0
+
+- **Improved**: Commit message prefix parsing to support repo-style prefixes such as `feat ✨:` and `fix 🐛:` (including optional scopes).
+- **Improved**: User interaction commit type selection flow to accept and display the generated/edited commit message context.
+
+### 🧪 Testing improvements in v0.19.0
+
+- **Updated**: Classification test coverage to validate file-path-first behavior and emoji-style prefix parsing.
+
+### 📝 Key Commits in v0.19.0
+
+`1e591db`, `928d382`, `6e60688`, `867861c`, `9982df8`
+
+---
+
+## v0.18.0 - *02-12-2025* {#v0180-02-12-2025}
 
 ### Brief Description (v0.18.0)
 
@@ -38,6 +65,7 @@ Feature release including updates to the `eza` command support, fixes for AI cli
 ### New Features in v0.18.0
 
 - **Enhanced**: Update `eza` command to accept file pattern
+- **Added**: `scripts/local-ci.sh` convenience script to run the local CI pipeline (`pdm run fix`, `pdm run format`, `pdm run test`, `pdm run test-cov`) with a single command, including help text and optional log file output.
 
 ### Bug Fixes in v0.18.0
 
@@ -57,6 +85,10 @@ Feature release including updates to the `eza` command support, fixes for AI cli
   - **Issue**: Using patterns such as `-a "tests/"` caused the CLI to list all changed files in the repository instead of only those under `tests/`.
   - **Root Cause**: The workflow printed every changed file discovered by `get_changed_files` without respecting the resolved `-a` targets.
   - **Solution**: Updated `GitWorkflow` to filter the "Adding files:" list to only those paths affected by the resolved `-a` patterns, while preserving the `-a .` behavior of listing all changed files.
+- **Fixed**: Ensure manual commit fallback after AI failures prompts for and preserves a user-provided message, and cleanly unstages files when exiting without a message.
+  - **Issue**: After AI commit message generation failures, the workflow could abort even when the user opted into a manual message, or leave staged changes behind when no message was ultimately provided.
+  - **Root Cause**: Commit message handling logic did not consistently prompt for a manual message or unstage files across all fallback paths.
+  - **Solution**: Introduced a dedicated `_prompt_manual_message` helper in `GitWorkflow` and updated the commit message flow to always prompt once and unstage on missing messages.
 
 ### Improvements in v0.18.0
 
@@ -69,6 +101,7 @@ Feature release including updates to the `eza` command support, fixes for AI cli
 - **Refactored**: File selection UX in `RichQuestionaryInteraction` and `GitWorkflow` to better align CLI `-a` usage with interactive "All files" behavior.
 - **Documentation**: Update project overview with architecture diagrams and design patterns
 - **Documentation**: Add comprehensive coding standards (AGENTS.md)
+- **UX**: Improve `GitWorkflow` commit message handling by centralizing manual message prompting and ensuring staged changes are always unstaged when exiting without a commit message, reducing surprising exits after AI failures.
 
 ### Key Commits in v0.18.0
 

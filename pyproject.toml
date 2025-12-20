@@ -1,6 +1,6 @@
 [project]
 name = "git-acp"
-version = "0.18.0"
+version = "0.19.0"
 authors = [
     { name = "elvee" },
 ]
@@ -84,6 +84,7 @@ testpaths = ["tests"]
 distribution = true
 
 [tool.pdm.scripts]
+setup-config = "python scripts/setup-config.py"
 lint = "ruff check ."
 format = "ruff format ."
 fix = "ruff check --fix ."

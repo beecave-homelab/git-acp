@@ -5,7 +5,7 @@ including configuration types, git operation types, and AI-related types.
 """
 
 from dataclasses import dataclass
-from typing import Any, Literal, Optional
+from typing import Any, Literal
 
 
 # Configuration type
@@ -26,7 +26,7 @@ class GitConfig:
 
     files: str = "."
     message: str = "Automated commit"
-    branch: Optional["GitConfig"] = None
+    branch: str | None = None
     use_ollama: bool = False
     interactive: bool = False
     skip_confirmation: bool = False
