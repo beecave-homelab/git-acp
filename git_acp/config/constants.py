@@ -41,6 +41,9 @@ DEFAULT_PROMPT_TYPE: Final[str] = get_env(
 DEFAULT_AI_TIMEOUT: Final[float] = get_env(
     "GIT_ACP_AI_TIMEOUT", 120.0, float
 )  # Timeout in seconds for AI requests
+DEFAULT_CONTEXT_WINDOW: Final[int] = get_env(
+    "GIT_ACP_CONTEXT_WINDOW", 8192, int
+)  # Context window size in tokens for Ollama requests
 
 # Git Configuration
 # Basic settings for git operations

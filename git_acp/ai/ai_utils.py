@@ -247,6 +247,8 @@ def generate_commit_message(config: GitConfig) -> str:
         if config and config.verbose:
             debug_header("Generating commit message with AI")
             debug_item("Prompt type", config.prompt_type)
+            if config.prompt and config.prompt.strip():
+                debug_item("Prompt override", "enabled")
 
         # Initialize AI client
         ai_client = AIClient(config)
@@ -258,8 +260,10 @@ def generate_commit_message(config: GitConfig) -> str:
         if config and config.verbose:
             debug_header("Creating AI prompt")
 
-        # Create prompt based on configuration
-        if config.prompt_type == "advanced":
+        # Create prompt based on configuration, allowing an explicit override.
+        if config.prompt and config.prompt.strip():
+            prompt = config.prompt.strip()
+        elif config.prompt_type == "advanced":
             prompt = create_advanced_commit_message_prompt(context, config)
         else:
             prompt = create_simple_commit_message_prompt(context, config)

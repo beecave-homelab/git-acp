@@ -32,6 +32,9 @@ class GitConfig:
     skip_confirmation: bool = False
     verbose: bool = False
     prompt_type: str = "advanced"  # Default to advanced prompt type
+    prompt: str | None = None
+    ai_model: str | None = None
+    context_window: int | None = None
 
 
 # Git operations types
