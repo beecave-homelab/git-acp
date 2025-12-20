@@ -1,8 +1,9 @@
 ---
 repo: https://github.com/beecave-homelab/git-acp.git
-commit: a59aaa3d9e9fa4e70455fd9c99d62c4a57070f94
-updated: 2025-12-02T21:58:00Z
+commit: 87e03843527213bbc4fd30ae1946754351595cba
+updated: 2025-12-20T09:45:46Z
 ---
+<!-- markdownlint-disable-file MD033 -->
 <!-- SECTIONS:CLI,API,TESTS -->
 
 # Project Overview | git-acp
@@ -42,7 +43,7 @@ pdm install -G dev && pdm run git-acp --help
 
 ### Exporting Requirements Files
 
-Always regenerate the lock-style requirement files from `pyproject.toml` using `pdm`:
+Always regenerate the lock-style requirement files from [`pyproject.toml`](pyproject.toml) using `pdm`:
 
 ```bash
 # Production requirements
@@ -296,7 +297,7 @@ classDiagram
 
 ### Deep Dive: GitOps (Facade)
 
-The `operations.py` facade re-exports functions from internal modules.
+The [`operations.py`](git_acp/git/operations.py) facade re-exports functions from internal modules.
 
 ```mermaid
 classDiagram
@@ -451,7 +452,7 @@ classDiagram
 
 ### Protocol Pattern (Structural Typing)
 
-The `UserInteraction` protocol in `interaction.py` defines an interface for user I/O:
+The `UserInteraction` protocol in [`interaction.py`](git_acp/cli/interaction.py) defines an interface for user I/O:
 
 ```python
 class UserInteraction(Protocol):
@@ -486,7 +487,7 @@ class AIClient:
 
 ### Facade Pattern
 
-The `git/__init__.py` and `git/operations.py` modules expose a unified API:
+The [`git/__init__.py`](git_acp/git/__init__.py) and [`git/operations.py`](git_acp/git/operations.py) modules expose a unified API:
 
 ```python
 # git/__init__.py re-exports all public functions
@@ -496,11 +497,11 @@ from git_acp.git.operations import (
 )
 ```
 
-Internal modules (`core.py`, `staging.py`, `diff.py`, etc.) remain implementation details.
+Internal modules ([`core.py`](git_acp/git/core.py), [`staging.py`](git_acp/git/staging.py), [`diff.py`](git_acp/git/diff.py), etc.) remain implementation details.
 
 ### Dataclass Configuration
 
-`GitConfig` in `utils/types.py` uses `@dataclass` for immutable configuration:
+`GitConfig` in [`utils/types.py`](git_acp/utils/types.py) uses `@dataclass` for immutable configuration:
 
 ```python
 @dataclass
@@ -517,7 +518,7 @@ class GitConfig:
 
 ### Enum for Commit Types
 
-`CommitType` in `classification.py` uses `Enum` with a factory method:
+`CommitType` in [`classification.py`](git_acp/git/classification.py) uses `Enum` with a factory method:
 
 ```python
 class CommitType(Enum):
@@ -542,8 +543,8 @@ The `classify_commit_type()` function uses a priority-based approach:
 | 4 | Diff keywords | Fallback pattern matching in git diff |
 | 5 | Default | Returns `CHORE` when no patterns match |
 
-The implementation lives in [`git_acp/git/classification.py`](/blob/1e591dbb78363d021652ff8034b8bc4424185/git_acp/git/classification.py).
-File path patterns are defined in [`git_acp/config/constants.py`](/blob/1e591dbb78363d021652ff8034b8bc4424185/git_acp/config/constants.py) (`FILE_PATH_PATTERNS`).
+The implementation lives in [`git_acp/git/classification.py`](git_acp/git/classification.py).
+File path patterns are defined in [`git_acp/config/constants.py`](git_acp/config/constants.py) (`FILE_PATH_PATTERNS`).
 
 ```mermaid
 flowchart TD
@@ -568,7 +569,7 @@ flowchart TD
 
 ### Linting & Formatting (Ruff)
 
-Configured in `pyproject.toml`:
+Configured in [`pyproject.toml`](pyproject.toml):
 
 ```toml
 [tool.ruff]
@@ -596,7 +597,7 @@ convention = "google"
 
 | Principle | Application |
 |-----------|-------------|
-| **SRP** | `cli.py` handles CLI parsing only; `workflow.py` handles orchestration. |
+| **SRP** | [`cli.py`](git_acp/cli/cli.py) handles CLI parsing only; [`workflow.py`](git_acp/cli/workflow.py) handles orchestration. |
 | **OCP** | `UserInteraction` protocol allows new implementations without modifying `GitWorkflow`. |
 | **LSP** | `TestInteraction` is substitutable for `RichQuestionaryInteraction`. |
 | **ISP** | Protocol methods are minimal and focused. |
@@ -619,7 +620,7 @@ def get_changed_files(
 ) -> set[str]: ...
 ```
 
-Type aliases in `utils/types.py`:
+Type aliases in [`utils/types.py`](git_acp/utils/types.py):
 
 ```python
 OptionalConfig = GitConfig | None
@@ -653,7 +654,7 @@ Test coverage: **97%** (branch coverage enabled).
 
 **Test Structure:**
 
-- `tests/ai/` — AIClient and AI utilities tests (96% coverage on client.py)
+- `tests/ai/` — AIClient and AI utilities tests (96% coverage on [`client.py`](git_acp/ai/client.py))
 - `tests/cli/` — CLI entry point and GitWorkflow tests (85-87% coverage)
 - `tests/git/` — Git operations tests (92-98% coverage)
 - `tests/config/` — Configuration tests
