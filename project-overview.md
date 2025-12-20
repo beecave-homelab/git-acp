@@ -11,7 +11,7 @@ updated: 2025-12-20T14:43:20Z
 `git-acp` is a command-line tool that automates the `git add`, `commit`, and `push` workflow. It offers interactive file selection, AI-powered commit message generation via Ollama, and enforces Conventional Commits standards.
 
 ![Language](https://img.shields.io/badge/Python-3.10+-blue)
-[![Version](https://img.shields.io/badge/Version-0.19.0-brightgreen)](#version-summary)
+[![Version](https://img.shields.io/badge/Version-0.20.0-brightgreen)](#version-summary)
 [![CLI](https://img.shields.io/badge/CLI-Click-blue)](#cli)
 [![Coverage](https://img.shields.io/badge/Coverage-97%25-brightgreen)](#tests)
 
@@ -61,6 +61,7 @@ pdm export --pyproject --no-hashes -G lint,test -o requirements.dev.txt
 
 | Version | Date       | Type | Key Changes                |
 |---------|------------|------|----------------------------|
+| 0.20.0  | 20-12-2025 | ✨   | Add --dry-run flag for testing workflow without committing |
 | 0.19.0  | 19-12-2025 | ✨   | Improve commit type recommendation (file paths + emoji prefix) |
 | 0.18.0  | 02-12-2025 | ✨   | Fix -a flag logic, update eza, enhance tests & UX |
 | 0.17.0  | 10-08-2025 | ✨   | Add fallback Ollama server; git ops flattening |
