@@ -1,6 +1,5 @@
 # `git_acp` Package Documentation
 
-**Version**: `0.17.0`
 **Summary**: The `git_acp` package is a command-line utility and Python API for automating common Git workflows with enhanced features such as:
 
 - Interactive file selection
@@ -42,35 +41,38 @@ You can install the `git_acp` package by cloning the repository or adding it to 
 
 ## Package Layout
 
-```markdown
-git_acp/
-├── ai/
-│   ├── __init__.py
-│   ├── ai_utils.py
-│   └── client.py
-├── cli/
-│   ├── __init__.py
-│   └── cli.py
-├── config/
-│   ├── __init__.py
-│   ├── constants.py
-│   └── env_config.py
-├── git/
-│   ├── __init__.py
-│   ├── classification.py
-│   ├── core.py
-│   ├── diff.py
-│   ├── git_operations.py
-│   ├── history.py
-│   ├── management.py
-│   ├── operations.py
-│   └── staging.py
-├── utils/
-│   ├── __init__.py
-│   ├── formatting.py
-│   └── types.py
-├── __init__.py
-└── __main__.py
+```txt
+└── git_acp
+   ├── __init__.py
+   ├── __main__.py
+   ├── ai
+   │  ├── __init__.py
+   │  ├── ai_utils.py
+   │  └── client.py
+   ├── cli
+   │  ├── __init__.py
+   │  ├── cli.py
+   │  ├── interaction.py
+   │  └── workflow.py
+   ├── config
+   │  ├── __init__.py
+   │  ├── constants.py
+   │  └── env_config.py
+   ├── git
+   │  ├── __init__.py
+   │  ├── classification.py
+   │  ├── core.py
+   │  ├── diff.py
+   │  ├── git_operations.py
+   │  ├── history.py
+   │  ├── management.py
+   │  ├── operations.py
+   │  └── staging.py
+   └── utils
+      ├── __init__.py
+      ├── formatting.py
+      └── types.py
+
 ```
 
 ---
@@ -335,12 +337,16 @@ Defines custom data classes and type aliases used throughout `git_acp`.
     class GitConfig:
         files: str = "."
         message: str = "Automated commit"
-        branch: Optional['GitConfig'] = None
+        branch: str | None = None
         use_ollama: bool = False
         interactive: bool = False
         skip_confirmation: bool = False
         verbose: bool = False
         prompt_type: str = "advanced"
+        prompt: str | None = None
+        ai_model: str | None = None
+        context_window: int | None = None
+        dry_run: bool = False
     ```
 
 - **Type Aliases**:
@@ -379,7 +385,7 @@ Below is a simple command-line usage example:
 git-acp --ollama --no-confirm
 
 # Or specify a custom commit message directly:
-git-acp -a "." -m "Refactor module to improve performance" --type refactor
+git-acp -a "." -mb "Refactor module to improve performance" --type refactor
 ```
 
 If you want to incorporate this in a Python script:
