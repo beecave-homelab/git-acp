@@ -1,17 +1,17 @@
 ---
 repo: https://github.com/beecave-homelab/git-acp.git
-commit: 87e03843527213bbc4fd30ae1946754351595cba
-updated: 2025-12-20T09:45:46Z
+commit: 82bae40aa2d79374787c784142cf7fa507bb3666
+updated: 2025-12-20T14:43:20Z
 ---
 <!-- markdownlint-disable-file MD033 -->
-<!-- SECTIONS:CLI,API,TESTS -->
+<!-- SECTIONS:API,CLI,WEBUI,CI,DOCKER,TESTS -->
 
 # Project Overview | git-acp
 
 `git-acp` is a command-line tool that automates the `git add`, `commit`, and `push` workflow. It offers interactive file selection, AI-powered commit message generation via Ollama, and enforces Conventional Commits standards.
 
 ![Language](https://img.shields.io/badge/Python-3.10+-blue)
-[![Version](https://img.shields.io/badge/Version-0.19.0-brightgreen)](#version-summary)
+[![Version](https://img.shields.io/badge/Version-0.20.0-brightgreen)](#version-summary)
 [![CLI](https://img.shields.io/badge/CLI-Click-blue)](#cli)
 [![Coverage](https://img.shields.io/badge/Coverage-97%25-brightgreen)](#tests)
 
@@ -29,6 +29,8 @@ updated: 2025-12-20T09:45:46Z
 - [Tests](#tests)
 
 ## Quickstart for Developers
+
+::: details
 
 ```bash
 # Recommended installation with pipx
@@ -53,10 +55,13 @@ pdm export --pyproject --no-hashes --prod -o requirements.txt
 pdm export --pyproject --no-hashes -G lint,test -o requirements.dev.txt
 ```
 
+:::
+
 ## Version Summary
 
 | Version | Date       | Type | Key Changes                |
 |---------|------------|------|----------------------------|
+| 0.20.0  | 20-12-2025 | ✨   | Add --dry-run flag for testing workflow without committing |
 | 0.19.0  | 19-12-2025 | ✨   | Improve commit type recommendation (file paths + emoji prefix) |
 | 0.18.0  | 02-12-2025 | ✨   | Fix -a flag logic, update eza, enhance tests & UX |
 | 0.17.0  | 10-08-2025 | ✨   | Add fallback Ollama server; git ops flattening |
@@ -78,7 +83,7 @@ pdm export --pyproject --no-hashes -G lint,test -o requirements.dev.txt
 
 ## Project Structure
 
-<details><summary>Show tree</summary>
+::: details
 
 ```text
 git_acp/
@@ -122,8 +127,6 @@ tests/
 ├── git/                    # Git operations tests.
 └── utils/                  # Utility function tests.
 ```
-
-</details>
 
 ## Architecture Highlights
 
@@ -352,6 +355,62 @@ classDiagram
     Core ..> Subprocess : executes
 ```
 
+### Deep Dive: AI Prompt Types
+
+The AI layer supports two prompt generation modes with different complexity levels and context window management:
+
+```mermaid
+flowchart TD
+    A[generate_commit_message] --> B[get_commit_context]
+    B --> C[calculate_context_budget]
+    C --> D[truncate_context_for_window]
+    D --> E[prompt_type?]
+    
+    E -->|simple| F[create_structured_simple_commit_message_prompt]
+    E -->|advanced| G[create_structured_advanced_commit_message_prompt]
+    
+    F --> H["Structured XML prompt:<br/>• Context-aware truncation<br/>• 65% context window usage<br/>• Local-first optimization<br/>• 4 structured sections"]
+    G --> I["Structured XML prompt:<br/>• Full context utilization<br/>• 80% context window usage<br/>• Repository pattern matching<br/>• 5 structured sections"]
+    
+    H --> J[ai_client.chat_completion]
+    I --> J
+    
+    J --> K[edit_commit_message<br/>if interactive]
+    K --> L[Return formatted message]
+    
+    style F fill:#e1f5fe
+    style G fill:#f3e5f5
+    style H fill:#e8f5e9
+    style I fill:#fff3e0
+```
+
+**Simple Mode (`simple`) - Local-First Design**
+
+- **Context Window Strategy**: Uses 65% of available context window (leaving 35% for response)
+- **Smart Truncation**: Priority-based context reduction (related commits → recent commits → patterns)
+- **XML-Structured Prompts**: Clear sections with `<task>`, `<changes>`, `<requirements>`, `<output_format>`
+- **Local Optimization**: Designed for smaller local models (4K-8K context windows)
+- **Minimum Context Guarantee**: Ensures at least 2000 tokens of staged changes are preserved
+
+**Advanced Mode (`advanced`) - Context-Optimized**
+
+- **Context Window Strategy**: Uses 80% of available context window (leaving 20% for response)
+- **Rich Repository Context**:
+  - Recent commit history and patterns
+  - Most used commit types and scopes
+  - Related commits for similar files
+  - Repository style guidance
+- **XML-Structured Prompts**: Enhanced with `<repository_context>` and `<style_guide>` sections
+- **Cloud & Local Support**: Optimized for both large cloud models and capable local models
+- **Pattern Matching**: Generates messages that match repository conventions
+
+**Context Window Management:**
+
+- **Token Estimation**: Simple 4-characters-per-token approximation
+- **Priority-Based Truncation**: Preserves most important context first
+- **Dynamic Adjustment**: Adapts to different context window sizes
+- **Configuration**: Environment variables for fine-tuning (`GIT_ACP_SIMPLE_CONTEXT_RATIO`, `GIT_ACP_ADVANCED_CONTEXT_RATIO`)
+
 ### Deep Dive: AI Layer
 
 AI-powered commit message generation with fallback support.
@@ -449,6 +508,9 @@ classDiagram
 ```
 
 ## Design Patterns
+
+- Protocol-based user I/O for testability.
+- Dependency injection for AI client/workflow.
 
 ### Protocol Pattern (Structural Typing)
 
@@ -628,25 +690,46 @@ PromptType = Literal["simple", "advanced"]
 DiffType = Literal["staged", "unstaged"]
 ```
 
+:::
+
 ## CLI
 
 The main entry point is `git_acp.cli.cli.main`. It provides a set of options to control the git workflow.
 
 **Options:**
 
+**Migration note (v0.20.0)**: `-m` is now `--model` (AI model override). If you previously used `-m` for a manual commit message, use `-mb/--message-body` instead.
+
 - `-a, --add`: Specify files to stage.
-- `-m, --message`: Provide a custom commit message.
+- `-mb, --message-body`: Provide a custom commit message body.
 - `-b, --branch`: Target branch for push.
 - `-t, --type`: Manually specify commit type.
 - `-o, --ollama`: Use AI to generate commit message.
 - `-i, --interactive`: Interactively edit AI-generated message.
 - `-nc, --no-confirm`: Skip confirmation prompts.
 - `-v, --verbose`: Enable verbose output.
-- `-p, --prompt-type`: Select AI prompt complexity.
+- `-dr, --dry-run`: Show what would be committed without actually committing or pushing.
+- `-p, --prompt`: Override the prompt sent to the AI model.
+- `-pt, --prompt-type`: Select AI prompt complexity.
+- `-m, --model`: Override the default AI model.
+- `-ct, --context-window`: Override the AI context window size (num_ctx).
 
 ## API
 
 > This project does not expose a public API. It is intended to be used as a command-line tool.
+
+## WEBUI
+
+This section is not implemented in the current codebase.
+
+## CI
+
+- GitHub Actions workflow: `/blob/82bae40aa2d79374787c784142cf7fa507bb3666/.github/workflows/pr-ci.yaml`
+- Runs Ruff (lint/format) and Pytest (with coverage) on PRs.
+
+## DOCKER
+
+This section is not implemented in the current codebase.
 
 ## Tests
 
@@ -665,5 +748,7 @@ Test coverage: **97%** (branch coverage enabled).
 ```bash
 pdm run pytest --cov=git_acp --cov-branch --cov-report=term-missing
 ```
+
+:::
 
 **Always update this file when code or configuration changes.**

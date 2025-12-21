@@ -1,6 +1,7 @@
 """Configuration management for git-acp."""
 
 from git_acp.config.constants import (
+    ADVANCED_PROMPT_CONTEXT_RATIO,
     COLORS,
     COMMIT_TYPE_PATTERNS,
     COMMIT_TYPES,
@@ -8,6 +9,7 @@ from git_acp.config.constants import (
     DEFAULT_AI_TIMEOUT,
     DEFAULT_API_KEY,
     DEFAULT_BASE_URL,
+    DEFAULT_CONTEXT_WINDOW,
     DEFAULT_FALLBACK_BASE_URL,
     DEFAULT_NUM_RECENT_COMMITS,
     DEFAULT_NUM_RELATED_COMMITS,
@@ -16,8 +18,10 @@ from git_acp.config.constants import (
     DEFAULT_TEMPERATURE,
     EXCLUDED_PATTERNS,
     FILE_PATH_PATTERNS,
+    MIN_CHANGES_CONTEXT,
     PROJECT_ROOT,
     QUESTIONARY_STYLE,
+    SIMPLE_PROMPT_CONTEXT_RATIO,
     TERMINAL_WIDTH,
     USER_CONFIG_DIR,
     USER_ENV_FILE,
@@ -25,6 +29,7 @@ from git_acp.config.constants import (
 from git_acp.config.env_config import get_env, load_env_config
 
 __all__ = [
+    "ADVANCED_PROMPT_CONTEXT_RATIO",
     "COLORS",
     "QUESTIONARY_STYLE",
     "COMMIT_TYPES",
@@ -41,6 +46,9 @@ __all__ = [
     "DEFAULT_API_KEY",
     "DEFAULT_PROMPT_TYPE",
     "DEFAULT_AI_TIMEOUT",
+    "DEFAULT_CONTEXT_WINDOW",
+    "MIN_CHANGES_CONTEXT",
+    "SIMPLE_PROMPT_CONTEXT_RATIO",
     "TERMINAL_WIDTH",
     "PROJECT_ROOT",
     "USER_CONFIG_DIR",

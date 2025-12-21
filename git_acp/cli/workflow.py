@@ -97,6 +97,11 @@ class GitWorkflow:
             if not self._handle_confirmation(formatted_message):
                 return 0  # User cancelled, clean exit
 
+            # Handle dry-run mode
+            if self.config.dry_run:
+                self._handle_dry_run(formatted_message)
+                return 0
+
             # Commit and push
             if not self._handle_commit(formatted_message):
                 return 1
@@ -417,10 +422,13 @@ class GitWorkflow:
                 )
                 return False
         else:
-            self.interaction.print_message(
-                f"[{header}]Auto-committing with message:[/{header}]\n"
-                f"{formatted_message}"
-            )
+            # Only show auto-commit message if not in dry-run mode
+            # (dry-run will show its own message)
+            if not self.config.dry_run:
+                self.interaction.print_message(
+                    f"[{header}]Auto-committing with message:[/{header}]\n"
+                    f"{formatted_message}"
+                )
 
         return True
 
@@ -460,3 +468,34 @@ class GitWorkflow:
                 "Push Failed",
             )
             return False
+
+    def _handle_dry_run(self, formatted_message: str) -> None:
+        """Handle dry-run mode by showing what would be committed.
+
+        Args:
+            formatted_message: The formatted commit message that would be used.
+        """
+        status = COLORS["status"]
+        success = COLORS["success"]
+
+        self.interaction.print_message(
+            f"[{status}]🔍 DRY RUN MODE - No changes will be committed[/{status}]"
+        )
+        self.interaction.print_message(
+            f"[{success}]Would commit with message:[/{success}]\n{formatted_message}"
+        )
+
+        # Unstage files since we're not actually committing
+        try:
+            unstage_files()
+            self.interaction.print_message(
+                f"[{status}]Files have been unstaged (dry-run cleanup)[/{status}]"
+            )
+        except GitError:
+            # If unstaging fails, it's not critical for dry-run
+            if self.config.verbose:
+                message = (
+                    f"[{status}]Note: Could not unstage files "
+                    f"(dry-run cleanup)[/{status}]"
+                )
+                self.interaction.print_message(message)

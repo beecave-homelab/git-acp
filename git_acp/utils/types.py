@@ -22,6 +22,10 @@ class GitConfig:
         skip_confirmation: Whether to skip confirmation prompts.
         verbose: Whether to show debug information.
         prompt_type: Type of prompt to use for AI commit message generation.
+        prompt: Optional custom prompt override for AI generation.
+        ai_model: Optional AI model override for the current run.
+        context_window: Optional context window size override in tokens.
+        dry_run: Whether to run in dry-run mode without committing or pushing.
     """
 
     files: str = "."
@@ -32,6 +36,10 @@ class GitConfig:
     skip_confirmation: bool = False
     verbose: bool = False
     prompt_type: str = "advanced"  # Default to advanced prompt type
+    prompt: str | None = None
+    ai_model: str | None = None
+    context_window: int | None = None
+    dry_run: bool = False
 
 
 # Git operations types

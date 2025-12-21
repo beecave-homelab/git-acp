@@ -18,6 +18,7 @@ from git_acp.config import (
     DEFAULT_AI_TIMEOUT,
     DEFAULT_API_KEY,
     DEFAULT_BASE_URL,
+    DEFAULT_CONTEXT_WINDOW,
     DEFAULT_FALLBACK_BASE_URL,
     DEFAULT_TEMPERATURE,
 )
@@ -54,6 +55,17 @@ class AIClient:
         self.base_url = DEFAULT_BASE_URL
         self._progress_factory = _progress_factory or Progress
 
+        self.model = (
+            self.config.ai_model
+            if self.config is not None and self.config.ai_model
+            else DEFAULT_AI_MODEL
+        )
+        self.context_window = (
+            self.config.context_window
+            if self.config is not None and self.config.context_window is not None
+            else DEFAULT_CONTEXT_WINDOW
+        )
+
         # Use injected client if provided (for testing)
         if _openai_client is not None:
             self.client = _openai_client
@@ -62,9 +74,10 @@ class AIClient:
         if self.config and self.config.verbose:
             debug_header("Initializing AI client")
             debug_item("Base URL", self.base_url)
-            debug_item("Model", DEFAULT_AI_MODEL)
+            debug_item("Model", self.model)
             debug_item("Temperature", str(DEFAULT_TEMPERATURE))
             debug_item("Timeout", str(DEFAULT_AI_TIMEOUT))
+            debug_item("Context window", str(self.context_window))
 
         try:
             self.client = OpenAI(
@@ -151,7 +164,26 @@ class AIClient:
                     messages[0]["content"][:100] + "...",
                 )
                 debug_item("Base URL", self.base_url)
+                debug_item("Model", self.model)
                 debug_item("Timeout", f"{DEFAULT_AI_TIMEOUT}s")
+
+            extra_body = kwargs.pop("extra_body", None)
+            if extra_body is None:
+                extra_body = {}
+
+            # Only send num_ctx to Ollama-style endpoints. This avoids breaking
+            # strict OpenAI-compatible servers that reject unknown fields.
+            is_ollama_endpoint = any(
+                host in self.base_url for host in ("localhost:11434", "127.0.0.1:11434")
+            )
+            if is_ollama_endpoint and self.context_window:
+                extra_body = {
+                    **extra_body,
+                    "options": {
+                        **extra_body.get("options", {}),
+                        "num_ctx": self.context_window,
+                    },
+                }
 
             with self._progress_factory() as progress:
                 task = progress.add_task(
@@ -165,10 +197,11 @@ class AIClient:
                 def make_request():
                     try:
                         response_data["response"] = self.client.chat.completions.create(
-                            model=DEFAULT_AI_MODEL,
+                            model=self.model,
                             messages=messages,
                             temperature=DEFAULT_TEMPERATURE,
                             timeout=DEFAULT_AI_TIMEOUT,
+                            extra_body=extra_body,
                             **kwargs,
                         )
                     except Exception as e:  # pragma: no cover
@@ -216,12 +249,12 @@ class AIClient:
             if self.config and self.config.verbose:
                 debug_header("AI Connection Failed")
                 debug_item("Base URL", self.base_url)
-                debug_item("Model", DEFAULT_AI_MODEL)
+                debug_item("Model", self.model)
             raise GitError(
                 "Could not connect to Ollama server. Please ensure:\n"
                 "1. Ollama is running (run 'ollama serve')\n"
                 "2. The model is installed (run "
-                "'ollama pull mevatron/diffsense:1.5b')\n"
+                f"'ollama pull {self.model}')\n"
                 "3. The server URL is correct in your configuration"
             ) from None
         except ValueError as e:
@@ -230,8 +263,8 @@ class AIClient:
                 debug_item("Error Message", str(e))
             if "model" in str(e).lower():
                 raise GitError(
-                    f"AI model '{DEFAULT_AI_MODEL}' not found. "
-                    "Please run 'ollama pull mevatron/diffsense:1.5b' to "
+                    f"AI model '{self.model}' not found. "
+                    f"Please run 'ollama pull {self.model}' to "
                     "install it."
                 ) from e
             raise GitError(f"Invalid AI request parameters: {str(e)}") from e

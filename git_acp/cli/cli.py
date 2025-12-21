@@ -110,8 +110,9 @@ def _process_add_argument(add: str | None) -> tuple[str | None, bool]:
     metavar="<files_or_patterns>",
 )
 @click.option(
-    "-m",
-    "--message",
+    "-mb",
+    "--message-body",
+    "message",
     help=(
         "Custom commit message. If not provided with --ollama, "
         "defaults to 'Automated commit'."
@@ -158,14 +159,44 @@ def _process_add_argument(add: str | None) -> tuple[str | None, bool]:
 )
 @click.option(
     "-p",
+    "--prompt",
+    "prompt",
+    help=(
+        "Override the prompt sent to the AI model. When provided, this prompt is "
+        "used instead of the built-in simple/advanced prompt templates."
+    ),
+    metavar="<prompt>",
+)
+@click.option(
+    "-pt",
     "--prompt-type",
     type=click.Choice(["simple", "advanced"], case_sensitive=False),
-    default="advanced",
+    default="simple",
     help=(
         "Select AI prompt complexity for commit message generation. "
         "'simple' for basic messages, 'advanced' for detailed analysis."
     ),
     metavar="<type>",
+)
+@click.option(
+    "-m",
+    "--model",
+    help=(
+        "Override the AI model name used for Ollama/OpenAI-compatible requests. "
+        "If not provided, uses the configured default."
+    ),
+    metavar="<model>",
+)
+@click.option(
+    "-ct",
+    "--context-window",
+    "context_window",
+    type=int,
+    help=(
+        "Override the AI context window size (num_ctx) used for Ollama requests. "
+        "If not provided, uses the configured default."
+    ),
+    metavar="<tokens>",
 )
 # General Options Group
 @click.option(
@@ -185,6 +216,15 @@ def _process_add_argument(add: str | None) -> tuple[str | None, bool]:
         "during execution."
     ),
 )
+@click.option(
+    "-dr",
+    "--dry-run",
+    is_flag=True,
+    help=(
+        "Show what would be committed without actually committing or pushing. "
+        "Stops after showing the suggested commit type."
+    ),
+)
 def main(
     add: str | None,
     message: str | None,
@@ -194,7 +234,11 @@ def main(
     no_confirm: bool,
     commit_type: str | None,
     verbose: bool,
+    prompt: str | None,
     prompt_type: str,
+    model: str | None,
+    context_window: int | None,
+    dry_run: bool,
 ) -> None:
     """Automate git add, commit, and push operations with smart features.
 
@@ -212,8 +256,8 @@ def main(
 
     \b
     Options are grouped into:
-    - Git Operations: Commands for basic git workflow (-a, -m, -b, -t)
-    - AI Features: AI-powered commit message generation (-o, -i, -p)
+    - Git Operations: Commands for basic git workflow (-a, -mb, -b, -t)
+    - AI Features: AI-powered commit message generation (-o, -i, -p, -pt)
     - General: Program behavior control (-nc, -v)
     """  # noqa: D301
     setup_signal_handlers()
@@ -242,7 +286,11 @@ def main(
             interactive=interactive,
             skip_confirmation=no_confirm,
             verbose=verbose,
+            prompt=prompt,
             prompt_type=prompt_type.lower(),
+            ai_model=model,
+            context_window=context_window,
+            dry_run=dry_run,
         )
 
         # Create interaction layer and workflow

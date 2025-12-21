@@ -13,10 +13,14 @@ from rich.panel import Panel
 
 from git_acp.ai.client import AIClient
 from git_acp.config import (
+    ADVANCED_PROMPT_CONTEXT_RATIO,
     COLORS,
+    DEFAULT_CONTEXT_WINDOW,
     DEFAULT_NUM_RECENT_COMMITS,
     DEFAULT_NUM_RELATED_COMMITS,
+    MIN_CHANGES_CONTEXT,
     QUESTIONARY_STYLE,
+    SIMPLE_PROMPT_CONTEXT_RATIO,
 )
 from git_acp.git import (
     GitError,
@@ -34,18 +38,146 @@ from git_acp.utils import (
 )
 
 
-def create_advanced_commit_message_prompt(
+def estimate_tokens(text: str) -> int:
+    """Estimate the number of tokens in a text string.
+
+    Simple estimation: ~4 characters per token for English text.
+    This is a rough approximation for context management.
+
+    Args:
+        text: The text to estimate tokens for.
+
+    Returns:
+        Estimated token count.
+    """
+    return max(1, len(text) // 4)
+
+
+def calculate_context_budget(
+    context_window: int, prompt_type: str = "simple"
+) -> tuple[int, int]:
+    """Calculate available token budget for prompt and response.
+
+    Args:
+        context_window: Total available context window in tokens.
+        prompt_type: Type of prompt ("simple" or "advanced").
+
+    Returns:
+        Tuple of (max_prompt_tokens, reserved_response_tokens).
+    """
+    if prompt_type == "simple":
+        ratio = SIMPLE_PROMPT_CONTEXT_RATIO
+    else:
+        ratio = ADVANCED_PROMPT_CONTEXT_RATIO
+
+    max_prompt_tokens = int(context_window * ratio)
+    reserved_response_tokens = context_window - max_prompt_tokens
+
+    return max_prompt_tokens, reserved_response_tokens
+
+
+def truncate_context_for_window(
+    context: dict[str, Any], max_tokens: int, prompt_type: str = "simple"
+) -> dict[str, Any]:
+    """Truncate context to fit within token budget while preserving priority.
+
+    Args:
+        context: The full context dictionary.
+        max_tokens: Maximum tokens allowed for the context.
+        prompt_type: Type of prompt for priority adjustments.
+
+    Returns:
+        Truncated context dictionary.
+    """
+    # Start with full context
+    truncated = context.copy()
+
+    # Calculate current token usage
+    current_tokens = estimate_tokens(json.dumps(truncated, indent=2))
+
+    if current_tokens <= max_tokens:
+        return truncated
+
+    # Priority order for truncation
+    if prompt_type == "simple":
+        # Simple: changes > requirements > minimal context
+        truncation_order = ["related_commits", "recent_commits", "commit_patterns"]
+        min_changes = MIN_CHANGES_CONTEXT
+    else:
+        # Advanced: related_commits > recent_commits > patterns > changes
+        truncation_order = ["related_commits", "recent_commits", "commit_patterns"]
+        min_changes = MIN_CHANGES_CONTEXT // 2  # Less restrictive for advanced
+
+    # Truncate by priority
+    for key in truncation_order:
+        if key in truncated and current_tokens > max_tokens:
+            if key == "related_commits":
+                # Truncate related commits first
+                original = truncated[key]
+                truncated[key] = original[: max(0, len(original) // 2)]
+            elif key == "recent_commits":
+                # Truncate recent commits
+                original = truncated[key]
+                truncated[key] = original[: max(1, len(original) // 2)]
+            elif key == "commit_patterns":
+                # Simplify patterns (remove less important data)
+                patterns = truncated[key].copy()
+                if "types" in patterns and len(patterns["types"]) > 5:
+                    # Keep only top 5 types
+                    patterns["types"] = dict(list(patterns["types"].items())[:5])
+                if "scopes" in patterns and len(patterns["scopes"]) > 3:
+                    # Keep only top 3 scopes
+                    patterns["scopes"] = dict(list(patterns["scopes"].items())[:3])
+                truncated[key] = patterns
+
+            # Recalculate tokens
+            current_tokens = estimate_tokens(json.dumps(truncated, indent=2))
+
+    # Final check - if still over budget, truncate staged changes
+    if current_tokens > max_tokens and "staged_changes" in truncated:
+        changes = truncated["staged_changes"]
+        changes_tokens = estimate_tokens(changes)
+        allowed_changes_tokens = max_tokens - (current_tokens - changes_tokens)
+
+        if allowed_changes_tokens < min_changes:
+            # Ensure minimum changes context
+            allowed_changes_tokens = min_changes
+
+        # Truncate changes to fit
+        if changes_tokens > allowed_changes_tokens:
+            lines = changes.split("\n")
+            truncated_lines = []
+            current_line_tokens = 0
+
+            for line in lines:
+                line_tokens = estimate_tokens(line + "\n")
+                if current_line_tokens + line_tokens <= allowed_changes_tokens:
+                    truncated_lines.append(line)
+                    current_line_tokens += line_tokens
+                else:
+                    # Add truncated indicator
+                    truncated_lines.append(
+                        f"... [truncated {len(lines) - len(truncated_lines)} lines]"
+                    )
+                    break
+
+            truncated["staged_changes"] = "\n".join(truncated_lines)
+
+    return truncated
+
+
+def create_structured_advanced_commit_message_prompt(
     context: dict[str, Any],
     config: OptionalConfig = None,
 ) -> str:
-    """Create an AI prompt for generating a commit message.
+    """Create a structured AI prompt for generating a contextually-aware commit message.
 
     Args:
-        context (Dict[str, Any]): Git context information.
-        config (OptionalConfig | None): Optional configuration settings.
+        context: Git context information.
+        config: Optional configuration settings.
 
     Returns:
-        str: Generated prompt for the AI model.
+        Structured prompt for the AI model.
     """
     # Get most common commit type from recent commits
     commit_types = context["commit_patterns"]["types"]
@@ -58,26 +190,94 @@ def create_advanced_commit_message_prompt(
     related_messages = [c["message"] for c in context["related_commits"]]
     related_json = json.dumps(related_messages, indent=2) if related_messages else "[]"
 
-    prompt = (
-        "Generate a concise and descriptive commit message for the following "
-        "changes:\n\n"
-        "Changes to commit:\n"
-        f"{context['staged_changes']}\n\n"
-        "Repository context:\n"
-        f"- Most used commit type: {common_type}\n"
-        "- Recent commits:\n"
-        f"{json.dumps(recent_messages, indent=2)}\n\n"
-        "Related commits:\n"
-        f"{related_json}"
-        "\n\n"
-        "Requirements:\n"
-        "1. Follow the repository's commit style (type: description)\n"
-        "2. Be specific about what changed and why\n"
-        "3. Reference related work if relevant\n"
-        "4. Keep it concise but descriptive"
+    # Get commit patterns for style guidance
+    patterns = context["commit_patterns"]
+    scopes = list(patterns.get("scopes", {}).keys())[:3]  # Top 3 scopes
+    scope_text = (
+        ", ".join(f"`{scope}`" for scope in scopes) if scopes else "not commonly used"
     )
+
+    prompt = f"""<task>
+Generate an accurate, contextually-aware conventional commit message
+for the provided git changes.
+</task>
+
+<repository_context>
+- Most common commit type: `{common_type}`
+- Recent commit patterns: {json.dumps(recent_messages, indent=2)}
+- Related work: {related_json}
+- Common scopes: {scope_text}
+</repository_context>
+
+<changes>
+{context["staged_changes"]}
+</changes>
+
+<style_guide>
+Follow repository patterns:
+- Common type: `{common_type}`
+- Typical scope usage: {scope_text}
+- Message length: Keep title under 72 characters
+</style_guide>
+
+<requirements>
+1. Match repository commit style and patterns
+2. Be specific about changes and rationale
+3. Reference related commits when relevant
+4. Use appropriate commit type and scope
+5. Keep title under 72 chars, body well-formatted
+</requirements>
+
+<output_format>
+type(scope): descriptive title
+
+Detailed explanation of what changed and why.
+Reference to related work if applicable.
+</output_format>"""
+
     if config and config.verbose:
-        debug_header("Generated prompt preview:")
+        debug_header("Generated structured advanced prompt preview:")
+        debug_preview(prompt)
+
+    return prompt
+
+
+def create_structured_simple_commit_message_prompt(
+    context: dict[str, Any],
+    config: OptionalConfig = None,
+) -> str:
+    """Create a structured AI prompt for generating a conventional commit message.
+
+    Args:
+        context: Git context information.
+        config: Optional configuration settings.
+
+    Returns:
+        Structured prompt for the AI model.
+    """
+    prompt = f"""<task>
+Generate a conventional commit message for the provided git changes.
+</task>
+
+<changes>
+{context["staged_changes"]}
+</changes>
+
+<requirements>
+1. Use conventional commit format: type: description
+2. Be specific about what changed
+3. Keep under 72 characters for title
+4. Add body only if explanation needed
+</requirements>
+
+<output_format>
+type: brief description
+
+[Optional detailed explanation]
+</output_format>"""
+
+    if config and config.verbose:
+        debug_header("Generated structured simple prompt preview:")
         debug_preview(prompt)
 
     return prompt
@@ -247,6 +447,8 @@ def generate_commit_message(config: GitConfig) -> str:
         if config and config.verbose:
             debug_header("Generating commit message with AI")
             debug_item("Prompt type", config.prompt_type)
+            if config.prompt and config.prompt.strip():
+                debug_item("Prompt override", "enabled")
 
         # Initialize AI client
         ai_client = AIClient(config)
@@ -258,11 +460,35 @@ def generate_commit_message(config: GitConfig) -> str:
         if config and config.verbose:
             debug_header("Creating AI prompt")
 
-        # Create prompt based on configuration
-        if config.prompt_type == "advanced":
-            prompt = create_advanced_commit_message_prompt(context, config)
+        # Calculate context budget and apply smart truncation
+        context_window = config.context_window or DEFAULT_CONTEXT_WINDOW
+        max_prompt_tokens, reserved_response_tokens = calculate_context_budget(
+            context_window, config.prompt_type
+        )
+
+        # Apply context window management
+        if config.prompt_type == "simple":
+            # Simple mode: more aggressive truncation for local usage
+            truncated_context = truncate_context_for_window(
+                context, max_prompt_tokens, "simple"
+            )
         else:
-            prompt = create_simple_commit_message_prompt(context, config)
+            # Advanced mode: preserve more context for accuracy
+            truncated_context = truncate_context_for_window(
+                context, max_prompt_tokens, "advanced"
+            )
+
+        # Create prompt based on configuration, allowing an explicit override.
+        if config.prompt and config.prompt.strip():
+            prompt = config.prompt.strip()
+        elif config.prompt_type == "advanced":
+            prompt = create_structured_advanced_commit_message_prompt(
+                truncated_context, config
+            )
+        else:
+            prompt = create_structured_simple_commit_message_prompt(
+                truncated_context, config
+            )
 
         # Send request to AI model
         messages = [{"role": "user", "content": prompt}]
@@ -290,9 +516,12 @@ def generate_commit_message(config: GitConfig) -> str:
 
 __all__ = [
     "AIClient",
-    "create_advanced_commit_message_prompt",
-    "create_simple_commit_message_prompt",
+    "create_structured_advanced_commit_message_prompt",
+    "create_structured_simple_commit_message_prompt",
     "get_commit_context",
     "edit_commit_message",
     "generate_commit_message",
+    "calculate_context_budget",
+    "truncate_context_for_window",
+    "estimate_tokens",
 ]

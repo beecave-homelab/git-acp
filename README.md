@@ -5,7 +5,7 @@ A Python tool to automate Git add, commit, and push actions with optional AI-gen
 ![GIT-ACP logo](./assets/logo/git-acp-logo-textonly.png)
 
 ![Python](https://img.shields.io/badge/python-3.10%2B-blue)
-![Version](https://img.shields.io/badge/version-0.19.0-brightgreen)
+![Version](https://img.shields.io/badge/version-0.20.0-brightgreen)
 ![License](https://img.shields.io/badge/license-MIT-green)
 
 ## Table of Contents
@@ -20,7 +20,9 @@ A Python tool to automate Git add, commit, and push actions with optional AI-gen
 ## Features
 
 - Single-command Git workflow automation
-- AI-powered commit messages via Ollama
+- AI-powered commit messages via Ollama with two prompt modes:
+  - **Simple**: Fast generation with basic context
+  - **Advanced**: Rich repository context for style-aware messages (default)
 - Interactive file selection and type suggestions
 - Conventional commits with emoji support
 - Consistent "all files" selection: choose **All files** in the prompt or use `-a .` to stage everything while still listing each file before commit.
@@ -44,7 +46,7 @@ For other installation methods and detailed instructions, see [`installation.md`
 git-acp
 
 # Commit specific files with message
-git-acp -a "README.md src/*.py" -m "Update documentation"
+git-acp -a "README.md src/*.py" -mb "Update documentation"
 
 # AI-generated commit message
 git-acp -o
@@ -69,7 +71,7 @@ nano ~/.config/git-acp/.env  # Adjust values as needed
 
 Example configuration (`~/.config/git-acp/.env`):
 
-```ini
+```env
 # Example configuration
 GIT_ACP_AI_MODEL=mevatron/diffsense:1.5b
 GIT_ACP_DEFAULT_BRANCH=main

@@ -11,6 +11,10 @@ def test_gitconfig_default_values() -> None:
     assert config.use_ollama is False
     assert config.interactive is False
     assert config.prompt_type == "advanced"
+    assert config.prompt is None
+    assert config.ai_model is None
+    assert config.context_window is None
+    assert config.dry_run is False
 
 
 def test_gitconfig_custom_values() -> None:
@@ -20,13 +24,19 @@ def test_gitconfig_custom_values() -> None:
         message="Custom message",
         use_ollama=True,
         interactive=True,
+        prompt="Write a commit message.",
         prompt_type="simple",
+        ai_model="example/model:latest",
+        context_window=4096,
     )
     assert custom_config.files == "src/"
     assert custom_config.message == "Custom message"
     assert custom_config.use_ollama is True
     assert custom_config.interactive is True
+    assert custom_config.prompt == "Write a commit message."
     assert custom_config.prompt_type == "simple"
+    assert custom_config.ai_model == "example/model:latest"
+    assert custom_config.context_window == 4096
 
 
 def test_diff_type_literal() -> None:
@@ -85,5 +95,9 @@ def test_config_serialization() -> None:
         "skip_confirmation": True,
         "verbose": False,
         "prompt_type": "advanced",
+        "prompt": None,
+        "ai_model": None,
+        "context_window": None,
+        "dry_run": False,
     }
     assert vars(config) == config_dict

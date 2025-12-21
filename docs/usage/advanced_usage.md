@@ -22,13 +22,14 @@ Then edit the `.env` file to customize your settings.
 The AI model selection determines which model will be used for generating commit messages. Different models have different capabilities, sizes, and performance characteristics. The default model `mevatron/diffsense:1.5b` is optimized for understanding code changes and generating relevant commit messages.
 
 **Tested Models:**
+
 - `mevatron/diffsense:0.5b`
 - `mevatron/diffsense:1.5b`
 - `tavernari/git-commit-message:latest`
 
 In your `~/.config/git-acp/.env` file:
 
-```ini
+```env
 # AI model configuration
 GIT_ACP_AI_MODEL=mevatron/diffsense:1.5b
 ```
@@ -37,7 +38,7 @@ GIT_ACP_AI_MODEL=mevatron/diffsense:1.5b
 
 In AI models, the temperature setting (ranging from 0.0 to 1.0) controls the randomness of the output. Lower values (e.g., 0.1) make the model's output more deterministic and focused, often producing more conventional commit messages. Higher values (e.g., 0.9) make the output more diverse and creative, potentially generating more unique but less conventional messages.
 
-```ini
+```env
 # Temperature for generation
 GIT_ACP_TEMPERATURE=0.7
 ```
@@ -53,7 +54,7 @@ GIT_ACP_TEMPERATURE=0.7
 
 The base URL and API key settings allow you to configure your preferred AI service. You can also set a fallback base URL that will be used if the primary service is unavailable. For local installations using Ollama, the default values are typically sufficient.
 
-```ini
+```env
 # Ollama API settings (default)
 GIT_ACP_BASE_URL=http://localhost:11434/v1
 GIT_ACP_FALLBACK_BASE_URL=https://diffsense.onrender.com/v1
@@ -131,11 +132,35 @@ Example output will be a conventional commit message that takes into account the
 
 The timeout setting (`GIT_ACP_AI_TIMEOUT`) controls how long to wait for AI responses before timing out. The default value of 120.0 seconds is suitable for most use cases, but you may want to adjust it based on your AI provider's response times.
 
-```ini
+```env
 # AI generation settings
 GIT_ACP_PROMPT_TYPE=simple  # or 'advanced' for more context
 GIT_ACP_AI_TIMEOUT=120.0    # timeout in seconds
+GIT_ACP_CONTEXT_WINDOW=8192 # context window size in tokens for Ollama requests
 ```
+
+### Per-Run CLI Overrides
+
+You can override AI settings for individual runs without modifying your configuration file:
+
+- `--model <model>`: Override the AI model for this run (e.g., `--model granite4:latest`)
+- `--context-window <tokens>`: Override the context window size for this run (e.g., `--context-window 4096`)
+- `--prompt <prompt>`: Provide a custom prompt that replaces the built-in templates for this run
+
+Example usage:
+
+```bash
+# Use a different model with larger context for a complex change
+git-acp -o --model granite4:latest --context-window 16384
+
+# Use a custom prompt for specific commit style
+git-acp -o --prompt "Generate a commit message in the format: type(scope): description"
+
+# Combine overrides
+git-acp -o --model llama3.2:latest --context-window 4096 --prompt "Generate a concise commit message focusing on the 'why' rather than the 'what'"
+```
+
+These flags take precedence over environment variables and defaults for the current invocation only.
 
 ## Git Configuration
 
@@ -143,7 +168,7 @@ GIT_ACP_AI_TIMEOUT=120.0    # timeout in seconds
 
 These settings define the default Git branch and remote repository for operations. They're particularly useful in automated workflows or when working with multiple remotes.
 
-```ini
+```env
 # Git defaults
 GIT_ACP_DEFAULT_BRANCH=main
 GIT_ACP_DEFAULT_REMOTE=origin
@@ -159,7 +184,7 @@ These settings control how many commits the tool analyzes when generating contex
 
 These settings only affect the advanced prompt type and are ignored when using simple mode.
 
-```ini
+```env
 # Analysis settings
 GIT_ACP_NUM_RECENT_COMMITS=3
 GIT_ACP_NUM_RELATED_COMMITS=3
@@ -174,7 +199,7 @@ GIT_ACP_MAX_DIFF_PREVIEW_LINES=10
 
 These settings control the appearance of different message types in the terminal output. Rich color names are supported to help distinguish between different types of information.
 
-```ini
+```env
 # Terminal Colors
 GIT_ACP_DEBUG_HEADER_COLOR=blue
 GIT_ACP_DEBUG_VALUE_COLOR=cyan
@@ -196,7 +221,7 @@ GIT_ACP_TERMINAL_WIDTH=100
 
 These settings define the commit type prefixes and their associated emojis, following the Conventional Commits specification.
 
-```ini
+```env
 # Commit type configuration
 GIT_ACP_COMMIT_TYPE_FEAT="feat ✨"
 GIT_ACP_COMMIT_TYPE_FIX="fix 🐛"
@@ -222,7 +247,7 @@ git-acp -b feature/new-feature -t feat -o
 
 ```bash
 # After resolving conflicts
-git-acp -m "Merge conflict resolution" -t fix
+git-acp -mb "Merge conflict resolution" -t fix
 ```
 
 ### Remote Operations
@@ -256,13 +281,13 @@ nano ~/.config/git-acp/.env
 #### Automated Commits
 
 ```bash
-git-acp -nc -m "CI: Update dependencies" -t chore
+git-acp -nc -mb "CI: Update dependencies" -t chore
 ```
 
 #### Version Bumping
 
 ```bash
-git-acp -a "version.txt" -m "chore(release): bump version to v0.17.0" -t chore
+git-acp -a "version.txt" -mb "chore(release): bump version to v0.17.0" -t chore
 ```
 
 ### Batch Operations
@@ -291,9 +316,9 @@ Exclude patterns (e.g., `!src/vendor/*`) are not supported.
 
 ### AI Generation
 
- - Choose a smaller or faster model
- - Use a local Ollama instance
- - Lower temperature for more deterministic responses
+- Choose a smaller or faster model
+- Use a local Ollama instance
+- Lower temperature for more deterministic responses
 
 ## Troubleshooting
 

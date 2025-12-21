@@ -2,7 +2,8 @@
 
 ## Table of Contents
 
-- [v0.19.0 (Current) - 19-12-2025](#v0190-current-19-12-2025)
+- [v0.20.0 (Current) - 20-12-2025](#v0200-current-20-12-2025)
+- [v0.19.0 - 19-12-2025](#v0190-19-12-2025)
 - [v0.18.0 - 02-12-2025](#v0180-02-12-2025)
 - [v0.17.0 - 10-08-2025](#v0170-10-08-2025)
 - [v0.16.0 - August 2025](#v0160-august-2025)
@@ -30,7 +31,40 @@
 - [v0.6.0 - 21-12-2024](#v060-21-12-2024)
 - [v0.5.0 - 20-12-2024](#v050-20-12-2024)
 
-## v0.19.0 (Current) - *19-12-2025* {#v0190-current-19-12-2025}
+## v0.20.0 (Current) - *20-12-2025* {#v0200-current-20-12-2025}
+
+### ✨ Brief Description (v0.20.0)
+
+Feature release adding --dry-run flag functionality for testing the complete git-acp workflow without actually committing or pushing changes.
+
+### ✨ New Features in v0.20.0
+
+- **Added**: `--dry-run` flag (`-dr, --dry-run`) to show what would be committed without actually committing or pushing.
+- **Added**: Context management functions for AI prompt optimization including token estimation and context budget calculation.
+- **Added**: Structured prompt templates for both simple and advanced AI commit message generation.
+
+### 🔧 Improvements in v0.20.0
+
+- **Enhanced**: AI commit message generation with better context window management and token optimization.
+- **Improved**: Code formatting and line length compliance across AI utilities.
+- **Updated**: Configuration system with context ratio settings for different prompt types.
+
+### ⚠️ Migration Notes in v0.20.0
+
+- **CLI flag change**: `-m` now maps to `--model` (AI model override). If you previously used `-m` for a manual commit message, use `-mb/--message-body` instead.
+
+### 🧪 Testing improvements in v0.20.0
+
+- **Added**: Comprehensive test coverage for context management functions including token estimation and truncation.
+- **Updated**: Test serialization to include new dry_run configuration field.
+
+### 📝 Key Commits in v0.20.0
+
+`53618ca`, `b2015bb`, `194ad44`, `51090ed`, `8be2b5e`
+
+---
+
+## v0.19.0 - *19-12-2025* {#v0190-19-12-2025}
 
 ### ✨ Brief Description (v0.19.0)
 

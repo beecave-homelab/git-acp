@@ -1,6 +1,5 @@
 # `git_acp` Package Documentation
 
-**Version**: `0.17.0`
 **Summary**: The `git_acp` package is a command-line utility and Python API for automating common Git workflows with enhanced features such as:
 
 - Interactive file selection
@@ -42,35 +41,38 @@ You can install the `git_acp` package by cloning the repository or adding it to 
 
 ## Package Layout
 
-```markdown
-git_acp/
-├── ai/
-│   ├── __init__.py
-│   ├── ai_utils.py
-│   └── client.py
-├── cli/
-│   ├── __init__.py
-│   └── cli.py
-├── config/
-│   ├── __init__.py
-│   ├── constants.py
-│   └── env_config.py
-├── git/
-│   ├── __init__.py
-│   ├── classification.py
-│   ├── core.py
-│   ├── diff.py
-│   ├── git_operations.py
-│   ├── history.py
-│   ├── management.py
-│   ├── operations.py
-│   └── staging.py
-├── utils/
-│   ├── __init__.py
-│   ├── formatting.py
-│   └── types.py
-├── __init__.py
-└── __main__.py
+```txt
+└── git_acp
+   ├── __init__.py
+   ├── __main__.py
+   ├── ai
+   │  ├── __init__.py
+   │  ├── ai_utils.py
+   │  └── client.py
+   ├── cli
+   │  ├── __init__.py
+   │  ├── cli.py
+   │  ├── interaction.py
+   │  └── workflow.py
+   ├── config
+   │  ├── __init__.py
+   │  ├── constants.py
+   │  └── env_config.py
+   ├── git
+   │  ├── __init__.py
+   │  ├── classification.py
+   │  ├── core.py
+   │  ├── diff.py
+   │  ├── git_operations.py
+   │  ├── history.py
+   │  ├── management.py
+   │  ├── operations.py
+   │  └── staging.py
+   └── utils
+      ├── __init__.py
+      ├── formatting.py
+      └── types.py
+
 ```
 
 ---
@@ -153,7 +155,7 @@ Implements the `main` command via Click decorators and subcommands/options.
   **Options**:
   1. `-a, --add <file>`  
      Specify which files to stage. If not provided, an interactive file selection is displayed.
-  2. `-m, --message <message>`  
+  2. `-mb, --message-body <message>`  
      Specify a commit message directly.
   3. `-b, --branch <branch>`  
      Specify a branch to push to. Defaults to current branch if not provided.
@@ -163,11 +165,17 @@ Implements the `main` command via Click decorators and subcommands/options.
      Toggle AI-based commit message generation.
   6. `-i, --interactive`  
      If set, allows editing the AI-generated commit message.
-  7. `-p, --prompt-type [simple|advanced]`  
-     Choose AI prompt style. Defaults to `advanced`.
-  8. `-nc, --no-confirm`  
+  7. `-p, --prompt <prompt>`  
+     Override the prompt sent to the AI model.
+  8. `-pt, --prompt-type [simple|advanced]`  
+     Choose AI prompt style. Defaults to `simple`.
+  9. `-m, --model <model>`  
+     Override the default AI model.
+  10. `-ct, --context-window <tokens>`  
+     Override the AI context window size (num_ctx).
+  11. `-nc, --no-confirm`  
      Skip confirmations.
-  9. `-v, --verbose`  
+  12. `-v, --verbose`  
      Print debug info.
 
 **Primary Workflow**:
@@ -321,7 +329,7 @@ Provides functionality for printing styled debug and status messages using [Rich
 
 Defines custom data classes and type aliases used throughout `git_acp`.
 
-  - **Dataclass**: `GitConfig`
+- **Dataclass**: `GitConfig`
     Holds settings for Git operations:
 
     ```python
@@ -329,24 +337,28 @@ Defines custom data classes and type aliases used throughout `git_acp`.
     class GitConfig:
         files: str = "."
         message: str = "Automated commit"
-        branch: Optional['GitConfig'] = None
+        branch: str | None = None
         use_ollama: bool = False
         interactive: bool = False
         skip_confirmation: bool = False
         verbose: bool = False
         prompt_type: str = "advanced"
+        prompt: str | None = None
+        ai_model: str | None = None
+        context_window: int | None = None
+        dry_run: bool = False
     ```
 
-  - **Type Aliases**:
-    - `OptionalConfig = Optional[GitConfig]`
-    - `DiffType = Literal["staged", "unstaged"]`
-    - `RemoteOperation = Literal["add", "remove", "set-url"]`
-    - `TagOperation = Literal["create", "delete", "push"]`
-    - `StashOperation = Literal["save", "pop", "apply", "drop", "list"]`
-    - `CommitDict = Dict[str, str]`
-    - `PromptType = Literal["simple", "advanced"]`
-    - `Message = Dict[str, str]`
-    - `CommitContext = Dict[str, Any]`
+- **Type Aliases**:
+  - `OptionalConfig = Optional[GitConfig]`
+  - `DiffType = Literal["staged", "unstaged"]`
+  - `RemoteOperation = Literal["add", "remove", "set-url"]`
+  - `TagOperation = Literal["create", "delete", "push"]`
+  - `StashOperation = Literal["save", "pop", "apply", "drop", "list"]`
+  - `CommitDict = Dict[str, str]`
+  - `PromptType = Literal["simple", "advanced"]`
+  - `Message = Dict[str, str]`
+  - `CommitContext = Dict[str, Any]`
 
 ---
 
@@ -373,7 +385,7 @@ Below is a simple command-line usage example:
 git-acp --ollama --no-confirm
 
 # Or specify a custom commit message directly:
-git-acp -a "." -m "Refactor module to improve performance" --type refactor
+git-acp -a "." -mb "Refactor module to improve performance" --type refactor
 ```
 
 If you want to incorporate this in a Python script:

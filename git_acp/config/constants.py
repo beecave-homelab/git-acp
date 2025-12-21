@@ -41,6 +41,21 @@ DEFAULT_PROMPT_TYPE: Final[str] = get_env(
 DEFAULT_AI_TIMEOUT: Final[float] = get_env(
     "GIT_ACP_AI_TIMEOUT", 120.0, float
 )  # Timeout in seconds for AI requests
+DEFAULT_CONTEXT_WINDOW: Final[int] = get_env(
+    "GIT_ACP_CONTEXT_WINDOW", 8192, int
+)  # Context window size in tokens for Ollama requests
+
+# Prompt Context Configuration
+# Context ratios determine what portion of the window is used for prompts vs response
+SIMPLE_PROMPT_CONTEXT_RATIO: Final[float] = get_env(
+    "GIT_ACP_SIMPLE_CONTEXT_RATIO", 0.65, float
+)  # 65% of context window for simple prompts (local-first)
+ADVANCED_PROMPT_CONTEXT_RATIO: Final[float] = get_env(
+    "GIT_ACP_ADVANCED_CONTEXT_RATIO", 0.80, float
+)  # 80% of context window for advanced prompts
+MIN_CHANGES_CONTEXT: Final[int] = get_env(
+    "GIT_ACP_MIN_CHANGES_CONTEXT", 2000, int
+)  # Minimum tokens reserved for staged changes
 
 # Git Configuration
 # Basic settings for git operations

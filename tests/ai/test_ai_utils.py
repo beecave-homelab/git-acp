@@ -10,11 +10,14 @@ import pytest
 
 from git_acp.ai.ai_utils import (
     AIClient,
-    create_advanced_commit_message_prompt,
-    create_simple_commit_message_prompt,
+    calculate_context_budget,
+    create_structured_advanced_commit_message_prompt,
+    create_structured_simple_commit_message_prompt,
     edit_commit_message,
+    estimate_tokens,
     generate_commit_message,
     get_commit_context,
+    truncate_context_for_window,
 )
 from git_acp.config import (
     DEFAULT_AI_TIMEOUT,
@@ -183,18 +186,23 @@ def test_get_commit_context_error(mock_config):
 # Prompt Creation Tests
 def test_create_advanced_prompt(mock_context, mock_config):
     """Test advanced commit message prompt creation."""
-    prompt = create_advanced_commit_message_prompt(mock_context, mock_config)
+    prompt = create_structured_advanced_commit_message_prompt(mock_context, mock_config)
     assert isinstance(prompt, str)
-    assert "Changes to commit:" in prompt
-    assert "Repository context:" in prompt
-    assert "Most used commit type:" in prompt
+    assert "<task>" in prompt
+    assert "<repository_context>" in prompt
+    assert "<changes>" in prompt
+    assert "<requirements>" in prompt
+    assert "<output_format>" in prompt
 
 
 def test_create_simple_prompt(mock_context, mock_config):
     """Test simple commit message prompt creation."""
-    prompt = create_simple_commit_message_prompt(mock_context, mock_config)
+    prompt = create_structured_simple_commit_message_prompt(mock_context, mock_config)
     assert isinstance(prompt, str)
-    assert "Generate a concise" in prompt
+    assert "<task>" in prompt
+    assert "<changes>" in prompt
+    assert "<requirements>" in prompt
+    assert "<output_format>" in prompt
     assert mock_context["staged_changes"] in prompt
 
 
@@ -229,6 +237,140 @@ def test_edit_commit_message_interactive():
         assert result == "feat: edited message"
 
 
+# Context Management Tests
+class TestContextManagement:
+    """Test suite for context window management functions."""
+
+    def test_estimate_tokens(self):
+        """Test token estimation function."""
+        # Test basic cases
+        assert estimate_tokens("") == 1  # Minimum 1 token
+        assert estimate_tokens("test") == 1  # 4 chars = 1 token
+        assert estimate_tokens("test test test test") == 4  # 16 chars = 4 tokens
+        assert estimate_tokens("a" * 100) == 25  # 100 chars = 25 tokens
+
+    def test_calculate_context_budget_simple(self):
+        """Test context budget calculation for simple prompts."""
+        max_tokens, reserved_tokens = calculate_context_budget(8192, "simple")
+
+        # Simple uses 65% of context window
+        expected_max = int(8192 * 0.65)
+        expected_reserved = 8192 - expected_max
+
+        assert max_tokens == expected_max
+        assert reserved_tokens == expected_reserved
+
+    def test_calculate_context_budget_advanced(self):
+        """Test context budget calculation for advanced prompts."""
+        max_tokens, reserved_tokens = calculate_context_budget(8192, "advanced")
+
+        # Advanced uses 80% of context window
+        expected_max = int(8192 * 0.80)
+        expected_reserved = 8192 - expected_max
+
+        assert max_tokens == expected_max
+        assert reserved_tokens == expected_reserved
+
+    def test_calculate_context_budget_custom_window(self):
+        """Test context budget with custom window size."""
+        max_tokens, reserved_tokens = calculate_context_budget(4096, "simple")
+
+        expected_max = int(4096 * 0.65)
+        expected_reserved = 4096 - expected_max
+
+        assert max_tokens == expected_max
+        assert reserved_tokens == expected_reserved
+
+    def test_truncate_context_for_window_no_truncation_needed(self):
+        """Test context truncation when no truncation is needed."""
+        context = {
+            "staged_changes": "small change",
+            "recent_commits": [{"message": "feat: test"}],
+            "related_commits": [],
+            "commit_patterns": {"types": {"feat": 1}, "scopes": {}},
+        }
+
+        # Large enough budget to fit everything
+        result = truncate_context_for_window(context, 10000, "simple")
+
+        # Should return unchanged context
+        assert result == context
+
+    def test_truncate_context_for_window_simple_mode(self):
+        """Test context truncation in simple mode."""
+        # Create a large context that needs truncation
+        large_change = "change\n" * 1000  # Large staged changes
+        many_commits = [{"message": f"feat: commit {i}"} for i in range(20)]
+
+        context = {
+            "staged_changes": large_change,
+            "recent_commits": many_commits,
+            "related_commits": many_commits,
+            "commit_patterns": {
+                "types": {f"type_{i}": i for i in range(10)},
+                "scopes": {f"scope_{i}": i for i in range(10)},
+            },
+        }
+
+        # Small budget that requires truncation
+        result = truncate_context_for_window(context, 1000, "simple")
+
+        # Should preserve staged changes but truncate others
+        assert "staged_changes" in result
+        assert len(result["related_commits"]) < len(context["related_commits"])
+        assert len(result["recent_commits"]) < len(context["recent_commits"])
+
+        # Simple mode should be more aggressive (higher min_changes)
+        assert len(result["commit_patterns"]["types"]) <= 5
+
+    def test_truncate_context_for_window_advanced_mode(self):
+        """Test context truncation in advanced mode."""
+        # Create a large context
+        large_change = "change\n" * 1000
+        many_commits = [{"message": f"feat: commit {i}"} for i in range(20)]
+
+        context = {
+            "staged_changes": large_change,
+            "recent_commits": many_commits,
+            "related_commits": many_commits,
+            "commit_patterns": {
+                "types": {f"type_{i}": i for i in range(10)},
+                "scopes": {f"scope_{i}": i for i in range(10)},
+            },
+        }
+
+        # Small budget
+        result = truncate_context_for_window(context, 1000, "advanced")
+
+        # Advanced mode should preserve more context
+        assert "staged_changes" in result
+
+        # Advanced mode should be less restrictive
+        assert len(result["commit_patterns"]["types"]) <= 5
+
+    def test_truncate_context_for_window_preserves_minimum_changes(self):
+        """Test that truncation preserves minimum required changes context."""
+        large_change = "change\n" * 1000
+
+        context = {
+            "staged_changes": large_change,
+            "recent_commits": [],
+            "related_commits": [],
+            "commit_patterns": {"types": {}, "scopes": {}},
+        }
+
+        # Very small budget that would normally truncate changes too much
+        result = truncate_context_for_window(context, 500, "simple")
+
+        # Should still have some staged changes content
+        assert "staged_changes" in result
+        assert len(result["staged_changes"]) > 0
+
+        # Should have truncation indicator if actually truncated
+        if "[truncated" in result["staged_changes"]:
+            assert "truncated" in result["staged_changes"]
+
+
 # Message Generation Tests
 def test_generate_commit_message(mock_config, mock_context, mock_openai_response):
     """Test complete commit message generation workflow."""
@@ -244,6 +386,46 @@ def test_generate_commit_message(mock_config, mock_context, mock_openai_response
         message = generate_commit_message(mock_config)
         assert isinstance(message, str)
         assert message == "feat: generated message"
+
+
+def test_generate_commit_message__uses_prompt_override(mock_context) -> None:
+    """Use explicit prompt override instead of simple/advanced templates."""
+    override_prompt = "Write a commit message for these changes."
+    config = GitConfig(
+        files="test.py",
+        message=None,
+        branch="main",
+        use_ollama=True,
+        interactive=False,
+        skip_confirmation=False,
+        verbose=False,
+        prompt=override_prompt,
+        prompt_type="advanced",
+    )
+
+    with (
+        patch("git_acp.ai.ai_utils.AIClient") as mock_client_class,
+        patch("git_acp.ai.ai_utils.get_commit_context") as mock_get_context,
+        patch(
+            "git_acp.ai.ai_utils.create_structured_advanced_commit_message_prompt"
+        ) as mock_adv,
+        patch(
+            "git_acp.ai.ai_utils.create_structured_simple_commit_message_prompt"
+        ) as mock_simple,
+    ):
+        mock_client = Mock()
+        mock_client.chat_completion.return_value = "feat: generated message"
+        mock_client_class.return_value = mock_client
+        mock_get_context.return_value = mock_context
+
+        result = generate_commit_message(config)
+
+        assert result == "feat: generated message"
+        mock_adv.assert_not_called()
+        mock_simple.assert_not_called()
+
+        call_args = mock_client.chat_completion.call_args
+        assert call_args.args[0][0]["content"] == override_prompt
 
 
 def test_generate_commit_message_error(mock_config):
@@ -295,7 +477,7 @@ class TestVerboseMode:
         self, mock_header, mock_preview, verbose_config, mock_context
     ):
         """Log debug output when creating advanced prompt in verbose mode."""
-        create_advanced_commit_message_prompt(mock_context, verbose_config)
+        create_structured_advanced_commit_message_prompt(mock_context, verbose_config)
 
         mock_header.assert_called()
         mock_preview.assert_called()
@@ -306,7 +488,7 @@ class TestVerboseMode:
         self, mock_header, mock_preview, verbose_config, mock_context
     ):
         """Log debug output when creating simple prompt in verbose mode."""
-        create_simple_commit_message_prompt(mock_context, verbose_config)
+        create_structured_simple_commit_message_prompt(mock_context, verbose_config)
 
         mock_header.assert_called()
         mock_preview.assert_called()
