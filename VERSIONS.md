@@ -49,6 +49,10 @@ Feature release adding --dry-run flag functionality for testing the complete git
 - **Improved**: Code formatting and line length compliance across AI utilities.
 - **Updated**: Configuration system with context ratio settings for different prompt types.
 
+### ⚠️ Migration Notes in v0.20.0
+
+- **CLI flag change**: `-m` now maps to `--model` (AI model override). If you previously used `-m` for a manual commit message, use `-mb/--message-body` instead.
+
 ### 🧪 Testing improvements in v0.20.0
 
 - **Added**: Comprehensive test coverage for context management functions including token estimation and truncation.

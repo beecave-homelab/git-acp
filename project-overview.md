@@ -698,6 +698,8 @@ The main entry point is `git_acp.cli.cli.main`. It provides a set of options to 
 
 **Options:**
 
+**Migration note (v0.20.0)**: `-m` is now `--model` (AI model override). If you previously used `-m` for a manual commit message, use `-mb/--message-body` instead.
+
 - `-a, --add`: Specify files to stage.
 - `-mb, --message-body`: Provide a custom commit message body.
 - `-b, --branch`: Target branch for push.
