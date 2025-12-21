@@ -38,7 +38,8 @@ The tool provides several options grouped into three categories:
 - `-p, --prompt <prompt>`: Override the prompt sent to the AI model
 - `-pt, --prompt-type <type>`: Select AI prompt complexity ('simple' or 'advanced')
   - `simple`: Fast generation with basic context
-  - `advanced`: Rich repository context for style-aware messages (default)
+  - `advanced`: Rich repository context for style-aware messages
+  - Defaults to `simple`
   - See [advanced_usage.md](advanced_usage.md#ai-configuration) for detailed comparison
 - `-m, --model <model>`: Override the AI model name used for Ollama/OpenAI-compatible requests
 - `-ct, --context-window <tokens>`: Override the AI context window size (num_ctx) used for Ollama requests

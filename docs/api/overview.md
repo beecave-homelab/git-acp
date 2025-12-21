@@ -166,7 +166,7 @@ Implements the `main` command via Click decorators and subcommands/options.
   7. `-p, --prompt <prompt>`  
      Override the prompt sent to the AI model.
   8. `-pt, --prompt-type [simple|advanced]`  
-     Choose AI prompt style. Defaults to `advanced`.
+     Choose AI prompt style. Defaults to `simple`.
   9. `-m, --model <model>`  
      Override the default AI model.
   10. `-ct, --context-window <tokens>`  
