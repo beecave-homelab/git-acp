@@ -14,6 +14,7 @@ def test_gitconfig_default_values() -> None:
     assert config.prompt is None
     assert config.ai_model is None
     assert config.context_window is None
+    assert config.dry_run is False
 
 
 def test_gitconfig_custom_values() -> None:

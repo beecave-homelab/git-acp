@@ -254,7 +254,7 @@ class AIClient:
                 "Could not connect to Ollama server. Please ensure:\n"
                 "1. Ollama is running (run 'ollama serve')\n"
                 "2. The model is installed (run "
-                "'ollama pull mevatron/diffsense:1.5b')\n"
+                f"'ollama pull {self.model}')\n"
                 "3. The server URL is correct in your configuration"
             ) from None
         except ValueError as e:
@@ -264,7 +264,7 @@ class AIClient:
             if "model" in str(e).lower():
                 raise GitError(
                     f"AI model '{self.model}' not found. "
-                    "Please run 'ollama pull mevatron/diffsense:1.5b' to "
+                    f"Please run 'ollama pull {self.model}' to "
                     "install it."
                 ) from e
             raise GitError(f"Invalid AI request parameters: {str(e)}") from e
