@@ -494,6 +494,8 @@ class GitWorkflow:
         except GitError:
             # If unstaging fails, it's not critical for dry-run
             if self.config.verbose:
-                self.interaction.print_message(
-                    f"[{status}]Note: Could not unstage files (dry-run cleanup)[/{status}]"
+                message = (
+                    f"[{status}]Note: Could not unstage files "
+                    f"(dry-run cleanup)[/{status}]"
                 )
+                self.interaction.print_message(message)

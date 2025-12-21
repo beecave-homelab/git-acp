@@ -39,7 +39,7 @@ Feature release adding --dry-run flag functionality for testing the complete git
 
 ### ✨ New Features in v0.20.0
 
-- **Added**: `--dry-run` flag (`-d, --dry-run`) to show what would be committed without actually committing or pushing.
+- **Added**: `--dry-run` flag (`-dr, --dry-run`) to show what would be committed without actually committing or pushing.
 - **Added**: Context management functions for AI prompt optimization including token estimation and context budget calculation.
 - **Added**: Structured prompt templates for both simple and advanced AI commit message generation.
 
