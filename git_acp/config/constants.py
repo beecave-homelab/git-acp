@@ -64,6 +64,9 @@ DEFAULT_REMOTE: Final[str] = get_env("GIT_ACP_DEFAULT_REMOTE", "origin")
 DEFAULT_NUM_RECENT_COMMITS: Final[int] = get_env("GIT_ACP_NUM_RECENT_COMMITS", 3, int)
 DEFAULT_NUM_RELATED_COMMITS: Final[int] = get_env("GIT_ACP_NUM_RELATED_COMMITS", 3, int)
 MAX_DIFF_PREVIEW_LINES: Final[int] = get_env("GIT_ACP_MAX_DIFF_PREVIEW_LINES", 10, int)
+DEFAULT_AUTO_GROUP_MAX_NON_TYPE_GROUPS: Final[int] = get_env(
+    "GIT_ACP_AUTO_GROUP_MAX_NON_TYPE_GROUPS", 5, int
+)
 
 # File patterns to exclude from git operations
 # These patterns match common build artifacts and environment-specific files
