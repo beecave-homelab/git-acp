@@ -99,5 +99,6 @@ def test_config_serialization() -> None:
         "ai_model": None,
         "context_window": None,
         "dry_run": False,
+        "auto_group": False,
     }
     assert vars(config) == config_dict
