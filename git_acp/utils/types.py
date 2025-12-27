@@ -26,6 +26,7 @@ class GitConfig:
         ai_model: Optional AI model override for the current run.
         context_window: Optional context window size override in tokens.
         dry_run: Whether to run in dry-run mode without committing or pushing.
+        auto_group: Whether to automatically group changes into multiple commits.
     """
 
     files: str = "."
@@ -40,6 +41,7 @@ class GitConfig:
     ai_model: str | None = None
     context_window: int | None = None
     dry_run: bool = False
+    auto_group: bool = False
 
 
 # Git operations types
