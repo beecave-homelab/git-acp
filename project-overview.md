@@ -1,7 +1,7 @@
 ---
 repo: https://github.com/beecave-homelab/git-acp.git
-commit: 82bae40aa2d79374787c784142cf7fa507bb3666
-updated: 2025-12-20T14:43:20Z
+commit: aa6be1ba1170e5d45aec681b89314109b22b0a1d
+updated: 2025-12-27T19:20:29Z
 ---
 <!-- markdownlint-disable-file MD033 -->
 <!-- SECTIONS:API,CLI,WEBUI,CI,DOCKER,TESTS -->
@@ -11,7 +11,7 @@ updated: 2025-12-20T14:43:20Z
 `git-acp` is a command-line tool that automates the `git add`, `commit`, and `push` workflow. It offers interactive file selection, AI-powered commit message generation via Ollama, and enforces Conventional Commits standards.
 
 ![Language](https://img.shields.io/badge/Python-3.10+-blue)
-[![Version](https://img.shields.io/badge/Version-0.20.0-brightgreen)](#version-summary)
+[![Version](https://img.shields.io/badge/Version-0.21.0-brightgreen)](#version-summary)
 [![CLI](https://img.shields.io/badge/CLI-Click-blue)](#cli)
 [![Coverage](https://img.shields.io/badge/Coverage-97%25-brightgreen)](#tests)
 
@@ -29,8 +29,6 @@ updated: 2025-12-20T14:43:20Z
 - [Tests](#tests)
 
 ## Quickstart for Developers
-
-::: details
 
 ```bash
 # Recommended installation with pipx
@@ -55,26 +53,26 @@ pdm export --pyproject --no-hashes --prod -o requirements.txt
 pdm export --pyproject --no-hashes -G lint,test -o requirements.dev.txt
 ```
 
-:::
-
 ## Version Summary
 
-| Version | Date       | Type | Key Changes                |
-|---------|------------|------|----------------------------|
-| 0.20.0  | 20-12-2025 | ✨   | Add --dry-run flag for testing workflow without committing |
-| 0.19.0  | 19-12-2025 | ✨   | Improve commit type recommendation (file paths + emoji prefix) |
-| 0.18.0  | 02-12-2025 | ✨   | Fix -a flag logic, update eza, enhance tests & UX |
-| 0.17.0  | 10-08-2025 | ✨   | Add fallback Ollama server; git ops flattening |
-| 0.16.0  | 2025-08-08 | ✨   | Refactors and enhancements; feature work |
-| 0.15.1  | 2024-07-08 | 🐛   | Fixed -a flag logic, minor enhancements |
-| 0.15.0  | 2025-06-20 | ✨   | Enhanced CLI & version bump |
-| 0.14.1  | YYYY-MM-DD | ✨   | Initial project setup      |
+| Version | Date | Type | Key Changes |
+| ------- | ---- | ---- | ----------- |
+| 0.21.0 | 27-12-2025 | ✨ | Add auto-group mode (`-ag/--auto-group`) for deterministic multi-commit workflow |
+| 0.20.0 | 20-12-2025 | ✨ | Add `--dry-run` flag for testing workflow without committing |
+| 0.19.0 | 19-12-2025 | ✨ | Improve commit type recommendation (file paths + emoji prefix) |
+| 0.18.0 | 02-12-2025 | ✨ | Fix `-a` flag logic, update eza, enhance tests & UX |
+| 0.17.0 | 10-08-2025 | ✨ | Add fallback Ollama server; git ops flattening |
+| 0.16.0 | 2025-08-08 | ✨ | Refactors and enhancements; feature work |
+| 0.15.1 | 2024-07-08 | 🐛 | Fixed `-a` flag logic, minor enhancements |
+| 0.15.0 | 2025-06-20 | ✨ | Enhanced CLI & version bump |
+| 0.14.1 | YYYY-MM-DD | ✨ | Initial project setup |
 
 ## Project Features
 
 - Interactive staging of changed files.
 - AI-generated commit messages using Ollama.
 - **Smart commit type classification** using file-path-first heuristics with keyword fallback.
+- **Auto-group mode** (`-ag/--auto-group`) to split unstaged changes into multiple focused commits using deterministic file grouping.
 - Support for Conventional Commits specification.
 - Consistent "all files" selection: choose **All files** in the prompt or use `-a .` to stage everything while still listing each file before commit.
 - Rich terminal output for better user experience.
@@ -82,8 +80,6 @@ pdm export --pyproject --no-hashes -G lint,test -o requirements.dev.txt
 - Verbose mode for debugging.
 
 ## Project Structure
-
-::: details
 
 ```text
 git_acp/
@@ -136,6 +132,7 @@ tests/
 - **Dependency Injection**: `AIClient` and `GitWorkflow` accept injected dependencies for testing.
 - **Modular Design**: Separate packages for AI, CLI, git operations, and configuration.
 - **SOLID Principles**: Single Responsibility (workflow vs CLI), Dependency Inversion (protocols).
+- **Auto-group orchestration**: CLI can iterate deterministic file groups and run multiple workflow instances safely.
 
 ### Component Interaction Diagram
 
@@ -597,13 +594,13 @@ class CommitType(Enum):
 
 The `classify_commit_type()` function uses a priority-based approach:
 
-| Priority | Source | Description |
-|----------|--------|-------------|
-| 1 | Message prefix | Explicit `feat:`, `feat ✨:`, `fix:`, `fix 🐛:`, etc. in commit message |
-| 2 | File paths | `tests/` → test, `docs/` → docs, `.github/` → chore |
-| 3 | Message keywords | Semantic hints like "implement", "fix", "refactor" |
-| 4 | Diff keywords | Fallback pattern matching in git diff |
-| 5 | Default | Returns `CHORE` when no patterns match |
+| Priority | Source           | Description                                                             |
+| -------- | ---------------- | ----------------------------------------------------------------------- |
+| 1        | Message prefix   | Explicit `feat:`, `feat ✨:`, `fix:`, `fix 🐛:`, etc. in commit message |
+| 2        | File paths       | `tests/` → test, `docs/` → docs, `.github/` → chore                     |
+| 3        | Message keywords | Semantic hints like "implement", "fix", "refactor"                      |
+| 4        | Diff keywords    | Fallback pattern matching in git diff                                   |
+| 5        | Default          | Returns `CHORE` when no patterns match                                  |
 
 The implementation lives in [`git_acp/git/classification.py`](git_acp/git/classification.py).
 File path patterns are defined in [`git_acp/config/constants.py`](git_acp/config/constants.py) (`FILE_PATH_PATTERNS`).
@@ -658,7 +655,7 @@ convention = "google"
 ### SOLID Principles Applied
 
 | Principle | Application |
-|-----------|-------------|
+| --------- | ---------- |
 | **SRP** | [`cli.py`](git_acp/cli/cli.py) handles CLI parsing only; [`workflow.py`](git_acp/cli/workflow.py) handles orchestration. |
 | **OCP** | `UserInteraction` protocol allows new implementations without modifying `GitWorkflow`. |
 | **LSP** | `TestInteraction` is substitutable for `RichQuestionaryInteraction`. |
@@ -690,8 +687,6 @@ PromptType = Literal["simple", "advanced"]
 DiffType = Literal["staged", "unstaged"]
 ```
 
-:::
-
 ## CLI
 
 The main entry point is `git_acp.cli.cli.main`. It provides a set of options to control the git workflow.
@@ -709,6 +704,7 @@ The main entry point is `git_acp.cli.cli.main`. It provides a set of options to 
 - `-nc, --no-confirm`: Skip confirmation prompts.
 - `-v, --verbose`: Enable verbose output.
 - `-dr, --dry-run`: Show what would be committed without actually committing or pushing.
+- `-ag, --auto-group`: Automatically group related changes into multiple focused commits.
 - `-p, --prompt`: Override the prompt sent to the AI model.
 - `-pt, --prompt-type`: Select AI prompt complexity.
 - `-m, --model`: Override the default AI model.
@@ -724,7 +720,7 @@ This section is not implemented in the current codebase.
 
 ## CI
 
-- GitHub Actions workflow: `/blob/82bae40aa2d79374787c784142cf7fa507bb3666/.github/workflows/pr-ci.yaml`
+- GitHub Actions workflow: `/blob/aa6be1ba1170e5d45aec681b89314109b22b0a1d/.github/workflows/pr-ci.yaml`
 - Runs Ruff (lint/format) and Pytest (with coverage) on PRs.
 
 ## DOCKER
@@ -748,7 +744,5 @@ Test coverage: **97%** (branch coverage enabled).
 ```bash
 pdm run pytest --cov=git_acp --cov-branch --cov-report=term-missing
 ```
-
-:::
 
 **Always update this file when code or configuration changes.**
