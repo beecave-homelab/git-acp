@@ -2,7 +2,8 @@
 
 ## Table of Contents
 
-- [v0.20.0 (Current) - 20-12-2025](#v0200-current-20-12-2025)
+- [v0.21.0 (Current) - 27-12-2025](#v0210-current-27-12-2025)
+- [v0.20.0 - 20-12-2025](#v0200-20-12-2025)
 - [v0.19.0 - 19-12-2025](#v0190-19-12-2025)
 - [v0.18.0 - 02-12-2025](#v0180-02-12-2025)
 - [v0.17.0 - 10-08-2025](#v0170-10-08-2025)
@@ -31,7 +32,38 @@
 - [v0.6.0 - 21-12-2024](#v060-21-12-2024)
 - [v0.5.0 - 20-12-2024](#v050-20-12-2024)
 
-## v0.20.0 (Current) - *20-12-2025* {#v0200-current-20-12-2025}
+## v0.21.0 (Current) - *27-12-2025* {#v0210-current-27-12-2025}
+
+### ✨ Brief Description (v0.21.0)
+
+Feature release adding auto-group mode to split unstaged changes into multiple focused commits using deterministic file grouping.
+
+### ✨ New Features in v0.21.0
+
+- **Added**: `--auto-group` flag (`-ag, --auto-group`) to group unstaged changes into multiple focused commits.
+- **Added**: Deterministic file grouping via `group_changed_files()`.
+- **Added**: Default configuration to cap the number of non-commit-type groups.
+
+### 🐛 Bug Fixes in v0.21.0
+
+- **Fixed**: Commit type metadata and descriptions used for classification and display.
+
+### 🔧 Improvements in v0.21.0
+
+- **Improved**: Multi-commit orchestration flow and state isolation across repeated workflow runs.
+- **Refactored**: Output formatting and debug handling for better readability.
+
+### 🧪 Testing improvements in v0.21.0
+
+- **Added**: Tests covering auto-grouping behavior and commit message semantics.
+
+### 📝 Key Commits in v0.21.0
+
+`aa6be1b`, `ae43d81`, `9951b5e`, `b742af5`, `12d004f`
+
+---
+
+## v0.20.0 - *20-12-2025* {#v0200-20-12-2025}
 
 ### ✨ Brief Description (v0.20.0)
 

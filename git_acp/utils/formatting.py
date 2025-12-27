@@ -8,6 +8,7 @@ import json
 
 from rich import print as rprint
 from rich.console import Console
+from rich.markup import escape
 
 from git_acp.config import COLORS, TERMINAL_WIDTH
 
@@ -31,9 +32,17 @@ def debug_item(label: str, value: str = None) -> None:
         value: Optional value to display after the label
     """
     if value is not None:
+        max_chars = 1200
+        total_len = len(value)
+        if total_len > max_chars:
+            value = (
+                f"{value[:max_chars]}\n"
+                f"... [truncated {total_len - max_chars} chars; total {total_len}]"
+            )
+        safe_value = escape(value)
         rprint(
             f"[{COLORS['debug_header']}]  • {label}:[/{COLORS['debug_header']}] "
-            f"[{COLORS['debug_value']}]{value}[/{COLORS['debug_value']}]"
+            f"[{COLORS['debug_value']}]{safe_value}[/{COLORS['debug_value']}]"
         )
     else:
         rprint(f"[{COLORS['debug_header']}]  • {label}[/{COLORS['debug_header']}]")

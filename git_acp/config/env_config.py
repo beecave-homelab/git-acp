@@ -5,6 +5,7 @@ and provides fallback values from constants.
 """
 
 import os
+import sys
 from pathlib import Path
 from typing import Any
 
@@ -28,6 +29,12 @@ def ensure_config_dir() -> None:
 
 def load_env_config() -> None:
     """Load environment variables from the config file."""
+    if os.getenv("GIT_ACP_ALLOW_TEST_ENV_LOAD") == "1":
+        pass
+    # Tests must be hermetic; do not read user-local configuration files.
+    elif os.getenv("PYTEST_CURRENT_TEST") is not None or "pytest" in sys.modules:
+        return
+
     config_dir = get_config_dir()
     env_file = config_dir / ".env"
 

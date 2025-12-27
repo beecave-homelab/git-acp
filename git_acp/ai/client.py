@@ -171,11 +171,15 @@ class AIClient:
             if extra_body is None:
                 extra_body = {}
 
-            # Only send num_ctx to Ollama-style endpoints. This avoids breaking
-            # strict OpenAI-compatible servers that reject unknown fields.
-            is_ollama_endpoint = any(
-                host in self.base_url for host in ("localhost:11434", "127.0.0.1:11434")
+            # Only send num_ctx to endpoints that are expected to tolerate
+            # Ollama-style ``extra_body`` fields.
+            #
+            # We treat strict OpenAI endpoints as incompatible and avoid sending
+            # unknown fields there.
+            is_strict_openai_endpoint = any(
+                host in self.base_url for host in ("api.openai.com", "openai.com")
             )
+            is_ollama_endpoint = not is_strict_openai_endpoint
             if is_ollama_endpoint and self.context_window:
                 extra_body = {
                     **extra_body,

@@ -253,6 +253,71 @@ class TestClassification:
         assert result == CommitType.REFACTOR
 
 
+class TestCommitMessageSemantics:
+    """Tests for commit type selection driven by generated message semantics."""
+
+    @pytest.fixture
+    def mock_config(self):
+        """Return a mock config object."""
+        cfg = MagicMock()
+        cfg.verbose = False
+        return cfg
+
+    @patch("git_acp.git.classification.get_changed_files")
+    @patch("git_acp.git.classification.get_diff")
+    def test_prefers_feat_over_style_when_feature_is_mentioned(
+        self, mock_get_diff, mock_get_files, mock_config
+    ):
+        """Prefer FEAT when message describes a feature.
+
+        This should still hold even if formatting is mentioned.
+        """
+        mock_get_files.return_value = set()
+        mock_get_diff.return_value = "irrelevant"
+
+        message = (
+            "Add auto-group feature to CLI and update commit message format\n\n"
+            "This commit introduces a new feature in the CLI."
+        )
+        result = classify_commit_type(mock_config, commit_message=message)
+
+        assert result == CommitType.FEAT
+
+    @patch("git_acp.git.classification.get_changed_files")
+    @patch("git_acp.git.classification.get_diff")
+    def test_classifies_compatibility_changes_as_fix(
+        self, mock_get_diff, mock_get_files, mock_config
+    ):
+        """Classify compatibility and breakage-prevention changes as FIX."""
+        mock_get_files.return_value = set()
+        mock_get_diff.return_value = "irrelevant"
+
+        message = (
+            "Update AI client to prevent breaking strict OpenAI endpoints\n\n"
+            "This ensures compatibility with strict OpenAI servers."
+        )
+        result = classify_commit_type(mock_config, commit_message=message)
+
+        assert result == CommitType.FIX
+
+    @patch("git_acp.git.classification.get_changed_files")
+    @patch("git_acp.git.classification.get_diff")
+    def test_classifies_default_value_config_changes_as_chore(
+        self, mock_get_diff, mock_get_files, mock_config
+    ):
+        """Classify configuration default/env var changes as CHORE."""
+        mock_get_files.return_value = set()
+        mock_get_diff.return_value = "irrelevant"
+
+        message = (
+            "Add default value for AUTO_GROUP_MAX_NON_TYPE_GROUPS\n\n"
+            "This change updates configuration and environment variable handling."
+        )
+        result = classify_commit_type(mock_config, commit_message=message)
+
+        assert result == CommitType.CHORE
+
+
 class TestGetChanges:
     """Tests for get_changes helper."""
 
