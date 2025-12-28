@@ -174,6 +174,8 @@ def group_changed_files(
 
     def is_excluded(file_path: str) -> bool:
         for pattern in EXCLUDED_PATTERNS:
+            # Special case for exact .env matching as defined in EXCLUDED_PATTERNS.
+            # This is hardcoded to match the "/.env$" pattern in constants.py.
             if pattern == "/.env$":
                 if Path(file_path).name == ".env":
                     return True

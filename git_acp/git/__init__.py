@@ -1,5 +1,7 @@
 """Git operations package for git-acp."""
 
+from __future__ import annotations
+
 from git_acp.git.classification import (
     CommitType,
     classify_commit_type,
