@@ -23,6 +23,10 @@
 !.github/
 !.github/workflows/
 !.github/workflows/*.yaml
+!to-do/
+!to-do/auto-grouping/
+!to-do/auto-grouping/auto-grouping.md
+
 
 # Allow the package directory and Python files
 !git_acp/

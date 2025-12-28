@@ -14,6 +14,7 @@ This module provides a CLI for automating Git operations with enhanced features:
 import glob
 import shlex
 import sys
+from dataclasses import replace
 
 import click
 from rich import print as rprint
@@ -21,8 +22,14 @@ from rich.panel import Panel
 
 from git_acp.cli.interaction import RichQuestionaryInteraction
 from git_acp.cli.workflow import GitWorkflow
-from git_acp.config import COLORS
-from git_acp.git import CommitType, setup_signal_handlers
+from git_acp.config import COLORS, DEFAULT_AUTO_GROUP_MAX_NON_TYPE_GROUPS
+from git_acp.git import (
+    CommitType,
+    get_changed_files,
+    group_changed_files,
+    setup_signal_handlers,
+    unstage_files,
+)
 from git_acp.utils import GitConfig
 
 
@@ -40,6 +47,18 @@ def format_commit_message(commit_type: CommitType, message: str) -> str:
     title = lines[0]
     description = "\n".join(lines[1:])
     return f"{commit_type.value}: {title}\n\n{description}".strip()
+
+
+def _quote_paths(paths: list[str]) -> str:
+    """Join paths with space, quoting those containing spaces.
+
+    Args:
+        paths: List of file paths to quote and join.
+
+    Returns:
+        Space-separated string of quoted paths.
+    """
+    return " ".join(f'"{p}"' if " " in p else p for p in paths)
 
 
 def _process_add_argument(add: str | None) -> tuple[str | None, bool]:
@@ -94,7 +113,7 @@ def _process_add_argument(add: str | None) -> tuple[str | None, bool]:
 
     # Remove duplicates while preserving order
     unique_paths = list(dict.fromkeys(resolved_paths))
-    return " ".join(f'"{p}"' if " " in p else p for p in unique_paths), False
+    return _quote_paths(unique_paths), False
 
 
 @click.command()
@@ -225,6 +244,13 @@ def _process_add_argument(add: str | None) -> tuple[str | None, bool]:
         "Stops after showing the suggested commit type."
     ),
 )
+@click.option(
+    "--auto-group",
+    "-ag",
+    is_flag=True,
+    default=False,
+    help="Automatically group related changes into multiple focused commits",
+)
 def main(
     add: str | None,
     message: str | None,
@@ -239,6 +265,7 @@ def main(
     model: str | None,
     context_window: int | None,
     dry_run: bool,
+    auto_group: bool,
 ) -> None:
     """Automate git add, commit, and push operations with smart features.
 
@@ -291,7 +318,103 @@ def main(
             ai_model=model,
             context_window=context_window,
             dry_run=dry_run,
+            auto_group=auto_group,
         )
+
+        if config.auto_group:
+            staged_files = get_changed_files(config, staged_only=True)
+            if staged_files:
+                err = COLORS["error"]
+                msg = (
+                    f"[{err}]Auto-group mode requires an empty staging area. "
+                    "You have staged files already. Please commit/stash/unstage first."
+                )
+                rprint(Panel(msg, title="Staged Files Detected", border_style="red"))
+                sys.exit(1)
+
+            changed_files = get_changed_files(config, staged_only=False)
+            max_groups = DEFAULT_AUTO_GROUP_MAX_NON_TYPE_GROUPS
+            groups = group_changed_files(
+                changed_files,
+                max_non_type_groups=max_groups if max_groups > 0 else None,
+            )
+            info = COLORS["info"]
+            rprint(
+                Panel(
+                    (
+                        f"[{info}]Auto-group mode: {len(groups)} commit group(s) "
+                        f"detected.[/{info}]"
+                    ),
+                    title="Auto Group Summary",
+                    border_style="green",
+                )
+            )
+
+            success_count = 0
+            failure_count = 0
+
+            for index, group in enumerate(groups, start=1):
+                staged_before = get_changed_files(config, staged_only=True)
+                if staged_before:
+                    warn = COLORS["warning"]
+                    rprint(
+                        Panel(
+                            f"[{warn}]Staging area was not empty before group {index}. "
+                            f"Resetting staging area to continue.[/{warn}]",
+                            title="Defensive Unstage",
+                            border_style="yellow",
+                        )
+                    )
+                    unstage_files(config)
+
+                group_config = replace(config, files=_quote_paths(group))
+
+                rprint(
+                    Panel(
+                        "\n".join([f"Group {index}/{len(groups)}", *group]),
+                        title="Processing Group",
+                        border_style="cyan",
+                    )
+                )
+
+                try:
+                    interaction = RichQuestionaryInteraction()
+                    workflow = GitWorkflow(
+                        group_config,
+                        interaction,
+                        files_from_cli=True,
+                        commit_type_override=commit_type,
+                    )
+                    exit_code = workflow.run()
+                    if exit_code == 0:
+                        success_count += 1
+                    else:
+                        failure_count += 1
+                except Exception as e:  # noqa: BLE001
+                    failure_count += 1
+                    err = COLORS["error"]
+                    rprint(
+                        Panel(
+                            f"[{err}]Group {index} failed with error:\n{e}[/{err}]",
+                            title="Group Failed",
+                            border_style="red",
+                        )
+                    )
+                finally:
+                    unstage_files(config)
+
+            border = "green" if failure_count == 0 else "yellow"
+            rprint(
+                Panel(
+                    (
+                        f"Successful groups: {success_count}\n"
+                        f"Failed groups: {failure_count}"
+                    ),
+                    title="Auto Group Complete",
+                    border_style=border,
+                )
+            )
+            sys.exit(0 if failure_count == 0 else 1)
 
         # Create interaction layer and workflow
         interaction = RichQuestionaryInteraction()

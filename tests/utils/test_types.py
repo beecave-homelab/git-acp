@@ -15,6 +15,7 @@ def test_gitconfig_default_values() -> None:
     assert config.ai_model is None
     assert config.context_window is None
     assert config.dry_run is False
+    assert config.auto_group is False
 
 
 def test_gitconfig_custom_values() -> None:
@@ -99,5 +100,6 @@ def test_config_serialization() -> None:
         "ai_model": None,
         "context_window": None,
         "dry_run": False,
+        "auto_group": False,
     }
     assert vars(config) == config_dict
