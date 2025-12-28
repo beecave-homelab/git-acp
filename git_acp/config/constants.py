@@ -176,6 +176,7 @@ COMMIT_TYPE_PATTERNS: Final[dict[str, list[str]]] = {
 COLORS: Final[dict[str, str]] = {
     "debug_header": get_env("GIT_ACP_DEBUG_HEADER_COLOR", "blue"),
     "debug_value": get_env("GIT_ACP_DEBUG_VALUE_COLOR", "cyan"),
+    "info": get_env("GIT_ACP_INFO_COLOR", "cyan"),
     "success": get_env("GIT_ACP_SUCCESS_COLOR", "green"),
     "warning": get_env("GIT_ACP_WARNING_COLOR", "yellow"),
     "status": get_env("GIT_ACP_STATUS_COLOR", "bold green"),
@@ -188,6 +189,10 @@ COLORS: Final[dict[str, str]] = {
     # Text style formatting
     "bold": get_env("GIT_ACP_BOLD_COLOR", "dim"),
 }
+
+MAX_DEBUG_VALUE_CHARS: Final[int] = get_env(
+    "GIT_ACP_MAX_DEBUG_VALUE_CHARS", 1200, int
+)  # Maximum length of debug values before truncation
 
 # Questionary style configuration
 QUESTIONARY_STYLE: Final[list[tuple[str, str]]] = [
