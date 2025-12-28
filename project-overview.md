@@ -30,6 +30,8 @@ updated: 2025-12-27T19:20:29Z
 
 ## Quickstart for Developers
 
+::: details
+
 ```bash
 # Recommended installation with pipx
 pipx install "git+https://github.com/beecave-homelab/git-acp.git"
@@ -52,6 +54,8 @@ pdm export --pyproject --no-hashes --prod -o requirements.txt
 # Dev / lint / test requirements
 pdm export --pyproject --no-hashes -G lint,test -o requirements.dev.txt
 ```
+
+:::
 
 ## Version Summary
 
@@ -687,6 +691,8 @@ PromptType = Literal["simple", "advanced"]
 DiffType = Literal["staged", "unstaged"]
 ```
 
+:::
+
 ## CLI
 
 The main entry point is `git_acp.cli.cli.main`. It provides a set of options to control the git workflow.
@@ -744,5 +750,7 @@ Test coverage: **97%** (branch coverage enabled).
 ```bash
 pdm run pytest --cov=git_acp --cov-branch --cov-report=term-missing
 ```
+
+:::
 
 **Always update this file when code or configuration changes.**
