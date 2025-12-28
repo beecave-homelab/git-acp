@@ -33,10 +33,10 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-pdm-
 
-      - name: Install dependencies (dev, lint, spacy)
+      - name: Install dependencies (lint, test)
         run: |
           pdm config python.use_venv true
-          pdm install -G lint,test,spacy
+          pdm install -G lint,test
 
       - name: Run lint with autofix
         run: pdm run lint --fix
