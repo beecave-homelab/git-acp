@@ -1,5 +1,6 @@
 """Tests for git_acp.config.env_config module."""
 
+import os
 from pathlib import Path
 from unittest.mock import patch
 
@@ -31,16 +32,24 @@ class TestEnvConfig:
     @patch("git_acp.config.env_config.load_dotenv")
     def test_load_env_config_with_existing_file(self, mock_load):
         """Should load .env file when present."""
-        with patch("pathlib.Path.exists", return_value=True):
+        with (
+            patch.dict(os.environ, {"GIT_ACP_ALLOW_TEST_ENV_LOAD": "1"}),
+            patch("pathlib.Path.exists", return_value=True),
+        ):
             load_env_config()
-            mock_load.assert_called_once_with(get_config_dir() / ".env")
+
+        mock_load.assert_called_once_with(get_config_dir() / ".env")
 
     @patch("git_acp.config.env_config.load_dotenv")
     def test_load_env_config_missing_file(self, mock_load):
         """Should not attempt load when .env missing."""
-        with patch("pathlib.Path.exists", return_value=False):
+        with (
+            patch.dict(os.environ, {"GIT_ACP_ALLOW_TEST_ENV_LOAD": "1"}),
+            patch("pathlib.Path.exists", return_value=False),
+        ):
             load_env_config()
-            mock_load.assert_not_called()
+
+        mock_load.assert_not_called()
 
     @pytest.mark.parametrize(
         "env_value, cast_type, expected",

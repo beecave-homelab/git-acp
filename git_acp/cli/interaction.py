@@ -176,6 +176,11 @@ class RichQuestionaryInteraction:
         """
         # Auto-select if skip_confirmation
         if config.skip_confirmation:
+            header = COLORS["ai_message_header"]
+            self.print_message(
+                f"[{header}]Auto-applying suggested commit type:[/{header}] "
+                f"{suggested_type.value}"
+            )
             return suggested_type
 
         if commit_message.strip():

@@ -12,9 +12,16 @@ Classification Priority:
 """
 
 import re
+from collections import defaultdict
 from enum import Enum
+from pathlib import Path
 
-from git_acp.config import COMMIT_TYPE_PATTERNS, COMMIT_TYPES, FILE_PATH_PATTERNS
+from git_acp.config import (
+    COMMIT_TYPE_PATTERNS,
+    COMMIT_TYPES,
+    EXCLUDED_PATTERNS,
+    FILE_PATH_PATTERNS,
+)
 from git_acp.git.git_operations import GitError, get_changed_files, get_diff
 from git_acp.utils import debug_header, debug_item
 
@@ -121,6 +128,206 @@ def _match_file_path_pattern(file_path: str, pattern: str) -> bool:
         return any(seg.endswith(pattern_lower) for seg in file_segments)
 
     return any(pattern_lower in seg for seg in file_segments)
+
+
+def group_changed_files(
+    files: set[str], *, max_non_type_groups: int | None = None
+) -> list[list[str]]:
+    """Group changed files into deterministic, focused commit batches.
+
+    The grouping algorithm is designed to be pure and deterministic:
+
+    - Commit-type grouping comes first, using ``FILE_PATH_PATTERNS`` and the
+      existing ``_match_file_path_pattern()`` matcher.
+    - Unmatched files fall back to grouping by a stable directory prefix
+      (2-3 levels deep).
+    - Unmatched root-level files (no directory) are grouped by file extension.
+
+    Ordering guarantees:
+
+    - Files are sorted alphabetically within each returned group.
+    - Groups are ordered by:
+        1) Commit-type priority: ``docs``, ``test``, ``style``, ``chore``.
+        2) Directory prefix groups (lexicographic).
+        3) Root-level extension groups (lexicographic).
+
+    The input set is filtered using ``EXCLUDED_PATTERNS``.
+
+    Args:
+        files: Set of repository-relative file paths.
+        max_non_type_groups: Optional maximum number of non commit-type groups
+            (directory/extension groups). When provided, the algorithm merges
+            the closest groups deterministically until the limit is met.
+
+    Returns:
+        A list of file-path groups (each a sorted list of paths).
+
+    Examples:
+        >>> group_changed_files({"docs/intro.md", "tests/test_core.py"})
+        [['docs/intro.md'], ['tests/test_core.py']]
+
+    Notes:
+        ``FILE_PATH_PATTERNS`` and ``EXCLUDED_PATTERNS`` come from
+        ``git_acp.config.constants``.
+    """
+    commit_type_priority = ["docs", "test", "style", "chore"]
+
+    def is_excluded(file_path: str) -> bool:
+        for pattern in EXCLUDED_PATTERNS:
+            # Special case for exact .env matching as defined in EXCLUDED_PATTERNS.
+            # This is hardcoded to match the "/.env$" pattern in constants.py.
+            if pattern == "/.env$":
+                if Path(file_path).name == ".env":
+                    return True
+                continue
+            if pattern in file_path:
+                return True
+        return False
+
+    remaining = sorted({f for f in files if f and not is_excluded(f)})
+    if not remaining:
+        return []
+
+    type_groups: dict[str, list[str]] = {t: [] for t in commit_type_priority}
+    unmatched: list[str] = []
+
+    for file_path in remaining:
+        matched_type: str | None = None
+        for commit_type in commit_type_priority:
+            for pattern in FILE_PATH_PATTERNS.get(commit_type, []):
+                if _match_file_path_pattern(file_path, pattern):
+                    matched_type = commit_type
+                    break
+            if matched_type is not None:
+                break
+
+        if matched_type is None:
+            unmatched.append(file_path)
+        else:
+            type_groups[matched_type].append(file_path)
+
+    directory_groups: dict[str, list[str]] = defaultdict(list)
+    root_files: list[str] = []
+    for file_path in unmatched:
+        norm = _normalize_path_separators(file_path).strip("/")
+        parts = [p for p in norm.split("/") if p]
+        if len(parts) <= 1:
+            root_files.append(file_path)
+            continue
+
+        # Prefer 2-3 directory levels when available, but fall back to a
+        # single directory level when the path is only one level deep.
+        max_dir_depth = len(parts) - 1
+        depth = min(3, max_dir_depth)
+        if max_dir_depth >= 2:
+            depth = max(2, depth)
+        else:
+            depth = 1
+        key = "/".join(parts[:depth])
+        directory_groups[key].append(file_path)
+
+    extension_groups: dict[str, list[str]] = defaultdict(list)
+
+    def extension_key(file_path: str) -> str:
+        suffix = Path(file_path).suffix.lower().lstrip(".")
+        return suffix or "no_ext"
+
+    for file_path in root_files:
+        extension_groups[extension_key(file_path)].append(file_path)
+
+    non_type_groups: list[tuple[str, str, list[str]]] = []
+    for key in sorted(directory_groups):
+        non_type_groups.append(("dir", key, sorted(directory_groups[key])))
+    for key in sorted(extension_groups):
+        non_type_groups.append(("ext", key, sorted(extension_groups[key])))
+
+    def key_segments(kind: str, key: str) -> list[str]:
+        if kind == "ext":
+            return ["__ext__", key]
+        if not key:
+            return []
+        return [seg for seg in key.split("/") if seg]
+
+    def common_prefix_len(a: list[str], b: list[str]) -> int:
+        count = 0
+        for left, right in zip(a, b, strict=False):
+            if left != right:
+                break
+            count += 1
+        return count
+
+    def merge_non_type_groups(
+        groups: list[tuple[str, str, list[str]]], *, max_groups: int
+    ) -> list[tuple[str, str, list[str]]]:
+        merged = list(groups)
+        while len(merged) > max_groups:
+            best_pair: tuple[int, int] | None = None
+            best_score: tuple[bool, int, int, str, str] | None = None
+
+            for i in range(len(merged) - 1):
+                kind_i, key_i, files_i = merged[i]
+                seg_i = key_segments(kind_i, key_i)
+                for j in range(i + 1, len(merged)):
+                    kind_j, key_j, files_j = merged[j]
+                    seg_j = key_segments(kind_j, key_j)
+                    same_kind = kind_i == kind_j
+                    prefix = common_prefix_len(seg_i, seg_j)
+                    combined_size = len(files_i) + len(files_j)
+                    a_key, b_key = sorted((key_i, key_j))
+                    score = (not same_kind, -prefix, combined_size, a_key, b_key)
+                    if best_score is None or score < best_score:
+                        best_score = score
+                        best_pair = (i, j)
+
+            if best_pair is None or best_score is None:
+                break
+
+            i, j = best_pair
+            kind_i, key_i, files_i = merged[i]
+            kind_j, key_j, files_j = merged[j]
+
+            seg_i = key_segments(kind_i, key_i)
+            seg_j = key_segments(kind_j, key_j)
+            prefix = common_prefix_len(seg_i, seg_j)
+
+            new_kind = kind_i if kind_i == kind_j else "mixed"
+            if new_kind == "ext":
+                prefix = 0
+
+            if prefix > 0 and new_kind != "ext":
+                new_key = "/".join(seg_i[:prefix])
+            else:
+                new_key = min(key_i, key_j)
+
+            new_files = sorted({*files_i, *files_j})
+
+            for idx in sorted((i, j), reverse=True):
+                merged.pop(idx)
+            merged.append((new_kind, new_key, new_files))
+
+            merged.sort(key=lambda item: (item[0], item[1]))
+
+        return merged
+
+    if max_non_type_groups is not None and max_non_type_groups > 0:
+        non_type_groups = merge_non_type_groups(
+            non_type_groups, max_groups=max_non_type_groups
+        )
+
+    result: list[list[str]] = []
+
+    for commit_type in commit_type_priority:
+        group_files = type_groups[commit_type]
+        if group_files:
+            result.append(sorted(group_files))
+
+    kind_order = {"dir": 0, "mixed": 1, "ext": 2}
+    for _, _, group_files in sorted(
+        non_type_groups, key=lambda item: (kind_order.get(item[0], 99), item[1])
+    ):
+        result.append(sorted(group_files))
+
+    return result
 
 
 def _classify_by_file_paths(
