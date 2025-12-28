@@ -49,6 +49,18 @@ def format_commit_message(commit_type: CommitType, message: str) -> str:
     return f"{commit_type.value}: {title}\n\n{description}".strip()
 
 
+def _quote_paths(paths: list[str]) -> str:
+    """Join paths with space, quoting those containing spaces.
+
+    Args:
+        paths: List of file paths to quote and join.
+
+    Returns:
+        Space-separated string of quoted paths.
+    """
+    return " ".join(f'"{p}"' if " " in p else p for p in paths)
+
+
 def _process_add_argument(add: str | None) -> tuple[str | None, bool]:
     """Process the -a/--add argument, expanding globs.
 
@@ -101,7 +113,7 @@ def _process_add_argument(add: str | None) -> tuple[str | None, bool]:
 
     # Remove duplicates while preserving order
     unique_paths = list(dict.fromkeys(resolved_paths))
-    return " ".join(f'"{p}"' if " " in p else p for p in unique_paths), False
+    return _quote_paths(unique_paths), False
 
 
 @click.command()
@@ -277,9 +289,6 @@ def main(
     """  # noqa: D301
     setup_signal_handlers()
 
-    def _format_files_argument(files: list[str]) -> str:
-        return " ".join(f'"{p}"' if " " in p else p for p in files)
-
     try:
         # Process -a argument (glob expansion)
         processed_files, _ = _process_add_argument(add)
@@ -318,7 +327,7 @@ def main(
                 err = COLORS["error"]
                 msg = (
                     f"[{err}]Auto-group mode requires an empty staging area. "
-                    "You have staged files already. Please commit/stash/unstage first."  # noqa: E501
+                    "You have staged files already. Please commit/stash/unstage first."
                 )
                 rprint(Panel(msg, title="Staged Files Detected", border_style="red"))
                 sys.exit(1)
@@ -329,7 +338,7 @@ def main(
                 changed_files,
                 max_non_type_groups=max_groups if max_groups > 0 else None,
             )
-            info = COLORS["info"] if "info" in COLORS else COLORS["success"]
+            info = COLORS["info"]
             rprint(
                 Panel(
                     (
@@ -358,12 +367,11 @@ def main(
                     )
                     unstage_files(config)
 
-                group_config = replace(config)
-                group_config.files = _format_files_argument(group)
+                group_config = replace(config, files=_quote_paths(group))
 
                 rprint(
                     Panel(
-                        "\n".join([f"Group {index}/{len(groups)}"] + group),
+                        "\n".join([f"Group {index}/{len(groups)}", *group]),
                         title="Processing Group",
                         border_style="cyan",
                     )
