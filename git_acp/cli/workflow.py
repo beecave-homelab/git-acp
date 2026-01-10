@@ -22,6 +22,7 @@ from git_acp.git import (
     git_push,
     unstage_files,
 )
+from git_acp.utils.file_filter import filter_files_by_scope
 
 if TYPE_CHECKING:
     from git_acp.cli.interaction import UserInteraction
@@ -41,6 +42,7 @@ class GitWorkflow:
         interaction: UserInteraction,
         *,
         files_from_cli: bool = False,
+        raw_add_patterns: str | None = None,
         commit_type_override: str | None = None,
     ) -> None:
         """Initialize the workflow.
@@ -50,12 +52,14 @@ class GitWorkflow:
             interaction: User interaction implementation.
             files_from_cli: True if files were specified via -a flag. Enables
                 additional validation after staging.
+            raw_add_patterns: Raw -a patterns string for file scope filtering.
             commit_type_override: If provided, use this commit type instead of
                 auto-classification (from -t flag).
         """
         self.config = config
         self.interaction = interaction
         self._files_from_cli = files_from_cli
+        self.raw_add_patterns = raw_add_patterns
         self._commit_type_override = commit_type_override
 
     def run(self) -> int:
@@ -137,6 +141,7 @@ class GitWorkflow:
         # Interactive file selection
         try:
             changed_files = get_changed_files(self.config)
+            changed_files = filter_files_by_scope(changed_files, self.raw_add_patterns)
             if not changed_files:
                 if self.config.skip_confirmation:
                     self.interaction.print_panel(

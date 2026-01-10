@@ -197,6 +197,24 @@ class TestGitAdd:
     @patch("git_acp.git.staging.success")
     @patch("git_acp.git.staging.status")
     @patch("git_acp.git.staging.run_git_command")
+    def test_git_add__skips_in_dry_run(
+        self,
+        mock_run: MagicMock,
+        mock_status: MagicMock,
+        mock_success: MagicMock,
+    ) -> None:
+        """Skip git add operations when dry_run is enabled."""
+        config = GitConfig(dry_run=True)
+
+        git_add(".", config=config)
+
+        mock_run.assert_not_called()
+        mock_status.assert_not_called()
+        mock_success.assert_not_called()
+
+    @patch("git_acp.git.staging.success")
+    @patch("git_acp.git.staging.status")
+    @patch("git_acp.git.staging.run_git_command")
     def test_git_add__raises_on_failure(
         self,
         mock_run: MagicMock,

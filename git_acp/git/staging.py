@@ -62,6 +62,12 @@ def git_add(files: str, config: OptionalConfig = None) -> None:
         GitError: If files cannot be added.
     """
     try:
+        if config and config.dry_run:
+            if config.verbose:
+                debug_header("Dry-run mode enabled")
+                debug_item("Git add", "Skipping staging operations")
+            return
+
         if config and config.verbose:
             debug_header("Adding Files to Staging Area")
             debug_item("Raw files input", files)

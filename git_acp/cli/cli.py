@@ -31,6 +31,7 @@ from git_acp.git import (
     unstage_files,
 )
 from git_acp.utils import GitConfig
+from git_acp.utils.file_filter import filter_files_by_scope
 
 
 def format_commit_message(commit_type: CommitType, message: str) -> str:
@@ -333,6 +334,7 @@ def main(
                 sys.exit(1)
 
             changed_files = get_changed_files(config, staged_only=False)
+            changed_files = filter_files_by_scope(changed_files, add)
             max_groups = DEFAULT_AUTO_GROUP_MAX_NON_TYPE_GROUPS
             groups = group_changed_files(
                 changed_files,
@@ -383,6 +385,7 @@ def main(
                         group_config,
                         interaction,
                         files_from_cli=True,
+                        raw_add_patterns=add,
                         commit_type_override=commit_type,
                     )
                     exit_code = workflow.run()
@@ -422,6 +425,7 @@ def main(
             config,
             interaction,
             files_from_cli=(add is not None),
+            raw_add_patterns=add,
             commit_type_override=commit_type,
         )
 
