@@ -22,6 +22,7 @@ from git_acp.git import (
     git_push,
     unstage_files,
 )
+from git_acp.utils.file_filter import filter_files_by_scope
 
 if TYPE_CHECKING:
     from git_acp.cli.interaction import UserInteraction
@@ -140,12 +141,7 @@ class GitWorkflow:
         # Interactive file selection
         try:
             changed_files = get_changed_files(self.config)
-            from git_acp.cli.cli import _filter_files_by_scope
-
-            changed_files = _filter_files_by_scope(
-                changed_files,
-                self.raw_add_patterns,
-            )
+            changed_files = filter_files_by_scope(changed_files, self.raw_add_patterns)
             if not changed_files:
                 if self.config.skip_confirmation:
                     self.interaction.print_panel(
