@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import fnmatch
 import shlex
 
 
@@ -23,6 +24,8 @@ def filter_files_by_scope(files: set[str], add_patterns: str | None) -> set[str]
         return set(files)
 
     targets = shlex.split(add_patterns)
+    if any(target in {".", "./"} for target in targets):
+        return set(files)
     if not targets:
         return set()
 
@@ -31,11 +34,18 @@ def filter_files_by_scope(files: set[str], add_patterns: str | None) -> set[str]
         for target in targets:
             if not target:
                 continue
-            normalized = target.rstrip("/")
+            normalized = target.strip()
+            if normalized.startswith("./"):
+                normalized = normalized[2:]
+            normalized = normalized.rstrip("/")
             if not normalized:
                 continue
             if path == normalized or path.startswith(f"{normalized}/"):
                 filtered.add(path)
                 break
+            if "*" in normalized or "?" in normalized or "[" in normalized:
+                if fnmatch.fnmatch(path, normalized):
+                    filtered.add(path)
+                    break
 
     return filtered
