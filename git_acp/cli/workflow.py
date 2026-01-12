@@ -6,7 +6,6 @@ workflow using injected dependencies for user interaction.
 
 from __future__ import annotations
 
-import shlex
 from typing import TYPE_CHECKING
 
 from git_acp.ai import generate_commit_message
@@ -207,24 +206,10 @@ class GitWorkflow:
                     changed_files = set()
 
                 if changed_files:
-                    cli_targets = shlex.split(self.config.files or "")
-                    files_to_list = set(changed_files)
-
-                    # When using -a . (or equivalent), show all changed files.
-                    if cli_targets and not any(
-                        target in {".", "./"} for target in cli_targets
-                    ):
-                        # Otherwise, only list files that would be affected by
-                        # the resolved CLI targets (files/dirs).
-                        files_to_list = {
-                            path
-                            for path in changed_files
-                            if any(
-                                path == target
-                                or path.startswith(target.rstrip("/") + "/")
-                                for target in cli_targets
-                            )
-                        }
+                    files_to_list = filter_files_by_scope(
+                        changed_files,
+                        self.config.files,
+                    )
 
                     if files_to_list:
                         self.interaction.print_message("Adding files:")
@@ -250,6 +235,23 @@ class GitWorkflow:
         Returns:
             True if files are staged, False if nothing was staged.
         """
+        if self.config.dry_run:
+            changed_files = get_changed_files(self.config, staged_only=False)
+            scoped_files = filter_files_by_scope(changed_files, self.raw_add_patterns)
+            if not scoped_files:
+                msg = (
+                    "No actual changes were found in the files/patterns "
+                    f"specified by -a (resolved to: '{self.config.files}'). "
+                    "Nothing would be staged."
+                )
+                self.interaction.print_panel(
+                    msg,
+                    "No Changes in Scope via -a (dry-run)",
+                    "yellow",
+                )
+                return False
+            return True
+
         staged_files = get_changed_files(self.config, staged_only=True)
         if not staged_files:
             msg = (
