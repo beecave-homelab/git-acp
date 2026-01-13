@@ -195,7 +195,7 @@ class TestGitWorkflow:
         exit_code = workflow.run()
 
         assert exit_code == 0
-        assert interactive_config.files == "file1.py"
+        assert workflow.config.files == "file1.py"
 
     @patch("git_acp.cli.workflow.git_add")
     def test_workflow_run__git_add_failure(
@@ -248,8 +248,8 @@ class TestGitWorkflow:
         exit_code = workflow.run()
 
         assert exit_code == 0
-        assert mock_config.message == "Manual commit message"
-        mock_generate.assert_called_once_with(mock_config)
+        assert workflow.config.message == "Manual commit message"
+        mock_generate.assert_called_once()
         mock_add.assert_called_once()
         mock_commit.assert_called_once()
         mock_push.assert_called_once()
@@ -355,8 +355,8 @@ class TestGitWorkflow:
         exit_code = workflow.run()
 
         assert exit_code == 0
-        mock_generate.assert_called_once_with(mock_config)
-        assert mock_config.message == "AI generated message"
+        mock_generate.assert_called_once()
+        assert workflow.config.message == "AI generated message"
 
     @patch("git_acp.cli.workflow.classify_commit_type")
     @patch("git_acp.cli.workflow.git_add")

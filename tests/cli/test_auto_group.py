@@ -112,3 +112,55 @@ class TestCliAutoGroup:
         assert result.exit_code == 1
         assert mock_workflow_cls.call_count == 2
         assert mock_unstage.call_count == 2
+
+    @patch("git_acp.cli.cli.unstage_files")
+    @patch("git_acp.cli.cli.GitWorkflow")
+    @patch("git_acp.cli.cli.group_changed_files")
+    @patch("git_acp.cli.cli.get_changed_files")
+    def test_auto_group_filters_groups_with_add_glob_pattern(
+        self,
+        mock_get_changed_files: MagicMock,
+        mock_group_changed_files: MagicMock,
+        mock_workflow_cls: MagicMock,
+        mock_unstage: MagicMock,
+    ) -> None:
+        """Only process files matching the -a glob pattern."""
+        mock_get_changed_files.side_effect = [
+            set(),  # initial staged-only check
+            {
+                "docs/code-review.md",
+                "git_acp/cli/workflow.py",
+                "tests/cli/test_workflow.py",
+            },
+            set(),  # staged-before group 1
+            set(),  # staged-before group 2
+        ]
+        mock_group_changed_files.return_value = [
+            ["docs/code-review.md"],
+            ["git_acp/cli/workflow.py"],
+            ["tests/cli/test_workflow.py"],
+        ]
+
+        workflow_one = MagicMock()
+        workflow_one.run.return_value = 0
+        workflow_two = MagicMock()
+        workflow_two.run.return_value = 0
+        mock_workflow_cls.side_effect = [workflow_one, workflow_two]
+
+        result = self.runner.invoke(
+            main,
+            ["--auto-group", "--no-confirm", "--add", "*.py"],
+        )
+
+        assert result.exit_code == 0
+
+        called_files = mock_group_changed_files.call_args.args[0]
+        assert called_files == {"git_acp/cli/workflow.py", "tests/cli/test_workflow.py"}
+
+        assert mock_workflow_cls.call_count == 2
+        first_config = mock_workflow_cls.call_args_list[0].args[0]
+        second_config = mock_workflow_cls.call_args_list[1].args[0]
+        assert first_config.files == "git_acp/cli/workflow.py"
+        assert second_config.files == "tests/cli/test_workflow.py"
+
+        assert mock_unstage.call_count == 2
