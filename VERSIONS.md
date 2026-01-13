@@ -2,7 +2,8 @@
 
 ## Table of Contents
 
-- [v0.21.0 (Current) - 27-12-2025](#v0210-current-27-12-2025)
+- [v0.22.0 (Current) - 13-01-2026](#v0220-current-13-01-2026)
+- [v0.21.0 - 27-12-2025](#v0210-27-12-2025)
 - [v0.20.0 - 20-12-2025](#v0200-20-12-2025)
 - [v0.19.0 - 19-12-2025](#v0190-19-12-2025)
 - [v0.18.0 - 02-12-2025](#v0180-02-12-2025)
@@ -32,7 +33,39 @@
 - [v0.6.0 - 21-12-2024](#v060-21-12-2024)
 - [v0.5.0 - 20-12-2024](#v050-20-12-2024)
 
-## v0.21.0 (Current) - *27-12-2025* {#v0210-current-27-12-2025}
+## v0.22.0 (Current) - *13-01-2026* {#v0220-current-13-01-2026}
+
+### ✨ Brief Description (v0.22.0)
+
+Feature release adding scoped file selection and filtering for commit message generation and `--dry-run`, including robust glob matching and relative-path handling.
+
+### ✨ New Features in v0.22.0
+
+- **Added**: Scoped file selection and filtering support for commit message context.
+- **Added**: Glob filtering improvements using `fnmatch`, including relative path handling.
+
+### 🐛 Bug Fixes in v0.22.0
+
+- **Fixed**: Commit message file list filtering to respect scope selection.
+- **Fixed**: Remove unused commit prompt helper.
+
+### 🔧 Improvements in v0.22.0
+
+- **Refactored**: Centralize file scope filtering logic.
+- **Refactored**: File scope handling in `GitWorkflow`.
+
+### 🧪 Testing improvements in v0.22.0
+
+- **Added**: Tests for dry-run behavior and file filtering.
+- **Added**: Test coverage for auto-group with `-a` glob pattern filters.
+
+### 📝 Key Commits in v0.22.0
+
+`893e969`, `5ded0b4`, `2509ef8`, `1d8c5f2`, `3c07f0c`
+
+---
+
+## v0.21.0 - *27-12-2025* {#v0210-27-12-2025}
 
 ### ✨ Brief Description (v0.21.0)
 
