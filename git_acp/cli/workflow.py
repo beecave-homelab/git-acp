@@ -6,6 +6,7 @@ workflow using injected dependencies for user interaction.
 
 from __future__ import annotations
 
+from dataclasses import replace
 from typing import TYPE_CHECKING
 
 from git_acp.ai import generate_commit_message
@@ -151,7 +152,10 @@ class GitWorkflow:
                     return False
                 # select_files will raise for empty set
 
-            self.config.files = self.interaction.select_files(changed_files)
+            self.config = replace(
+                self.config,
+                files=self.interaction.select_files(changed_files),
+            )
             return True
 
         except GitError as e:
@@ -180,7 +184,7 @@ class GitWorkflow:
             return True
 
         try:
-            self.config.branch = get_current_branch()
+            self.config = replace(self.config, branch=get_current_branch())
             return True
         except GitError as e:
             self.interaction.print_error(
@@ -271,7 +275,10 @@ class GitWorkflow:
         """
         if self.config.use_ollama:
             try:
-                self.config.message = generate_commit_message(self.config)
+                self.config = replace(
+                    self.config,
+                    message=generate_commit_message(self.config),
+                )
             except GitError as e:
                 self.interaction.print_error(
                     f"AI commit message generation failed:\n{e}",
@@ -293,12 +300,12 @@ class GitWorkflow:
                     )
                     return False
 
-                self.config.message = manual_message
+                self.config = replace(self.config, message=manual_message)
 
         if not self.config.message:
             manual_message = self._prompt_manual_message()
             if manual_message:
-                self.config.message = manual_message
+                self.config = replace(self.config, message=manual_message)
             else:
                 unstage_files()
                 self.interaction.print_error(

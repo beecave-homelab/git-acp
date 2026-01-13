@@ -340,6 +340,14 @@ def main(
                 changed_files,
                 max_non_type_groups=max_groups if max_groups > 0 else None,
             )
+            if add is not None:
+                scoped_groups: list[list[str]] = []
+                for group in groups:
+                    scoped_set = filter_files_by_scope(set(group), add)
+                    if not scoped_set:
+                        continue
+                    scoped_groups.append([path for path in group if path in scoped_set])
+                groups = scoped_groups
             info = COLORS["info"]
             rprint(
                 Panel(
