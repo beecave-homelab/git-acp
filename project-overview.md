@@ -1,7 +1,7 @@
 ---
 repo: https://github.com/beecave-homelab/git-acp.git
-commit: aa6be1ba1170e5d45aec681b89314109b22b0a1d
-updated: 2025-12-27T19:20:29Z
+commit: 893e969bfd0c97c23fde2ff6113a945f43c91009
+updated: 2026-01-13T22:01:27Z
 ---
 <!-- markdownlint-disable-file MD033 -->
 <!-- SECTIONS:API,CLI,WEBUI,CI,DOCKER,TESTS -->
@@ -11,7 +11,7 @@ updated: 2025-12-27T19:20:29Z
 `git-acp` is a command-line tool that automates the `git add`, `commit`, and `push` workflow. It offers interactive file selection, AI-powered commit message generation via Ollama, and enforces Conventional Commits standards.
 
 ![Language](https://img.shields.io/badge/Python-3.10+-blue)
-[![Version](https://img.shields.io/badge/Version-0.21.0-brightgreen)](#version-summary)
+[![Version](https://img.shields.io/badge/Version-0.22.0-brightgreen)](#version-summary)
 [![CLI](https://img.shields.io/badge/CLI-Click-blue)](#cli)
 [![Coverage](https://img.shields.io/badge/Coverage-97%25-brightgreen)](#tests)
 
@@ -61,6 +61,7 @@ pdm export --pyproject --no-hashes -G lint,test -o requirements.dev.txt
 
 | Version | Date | Type | Key Changes |
 | ------- | ---- | ---- | ----------- |
+| 0.22.0 | 13-01-2026 | ✨ | Scope file selection and filtering for commit messages and `--dry-run` |
 | 0.21.0 | 27-12-2025 | ✨ | Add auto-group mode (`-ag/--auto-group`) for deterministic multi-commit workflow |
 | 0.20.0 | 20-12-2025 | ✨ | Add `--dry-run` flag for testing workflow without committing |
 | 0.19.0 | 19-12-2025 | ✨ | Improve commit type recommendation (file paths + emoji prefix) |
