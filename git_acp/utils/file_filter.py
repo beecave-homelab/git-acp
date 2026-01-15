@@ -2,8 +2,9 @@
 
 from __future__ import annotations
 
-import fnmatch
+# Use Path.match for consistent glob semantics (including **/ handling).
 import shlex
+from pathlib import Path
 
 
 def filter_files_by_scope(files: set[str], add_patterns: str | None) -> set[str]:
@@ -44,7 +45,17 @@ def filter_files_by_scope(files: set[str], add_patterns: str | None) -> set[str]
                 filtered.add(path)
                 break
             if "*" in normalized or "?" in normalized or "[" in normalized:
-                if fnmatch.fnmatch(path, normalized):
+                if "/" not in normalized and "*" not in normalized and "/" in path:
+                    continue
+                if "/" in normalized:
+                    patterns = [normalized]
+                    if "**/" in normalized:
+                        patterns.append(normalized.replace("**/", ""))
+                elif "*" in normalized:
+                    patterns = [normalized, f"**/{normalized}"]
+                else:
+                    patterns = [normalized]
+                if any(Path(path).match(pattern) for pattern in patterns):
                     filtered.add(path)
                     break
 
