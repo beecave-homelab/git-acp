@@ -37,12 +37,12 @@
 
 ### ✨ Brief Description (v0.22.0)
 
-Feature release adding scoped file selection and filtering for commit message generation and `--dry-run`, including robust glob matching and relative-path handling.
+Feature release adding scoped file selection and filtering for commit message generation and `--dry-run`, including robust glob matching with `**/` support and relative-path handling.
 
 ### ✨ New Features in v0.22.0
 
 - **Added**: Scoped file selection and filtering support for commit message context.
-- **Added**: Glob filtering improvements using `fnmatch`, including relative path handling.
+- **Added**: Glob filtering improvements using `pathlib.Path.match`, including `**/` support and relative path handling.
 
 ### 🐛 Bug Fixes in v0.22.0
 
