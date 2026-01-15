@@ -32,6 +32,7 @@ lint = [
 test = [
     "pytest>=8.0.0",
     "pytest-cov>=5.0.0",
+    "interrogate>=1.7.0",
 ]
 
 [project.scripts]
@@ -88,3 +89,4 @@ format = "ruff format ."
 fix = "ruff check --fix ."
 test = "pytest -q"
 test-cov = "pytest --cov=. --cov-report=term-missing:skip-covered --cov-report=xml"
+docstring-coverage = "interrogate git_acp tests"
