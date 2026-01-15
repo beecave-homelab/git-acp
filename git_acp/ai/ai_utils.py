@@ -356,35 +356,6 @@ def get_commit_context(config: GitConfig) -> dict[str, Any]:
         raise GitError(f"Failed to gather commit context: {str(e)}") from e
 
 
-def create_simple_commit_message_prompt(
-    context: dict[str, Any],
-    config: OptionalConfig = None,
-) -> str:
-    """Create a simple AI prompt for generating a commit message.
-
-    Args:
-        context (Dict[str, Any]): Git context information.
-        config (OptionalConfig | None): Optional configuration settings.
-
-    Returns:
-        str: Generated prompt for the AI model.
-    """
-    prompt = (
-        "Generate a concise and descriptive commit message for the following "
-        "changes:\n\n"
-        f"{context['staged_changes']}\n\n"
-        "Requirements:\n"
-        "1. Follow conventional commit format (type: description)\n"
-        "2. Be specific about what changed\n"
-        "3. Keep it concise but descriptive"
-    )
-    if config and config.verbose:
-        debug_header("Generated simple prompt preview:")
-        debug_preview(prompt)
-
-    return prompt
-
-
 def edit_commit_message(message: str, config: GitConfig) -> str:
     """Allow user to edit the AI-generated commit message.
 

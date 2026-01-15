@@ -295,7 +295,9 @@ def main(
         processed_files, _ = _process_add_argument(add)
 
         # Handle case where -a was provided but matched no files
-        if processed_files == "":
+        # Skip early exit in auto-group mode since the pattern will be
+        # used to filter changed files later
+        if processed_files == "" and not auto_group:
             rprint(
                 Panel(
                     "The -a argument resulted in no files to stage. Nothing to commit.",
@@ -340,6 +342,14 @@ def main(
                 changed_files,
                 max_non_type_groups=max_groups if max_groups > 0 else None,
             )
+            if add is not None:
+                scoped_groups: list[list[str]] = []
+                for group in groups:
+                    scoped_set = filter_files_by_scope(set(group), add)
+                    if not scoped_set:
+                        continue
+                    scoped_groups.append([path for path in group if path in scoped_set])
+                groups = scoped_groups
             info = COLORS["info"]
             rprint(
                 Panel(
