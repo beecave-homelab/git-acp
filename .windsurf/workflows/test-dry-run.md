@@ -16,7 +16,7 @@ git status --porcelain=v1
 git diff --name-only
 ```
 
-These should include `test_dir1/` and `test_dir2/` directories with 2 files each. If not available ask the user to uncomment the lines in `.gitignore` to include these directories.
+These should include `test_dir1/` and `test_dir2/` directories with 2 files each. If not available, ask the user to uncomment the `test_dir1/` and `test_dir2/` entries in `.gitignore` to include these directories.
 
 ## Test Commands
 
