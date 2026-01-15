@@ -61,7 +61,7 @@ pdm export --pyproject --no-hashes -G lint,test -o requirements.dev.txt
 
 | Version | Date | Type | Key Changes |
 | ------- | ---- | ---- | ----------- |
-| 0.22.0 | 13-01-2026 | ✨ | Scope file selection and filtering for commit messages and `--dry-run` |
+| 0.22.0 | 13-01-2026 | ✨ | Scoped `-a` filtering with glob/`**/` support for commit messages and `--dry-run` |
 | 0.21.0 | 27-12-2025 | ✨ | Add auto-group mode (`-ag/--auto-group`) for deterministic multi-commit workflow |
 | 0.20.0 | 20-12-2025 | ✨ | Add `--dry-run` flag for testing workflow without committing |
 | 0.19.0 | 19-12-2025 | ✨ | Improve commit type recommendation (file paths + emoji prefix) |
