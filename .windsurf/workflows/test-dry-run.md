@@ -106,4 +106,4 @@ pdm run pytest tests/cli/test_workflow.py -v
 
 ## Finishing up
 
-Let the user know to comment out the lines in `.gitignore` to exclude the `test_dir1/` and `test_dir2/` directories.
+Let the user know to comment out the `test_dir1/` and `test_dir2/` entries in `.gitignore` to exclude these directories from tracking again.
