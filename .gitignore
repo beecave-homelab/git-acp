@@ -9,6 +9,7 @@
 !requirements.dev.txt
 !.env.example
 !.markdownlint.json
+!.coderabbit.yaml
 !pyproject.toml
 !project-overview.md
 !refactor-summary.md
@@ -24,6 +25,13 @@
 !.github/workflows/*.yaml
 # !.github/PULL_REQUEST/
 # !.github/PULL_REQUEST/*.md
+
+# Windsurf workflow
+!.windsurf/
+!.windsurf/workflows/
+!.windsurf/workflows/test-dry-run.md
+
+# Test dirs and files for `test-dry-run.md` workflow.
 # !test_dir1/
 # !test_dir1/**
 # !test_dir2/
