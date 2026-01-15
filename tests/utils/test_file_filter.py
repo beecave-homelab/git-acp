@@ -74,6 +74,12 @@ class TestFilterFilesByScope:
         result = filter_files_by_scope(files, "./dir/*.txt")
         assert result == {"dir/b.txt"}
 
+    def test_filters_by_double_star_pattern_matches_top_level(self) -> None:
+        """Match top-level paths with **/ patterns."""
+        files = {"test_dir1/a.py", "test_dir1/sub/b.py", "other/c.md"}
+        result = filter_files_by_scope(files, "test_dir1/**/*.py")
+        assert result == {"test_dir1/a.py", "test_dir1/sub/b.py"}
+
     def test_filters_by_multiple_wildcard_patterns(self) -> None:
         """Filter files using multiple wildcard patterns."""
         files = {"a.py", "b.txt", "c.md", "dir/d.py", "dir/e.txt", "dir/f.md"}
