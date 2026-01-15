@@ -210,9 +210,14 @@ class GitWorkflow:
                     changed_files = set()
 
                 if changed_files:
+                    add_patterns = (
+                        self.raw_add_patterns
+                        if self.raw_add_patterns is not None
+                        else self.config.files
+                    )
                     files_to_list = filter_files_by_scope(
                         changed_files,
-                        self.config.files,
+                        add_patterns,
                     )
 
                     if files_to_list:
