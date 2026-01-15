@@ -35,7 +35,7 @@ def filter_files_by_scope(files: set[str], add_patterns: str | None) -> set[str]
         for target in targets:
             if not target:
                 continue
-            normalized = target.strip()
+            normalized = target
             if normalized.startswith("./"):
                 normalized = normalized[2:]
             normalized = normalized.rstrip("/")
