@@ -295,7 +295,9 @@ def main(
         processed_files, _ = _process_add_argument(add)
 
         # Handle case where -a was provided but matched no files
-        if processed_files == "":
+        # Skip early exit in auto-group mode since the pattern will be
+        # used to filter changed files later
+        if processed_files == "" and not auto_group:
             rprint(
                 Panel(
                     "The -a argument resulted in no files to stage. Nothing to commit.",
