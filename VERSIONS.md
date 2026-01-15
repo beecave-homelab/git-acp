@@ -61,7 +61,7 @@ Feature release adding scoped file selection and filtering for commit message ge
 
 ### 📝 Key Commits in v0.22.0
 
-`893e969`, `5ded0b4`, `2509ef8`, `1d8c5f2`, `3c07f0c`
+`07dba87`, `83f0bc5`, `893e969`, `5ded0b4`, `2509ef8`, `1d8c5f2`, `3c07f0c`
 
 ---
 
