@@ -136,7 +136,6 @@ class TestCliAutoGroup:
             set(),  # staged-before group 2
         ]
         mock_group_changed_files.return_value = [
-            ["docs/code-review.md"],
             ["git_acp/cli/workflow.py"],
             ["tests/cli/test_workflow.py"],
         ]
