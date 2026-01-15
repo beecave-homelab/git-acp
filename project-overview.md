@@ -78,6 +78,7 @@ pdm export --pyproject --no-hashes -G lint,test -o requirements.dev.txt
 - AI-generated commit messages using Ollama.
 - **Smart commit type classification** using file-path-first heuristics with keyword fallback.
 - **Auto-group mode** (`-ag/--auto-group`) to split unstaged changes into multiple focused commits using deterministic file grouping.
+- **Scoped `-a` filtering** that supports glob patterns (including `**/`), ensuring dry-run and file listings match the intended paths.
 - Support for Conventional Commits specification.
 - Consistent "all files" selection: choose **All files** in the prompt or use `-a .` to stage everything while still listing each file before commit.
 - Rich terminal output for better user experience.
@@ -118,6 +119,7 @@ git_acp/
 └── utils/
     ├── __init__.py         # Exposes utility functions and types.
     ├── formatting.py       # Provides styled terminal output functions.
+    ├── file_filter.py      # Filters files based on -a scope patterns.
     └── types.py            # Defines custom data types and type aliases.
 
 tests/
