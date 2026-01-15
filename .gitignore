@@ -23,6 +23,8 @@
 !.github/
 !.github/workflows/
 !.github/workflows/*.yaml
+# !.github/PULL_REQUEST/
+# !.github/PULL_REQUEST/*.md
 # !test_dir1/
 # !test_dir1/**
 # !test_dir2/
