@@ -7,9 +7,9 @@
 !README.md
 !requirements.txt
 !requirements.dev.txt
-!setup.py
 !.env.example
 !.markdownlint.json
+!.coderabbit.yaml
 !pyproject.toml
 !project-overview.md
 !refactor-summary.md
@@ -23,10 +23,19 @@
 !.github/
 !.github/workflows/
 !.github/workflows/*.yaml
-!to-do/
-!to-do/auto-grouping/
-!to-do/auto-grouping/auto-grouping.md
+# !.github/PULL_REQUEST/
+# !.github/PULL_REQUEST/*.md
 
+# Windsurf workflow
+!.windsurf/
+!.windsurf/workflows/
+!.windsurf/workflows/test-dry-run.md
+
+# Test dirs and files for `test-dry-run.md` workflow.
+# !test_dir1/
+# !test_dir1/**
+# !test_dir2/
+# !test_dir2/**
 
 # Allow the package directory and Python files
 !git_acp/

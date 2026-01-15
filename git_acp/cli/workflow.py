@@ -6,7 +6,7 @@ workflow using injected dependencies for user interaction.
 
 from __future__ import annotations
 
-import shlex
+from dataclasses import replace
 from typing import TYPE_CHECKING
 
 from git_acp.ai import generate_commit_message
@@ -22,6 +22,7 @@ from git_acp.git import (
     git_push,
     unstage_files,
 )
+from git_acp.utils.file_filter import filter_files_by_scope
 
 if TYPE_CHECKING:
     from git_acp.cli.interaction import UserInteraction
@@ -41,6 +42,7 @@ class GitWorkflow:
         interaction: UserInteraction,
         *,
         files_from_cli: bool = False,
+        raw_add_patterns: str | None = None,
         commit_type_override: str | None = None,
     ) -> None:
         """Initialize the workflow.
@@ -50,12 +52,14 @@ class GitWorkflow:
             interaction: User interaction implementation.
             files_from_cli: True if files were specified via -a flag. Enables
                 additional validation after staging.
+            raw_add_patterns: Raw -a patterns string for file scope filtering.
             commit_type_override: If provided, use this commit type instead of
                 auto-classification (from -t flag).
         """
         self.config = config
         self.interaction = interaction
         self._files_from_cli = files_from_cli
+        self.raw_add_patterns = raw_add_patterns
         self._commit_type_override = commit_type_override
 
     def run(self) -> int:
@@ -137,6 +141,7 @@ class GitWorkflow:
         # Interactive file selection
         try:
             changed_files = get_changed_files(self.config)
+            changed_files = filter_files_by_scope(changed_files, self.raw_add_patterns)
             if not changed_files:
                 if self.config.skip_confirmation:
                     self.interaction.print_panel(
@@ -147,7 +152,10 @@ class GitWorkflow:
                     return False
                 # select_files will raise for empty set
 
-            self.config.files = self.interaction.select_files(changed_files)
+            self.config = replace(
+                self.config,
+                files=self.interaction.select_files(changed_files),
+            )
             return True
 
         except GitError as e:
@@ -176,7 +184,7 @@ class GitWorkflow:
             return True
 
         try:
-            self.config.branch = get_current_branch()
+            self.config = replace(self.config, branch=get_current_branch())
             return True
         except GitError as e:
             self.interaction.print_error(
@@ -202,24 +210,15 @@ class GitWorkflow:
                     changed_files = set()
 
                 if changed_files:
-                    cli_targets = shlex.split(self.config.files or "")
-                    files_to_list = set(changed_files)
-
-                    # When using -a . (or equivalent), show all changed files.
-                    if cli_targets and not any(
-                        target in {".", "./"} for target in cli_targets
-                    ):
-                        # Otherwise, only list files that would be affected by
-                        # the resolved CLI targets (files/dirs).
-                        files_to_list = {
-                            path
-                            for path in changed_files
-                            if any(
-                                path == target
-                                or path.startswith(target.rstrip("/") + "/")
-                                for target in cli_targets
-                            )
-                        }
+                    add_patterns = (
+                        self.raw_add_patterns
+                        if self.raw_add_patterns is not None
+                        else self.config.files
+                    )
+                    files_to_list = filter_files_by_scope(
+                        changed_files,
+                        add_patterns,
+                    )
 
                     if files_to_list:
                         self.interaction.print_message("Adding files:")
@@ -245,6 +244,23 @@ class GitWorkflow:
         Returns:
             True if files are staged, False if nothing was staged.
         """
+        if self.config.dry_run:
+            changed_files = get_changed_files(self.config, staged_only=False)
+            scoped_files = filter_files_by_scope(changed_files, self.raw_add_patterns)
+            if not scoped_files:
+                msg = (
+                    "No actual changes were found in the files/patterns "
+                    f"specified by -a (resolved to: '{self.config.files}'). "
+                    "Nothing would be staged."
+                )
+                self.interaction.print_panel(
+                    msg,
+                    "No Changes in Scope via -a (dry-run)",
+                    "yellow",
+                )
+                return False
+            return True
+
         staged_files = get_changed_files(self.config, staged_only=True)
         if not staged_files:
             msg = (
@@ -264,7 +280,10 @@ class GitWorkflow:
         """
         if self.config.use_ollama:
             try:
-                self.config.message = generate_commit_message(self.config)
+                self.config = replace(
+                    self.config,
+                    message=generate_commit_message(self.config),
+                )
             except GitError as e:
                 self.interaction.print_error(
                     f"AI commit message generation failed:\n{e}",
@@ -286,12 +305,12 @@ class GitWorkflow:
                     )
                     return False
 
-                self.config.message = manual_message
+                self.config = replace(self.config, message=manual_message)
 
         if not self.config.message:
             manual_message = self._prompt_manual_message()
             if manual_message:
-                self.config.message = manual_message
+                self.config = replace(self.config, message=manual_message)
             else:
                 unstage_files()
                 self.interaction.print_error(

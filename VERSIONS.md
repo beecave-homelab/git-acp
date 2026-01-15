@@ -2,37 +2,70 @@
 
 ## Table of Contents
 
-- [v0.21.0 (Current) - 27-12-2025](#v0210-current-27-12-2025)
-- [v0.20.0 - 20-12-2025](#v0200-20-12-2025)
-- [v0.19.0 - 19-12-2025](#v0190-19-12-2025)
-- [v0.18.0 - 02-12-2025](#v0180-02-12-2025)
-- [v0.17.0 - 10-08-2025](#v0170-10-08-2025)
-- [v0.16.0 - August 2025](#v0160-august-2025)
-- [v0.15.1 - June 2025](#v0151-june-2025)
-- [v0.15.0 - 01-02-2025](#v0150-01-02-2025)
-- [v0.14.2 - 09-06-2025](#v0142-09-06-2025)
-- [v0.14.1 - 28-01-2025](#v0141-28-01-2025)
-- [v0.14.0 - 27-01-2025](#v0140-27-01-2025)
-- [v0.13.4 - 26-01-2025](#v0134-26-01-2025)
-- [v0.13.3 - 26-01-2025](#v0133-26-01-2025)
-- [v0.13.2 - 26-01-2025](#v0132-26-01-2025)
-- [v0.13.1 - 26-01-2025](#v0131-26-01-2025)
-- [v0.12.3 - 22-01-2025](#v0123-22-01-2025)
-- [v0.12.2 - 22-01-2025](#v0122-22-01-2025)
-- [v0.12.1 - 05-01-2025](#v0121-05-01-2025)
-- [v0.12.0 - 04-01-2025](#v0120-04-01-2025)
-- [v0.11.0 - 03-01-2025](#v0110-03-01-2025)
-- [v0.10.0 - 29-12-2024](#v0100-29-12-2024)
-- [v0.9.2 - 28-12-2024](#v092-28-12-2024)
-- [v0.9.1 - 27-12-2024](#v091-27-12-2024)
-- [v0.9.0 - 27-12-2024](#v090-27-12-2024)
-- [v0.8.0 - 26-12-2024](#v080-26-12-2024)
-- [v0.7.0 - 22-12-2024](#v070-22-12-2024)
-- [v0.6.1 - 21-12-2024](#v061-21-12-2024)
-- [v0.6.0 - 21-12-2024](#v060-21-12-2024)
-- [v0.5.0 - 20-12-2024](#v050-20-12-2024)
+- [v0.22.0 (Current) - 13-01-2026](#v0220-current---13-01-2026)
+- [v0.21.0 - 27-12-2025](#v0210---27-12-2025)
+- [v0.20.0 - 20-12-2025](#v0200---20-12-2025)
+- [v0.19.0 - 19-12-2025](#v0190---19-12-2025)
+- [v0.18.0 - 02-12-2025](#v0180---02-12-2025)
+- [v0.17.0 - 10-08-2025](#v0170---10-08-2025)
+- [v0.16.0 - 08-08-2025](#v0160---08-08-2025)
+- [v0.15.1 - 20-06-2025](#v0151---20-06-2025)
+- [v0.15.0 - 01-02-2025](#v0150---01-02-2025)
+- [v0.14.2 - 09-06-2025](#v0142---09-06-2025)
+- [v0.14.1 - 30-11-2025](#v0141---30-11-2025)
+- [v0.14.0 - 27-01-2025](#v0140---27-01-2025)
+- [v0.13.4 - 26-01-2025](#v0134---26-01-2025)
+- [v0.13.3 - 26-01-2025](#v0133---26-01-2025)
+- [v0.13.2 - 26-01-2025](#v0132---26-01-2025)
+- [v0.13.1 - 26-01-2025](#v0131---26-01-2025)
+- [v0.12.3 - 22-01-2025](#v0123---22-01-2025)
+- [v0.12.2 - 22-01-2025](#v0122---22-01-2025)
+- [v0.12.1 - 05-01-2025](#v0121---05-01-2025)
+- [v0.12.0 - 04-01-2025](#v0120---04-01-2025)
+- [v0.11.0 - 03-01-2025](#v0110---03-01-2025)
+- [v0.10.0 - 29-12-2024](#v0100---29-12-2024)
+- [v0.9.2 - 28-12-2024](#v092---28-12-2024)
+- [v0.9.1 - 27-12-2024](#v091---27-12-2024)
+- [v0.9.0 - 27-12-2024](#v090---27-12-2024)
+- [v0.8.0 - 26-12-2024](#v080---26-12-2024)
+- [v0.7.0 - 22-12-2024](#v070---22-12-2024)
+- [v0.6.1 - 21-12-2024](#v061---21-12-2024)
+- [v0.6.0 - 21-12-2024](#v060---21-12-2024)
+- [v0.5.0 - 20-12-2024](#v050---20-12-2024)
 
-## v0.21.0 (Current) - *27-12-2025* {#v0210-current-27-12-2025}
+## v0.22.0 (Current) - *13-01-2026*
+
+### ✨ Brief Description (v0.22.0)
+
+Feature release adding scoped file selection and filtering for commit message generation and `--dry-run`, including robust glob matching with `**/` support and relative-path handling.
+
+### ✨ New Features in v0.22.0
+
+- **Added**: Scoped file selection and filtering support for commit message context.
+- **Added**: Glob filtering improvements using `pathlib.Path.match`, including `**/` support and relative path handling.
+
+### 🐛 Bug Fixes in v0.22.0
+
+- **Fixed**: Commit message file list filtering to respect scope selection.
+- **Fixed**: Remove unused commit prompt helper.
+
+### 🔧 Improvements in v0.22.0
+
+- **Refactored**: Centralize file scope filtering logic.
+- **Refactored**: File scope handling in `GitWorkflow`.
+
+### 🧪 Testing improvements in v0.22.0
+
+- **Added**: Tests for dry-run behavior and file filtering.
+- **Added**: Test coverage for auto-group with `-a` glob pattern filters.
+
+### 📝 Key Commits in v0.22.0
+
+`07dba87`, `83f0bc5`, `893e969`, `5ded0b4`, `2509ef8`, `1d8c5f2`, `3c07f0c`
+
+---
+
+## v0.21.0 - *27-12-2025*
 
 ### ✨ Brief Description (v0.21.0)
 
@@ -63,7 +96,7 @@ Feature release adding auto-group mode to split unstaged changes into multiple f
 
 ---
 
-## v0.20.0 - *20-12-2025* {#v0200-20-12-2025}
+## v0.20.0 - *20-12-2025*
 
 ### ✨ Brief Description (v0.20.0)
 
@@ -96,7 +129,7 @@ Feature release adding --dry-run flag functionality for testing the complete git
 
 ---
 
-## v0.19.0 - *19-12-2025* {#v0190-19-12-2025}
+## v0.19.0 - *19-12-2025*
 
 ### ✨ Brief Description (v0.19.0)
 
@@ -122,7 +155,7 @@ Feature release improving commit type recommendations by prioritizing file-path 
 
 ---
 
-## v0.18.0 - *02-12-2025* {#v0180-02-12-2025}
+## v0.18.0 - *02-12-2025*
 
 ### Brief Description (v0.18.0)
 
@@ -176,7 +209,7 @@ Feature release including updates to the `eza` command support, fixes for AI cli
 
 ---
 
-## v0.17.0 - *10-08-2025* {#v0170-10-08-2025}
+## v0.17.0 - *10-08-2025*
 
 ### Brief Description (v0.17.0)
 
@@ -198,7 +231,7 @@ Minor feature release with refactors. Introduces a configurable fallback Ollama 
 
 ---
 
-## v0.16.0 - *August 2025* {#v0160-august-2025}
+## v0.16.0 - *08-08-2025*
 
 ### Brief Description (v0.16.0)
 
@@ -226,7 +259,7 @@ Refactors across AI and Git helpers, dependency updates, and general enhancement
 
 ---
 
-## v0.15.1 - *June 2025* {#v0151-june-2025}
+## v0.15.1 - *20-06-2025*
 
 ### Summary (v0.15.1)
 
@@ -257,7 +290,7 @@ Major release introducing `pyproject.toml`, enhanced test coverage, project over
 
 ---
 
-## v0.15.0 - *01-02-2025* {#v0150-01-02-2025}
+## v0.15.0 - *01-02-2025*
 
 ### Summary (v0.15.0)
 
@@ -286,7 +319,7 @@ Major architectural refactor introducing modular package structure with separate
 
 ---
 
-## v0.14.2 - *09-06-2025* {#v0142-09-06-2025}
+## v0.14.2 - *09-06-2025*
 
 ### Summary (v0.14.2)
 
@@ -304,7 +337,7 @@ Patch release with documentation improvements and minor fixes.
 
 ---
 
-## v0.14.1 - *28-01-2025* {#v0141-28-01-2025}
+## v0.14.1 - *30-11-2025*
 
 ### Summary (v0.14.1)
 
@@ -331,7 +364,7 @@ Major documentation and testing release with comprehensive test suites, detailed
 
 ---
 
-## v0.14.0 - *27-01-2025* {#v0140-27-01-2025}
+## v0.14.0 - *27-01-2025*
 
 ### Summary (v0.14.0)
 
@@ -359,7 +392,7 @@ Feature release with enhanced CLI options, advanced prompt types for commit mess
 
 ---
 
-## v0.13.4 - *26-01-2025* {#v0134-26-01-2025}
+## v0.13.4 - *26-01-2025*
 
 ### Summary (v0.13.4)
 
@@ -381,7 +414,7 @@ Refactoring release with improved code quality, enhanced AI client, and comprehe
 
 ---
 
-## v0.13.3 - *26-01-2025* {#v0133-26-01-2025}
+## v0.13.3 - *26-01-2025*
 
 ### Summary (v0.13.3)
 
@@ -397,7 +430,7 @@ Patch release with refactored recent commits retrieval and analysis.
 
 ---
 
-## v0.13.2 - *26-01-2025* {#v0132-26-01-2025}
+## v0.13.2 - *26-01-2025*
 
 ### Summary (v0.13.2)
 
@@ -413,7 +446,7 @@ Patch release adding timeout configuration for AI requests.
 
 ---
 
-## v0.13.1 - *26-01-2025* {#v0131-26-01-2025}
+## v0.13.1 - *26-01-2025*
 
 ### Summary (v0.13.1)
 
@@ -442,7 +475,7 @@ Feature release with interactive AI-generated commit message editing and enhance
 
 ---
 
-## v0.12.3 - *22-01-2025* {#v0123-22-01-2025}
+## v0.12.3 - *22-01-2025*
 
 ### Summary (v0.12.3)
 
@@ -458,7 +491,7 @@ Patch release with auto-selecting suggested commit type feature.
 
 ---
 
-## v0.12.2 - *22-01-2025* {#v0122-22-01-2025}
+## v0.12.2 - *22-01-2025*
 
 ### Summary (v0.12.2)
 
@@ -486,7 +519,7 @@ Feature release with advanced commit message generation options and improved fil
 
 ---
 
-## v0.12.1 - *05-01-2025* {#v0121-05-01-2025}
+## v0.12.1 - *05-01-2025*
 
 ### Summary (v0.12.1)
 
@@ -502,7 +535,7 @@ Patch release updating dependencies for click, rich, questionary, openai, and py
 
 ---
 
-## v0.12.0 - *04-01-2025* {#v0120-04-01-2025}
+## v0.12.0 - *04-01-2025*
 
 ### Summary (v0.12.0)
 
@@ -524,7 +557,7 @@ Feature release with enhanced AI integration and `.env.example` configuration fi
 
 ---
 
-## v0.11.0 - *03-01-2025* {#v0110-03-01-2025}
+## v0.11.0 - *03-01-2025*
 
 ### Summary (v0.11.0)
 
@@ -549,7 +582,7 @@ Feature release with improved commit type selection highlighting and enhanced AI
 
 ---
 
-## v0.10.0 - *29-12-2024* {#v0100-29-12-2024}
+## v0.10.0 - *29-12-2024*
 
 ### Summary (v0.10.0)
 
@@ -582,7 +615,7 @@ Major feature release with test suite, Ollama support, enhanced commit filtering
 
 ---
 
-## v0.9.2 - *28-12-2024* {#v092-28-12-2024}
+## v0.9.2 - *28-12-2024*
 
 ### Summary (v0.9.2)
 
@@ -599,7 +632,7 @@ Patch release with enhanced commit message generation and context analysis.
 
 ---
 
-## v0.9.1 - *27-12-2024* {#v091-27-12-2024}
+## v0.9.1 - *27-12-2024*
 
 ### Summary (v0.9.1)
 
@@ -615,7 +648,7 @@ Patch release with simplified status handling.
 
 ---
 
-## v0.9.0 - *27-12-2024* {#v090-27-12-2024}
+## v0.9.0 - *27-12-2024*
 
 ### Summary (v0.9.0)
 
@@ -640,7 +673,7 @@ Major architectural refactor introducing modular package structure with separate
 
 ---
 
-## v0.8.0 - *26-12-2024* {#v080-26-12-2024}
+## v0.8.0 - *26-12-2024*
 
 ### Summary (v0.8.0)
 
@@ -656,7 +689,7 @@ Feature release with improved handling of staged and unstaged changes.
 
 ---
 
-## v0.7.0 - *22-12-2024* {#v070-22-12-2024}
+## v0.7.0 - *22-12-2024*
 
 ### Summary (v0.7.0)
 
@@ -678,7 +711,7 @@ Feature release with improved commit type selection and user interrupt handling.
 
 ---
 
-## v0.6.1 - *21-12-2024* {#v061-21-12-2024}
+## v0.6.1 - *21-12-2024*
 
 ### Summary (v0.6.1)
 
@@ -690,7 +723,7 @@ Patch release for version consistency across project files.
 
 ---
 
-## v0.6.0 - *21-12-2024* {#v060-21-12-2024}
+## v0.6.0 - *21-12-2024*
 
 ### Summary (v0.6.0)
 
@@ -719,7 +752,7 @@ Major feature release introducing interactive commit type selection, verbose mod
 
 ---
 
-## v0.5.0 - *20-12-2024* {#v050-20-12-2024}
+## v0.5.0 - *20-12-2024*
 
 ### Summary (v0.5.0)
 

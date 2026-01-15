@@ -195,7 +195,7 @@ class TestGitWorkflow:
         exit_code = workflow.run()
 
         assert exit_code == 0
-        assert interactive_config.files == "file1.py"
+        assert workflow.config.files == "file1.py"
 
     @patch("git_acp.cli.workflow.git_add")
     def test_workflow_run__git_add_failure(
@@ -248,8 +248,8 @@ class TestGitWorkflow:
         exit_code = workflow.run()
 
         assert exit_code == 0
-        assert mock_config.message == "Manual commit message"
-        mock_generate.assert_called_once_with(mock_config)
+        assert workflow.config.message == "Manual commit message"
+        mock_generate.assert_called_once()
         mock_add.assert_called_once()
         mock_commit.assert_called_once()
         mock_push.assert_called_once()
@@ -355,8 +355,8 @@ class TestGitWorkflow:
         exit_code = workflow.run()
 
         assert exit_code == 0
-        mock_generate.assert_called_once_with(mock_config)
-        assert mock_config.message == "AI generated message"
+        mock_generate.assert_called_once()
+        assert workflow.config.message == "AI generated message"
 
     @patch("git_acp.cli.workflow.classify_commit_type")
     @patch("git_acp.cli.workflow.git_add")
@@ -420,6 +420,124 @@ class TestGitWorkflow:
         assert any("tests/ai/test_ai_utils.py" in msg for msg in listed_files)
         assert any("tests/git/test_history.py" in msg for msg in listed_files)
         assert all("git_acp/cli/workflow.py" not in msg for msg in listed_files)
+
+    @patch("git_acp.cli.workflow.unstage_files")
+    @patch("git_acp.cli.workflow.git_push")
+    @patch("git_acp.cli.workflow.git_commit")
+    @patch("git_acp.cli.workflow.classify_commit_type")
+    @patch("git_acp.cli.workflow.git_add")
+    @patch("git_acp.cli.workflow.get_current_branch")
+    @patch("git_acp.cli.workflow.get_changed_files")
+    def test_workflow_run__dry_run_with_cli_files_shows_preview(
+        self,
+        mock_get_changed: MagicMock,
+        mock_branch: MagicMock,
+        mock_add: MagicMock,
+        mock_classify: MagicMock,
+        mock_commit: MagicMock,
+        mock_push: MagicMock,
+        mock_unstage: MagicMock,
+        mock_config: GitConfig,
+    ) -> None:
+        """Reach dry-run output even though git_add is skipped in dry-run."""
+        from git_acp.cli.interaction import TestInteraction
+        from git_acp.cli.workflow import GitWorkflow
+
+        mock_config.files = "."
+        mock_config.message = "Test commit message"
+        mock_config.use_ollama = False
+        mock_config.skip_confirmation = True
+        mock_config.dry_run = True
+
+        mock_get_changed.return_value = {"file1.py"}
+        mock_branch.return_value = "main"
+        mock_classify.return_value = CommitType.CHORE
+
+        interaction = TestInteraction(confirm_response=True)
+        workflow = GitWorkflow(
+            mock_config,
+            interaction,
+            files_from_cli=True,
+            raw_add_patterns=".",
+        )
+
+        exit_code = workflow.run()
+
+        assert exit_code == 0
+        assert any("DRY RUN MODE" in msg for msg in interaction.messages)
+        assert any("Would commit with message" in msg for msg in interaction.messages)
+        mock_commit.assert_not_called()
+        mock_push.assert_not_called()
+
+    @patch("git_acp.cli.workflow.unstage_files")
+    @patch("git_acp.cli.workflow.git_push")
+    @patch("git_acp.cli.workflow.git_commit")
+    @patch("git_acp.cli.workflow.classify_commit_type")
+    @patch("git_acp.cli.workflow.git_add")
+    @patch("git_acp.cli.workflow.get_current_branch")
+    @patch("git_acp.cli.workflow.get_changed_files")
+    def test_dry_run_uses_working_tree_not_staged_for_check(
+        self,
+        mock_get_changed: MagicMock,
+        mock_branch: MagicMock,
+        mock_add: MagicMock,
+        mock_classify: MagicMock,
+        mock_commit: MagicMock,
+        mock_push: MagicMock,
+        mock_unstage: MagicMock,
+        mock_config: GitConfig,
+    ) -> None:
+        """Regression: dry-run with -a must check working tree, not staged files.
+
+        In dry-run mode, git_add skips staging. The _check_staged_files method
+        must use staged_only=False to validate working tree changes exist,
+        not staged_only=True which would always be empty in dry-run.
+
+        Bug scenario: without the fix, dry-run with -a would incorrectly show
+        "No Changes Staged via -a" because it checked staged files (empty)
+        instead of working tree files (present).
+        """
+        from git_acp.cli.interaction import TestInteraction
+        from git_acp.cli.workflow import GitWorkflow
+
+        mock_config.files = "."
+        mock_config.message = "Test commit message"
+        mock_config.use_ollama = False
+        mock_config.skip_confirmation = True
+        mock_config.dry_run = True
+
+        def get_changed_side_effect(
+            config: GitConfig, staged_only: bool = False
+        ) -> set[str]:
+            if staged_only:
+                return set()  # No staged files (dry-run skipped staging)
+            return {"file1.py", "file2.py"}  # Working tree has changes
+
+        mock_get_changed.side_effect = get_changed_side_effect
+        mock_branch.return_value = "main"
+        mock_classify.return_value = CommitType.CHORE
+
+        interaction = TestInteraction(confirm_response=True)
+        workflow = GitWorkflow(
+            mock_config,
+            interaction,
+            files_from_cli=True,
+            raw_add_patterns=".",
+        )
+
+        exit_code = workflow.run()
+
+        # Must succeed and show dry-run output, NOT "No Changes Staged via -a"
+        assert exit_code == 0
+        assert any("DRY RUN MODE" in msg for msg in interaction.messages)
+        # Verify no "No Changes Staged" error panel was shown
+        no_staged_panels = [
+            p for p in interaction.panels if "No Changes Staged" in p[1]
+        ]
+        assert not no_staged_panels, (
+            "Dry-run should not show 'No Changes Staged via -a' when working "
+            "tree has changes"
+        )
 
 
 # -----------------------------------------------------------------------------
