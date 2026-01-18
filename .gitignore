@@ -26,8 +26,10 @@
 # !.github/PULL_REQUEST/
 # !.github/PULL_REQUEST/*.md
 
-# Windsurf workflow
+# Windsurf
 !.windsurf/
+# !.windsurf/skills/
+# !.windsurf/skills/**
 !.windsurf/workflows/
 !.windsurf/workflows/test-dry-run.md
 
