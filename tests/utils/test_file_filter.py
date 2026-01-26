@@ -110,6 +110,11 @@ class TestFilterFilesByScope:
         result = filter_files_by_scope(files, "nonexistent.py")
         assert result == set()
 
+    def test_returns_empty_set_for_empty_input_files(self) -> None:
+        """Return empty set when input files set is empty."""
+        result = filter_files_by_scope(set(), "*.py")
+        assert result == set()
+
     def test_handles_multiple_spaces_in_patterns(self) -> None:
         """Handle multiple spaces between patterns."""
         files = {"a.py", "b.txt", "c.md"}

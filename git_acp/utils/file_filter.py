@@ -45,7 +45,9 @@ def filter_files_by_scope(files: set[str], add_patterns: str | None) -> set[str]
                 filtered.add(path)
                 break
             if "*" in normalized or "?" in normalized or "[" in normalized:
-                if "/" not in normalized and "*" not in normalized and "/" in path:
+                if "/" not in normalized and "?" in normalized and "/" in path:
+                    continue
+                if "/" not in normalized and "[" in normalized and "/" in path:
                     continue
                 if "/" in normalized:
                     patterns = [normalized]
