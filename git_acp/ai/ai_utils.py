@@ -226,6 +226,7 @@ Follow repository patterns:
 3. Reference related commits when relevant
 4. Use appropriate commit type and scope
 5. Keep title under 72 chars, body well-formatted
+6. Output only the commit message, no additional text, comments or explanations.
 </requirements>
 
 <output_format>
@@ -268,6 +269,7 @@ Generate a conventional commit message for the provided git changes.
 2. Be specific about what changed
 3. Keep under 72 characters for title
 4. Add body only if explanation needed
+5. Output only the commit message, no additional text, comments or explanations.
 </requirements>
 
 <output_format>
