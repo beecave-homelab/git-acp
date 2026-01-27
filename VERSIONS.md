@@ -2,8 +2,8 @@
 
 ## Table of Contents
 
-- [v0.22.0 (Current) - 13-01-2026](#v0220-current---13-01-2026)
-- [v0.21.0 - 27-12-2025](#v0210---27-12-2025)
+- [v0.23.0 (Current) - 27-01-2026](#v0230-current---27-01-2026)
+- [v0.22.0 - 13-01-2026](#v0220---13-01-2026)
 - [v0.20.0 - 20-12-2025](#v0200---20-12-2025)
 - [v0.19.0 - 19-12-2025](#v0190---19-12-2025)
 - [v0.18.0 - 02-12-2025](#v0180---02-12-2025)
@@ -33,7 +33,36 @@
 - [v0.6.0 - 21-12-2024](#v060---21-12-2024)
 - [v0.5.0 - 20-12-2024](#v050---20-12-2024)
 
-## v0.22.0 (Current) - *13-01-2026*
+## v0.23.0 (Current) - *27-01-2026*
+
+### ✨ Brief Description (v0.23.0)
+
+Feature release adding `--version` flag to display the current version and exit.
+
+### ✨ New Features in v0.23.0
+
+- **Added**: `--version` flag to display the current version and exit.
+
+### 🐛 Bug Fixes in v0.23.0
+
+None.
+
+### 🔧 Improvements in v0.23.0
+
+- **Documentation**: Updated project overview with new version information.
+- **Documentation**: Updated AGENTS.md with rule about importing from single source of truth.
+
+### 🧪 Testing improvements in v0.23.0
+
+- **Added**: Test for `--version` flag to verify correct version display.
+
+### 📝 Key Commits in v0.23.0
+
+(None yet - pending commit)
+
+---
+
+## v0.22.0 - *13-01-2026*
 
 ### ✨ Brief Description (v0.22.0)
 
