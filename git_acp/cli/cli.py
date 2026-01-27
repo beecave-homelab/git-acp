@@ -20,6 +20,7 @@ import click
 from rich import print as rprint
 from rich.panel import Panel
 
+from git_acp import __version__
 from git_acp.cli.interaction import RichQuestionaryInteraction
 from git_acp.cli.workflow import GitWorkflow
 from git_acp.config import COLORS, DEFAULT_AUTO_GROUP_MAX_NON_TYPE_GROUPS
@@ -118,6 +119,7 @@ def _process_add_argument(add: str | None) -> tuple[str | None, bool]:
 
 
 @click.command()
+@click.version_option(version=__version__, prog_name="git-acp")
 # Git Operations Group
 @click.option(
     "-a",
