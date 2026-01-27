@@ -7,7 +7,7 @@ while tests can use TestInteraction.
 
 from __future__ import annotations
 
-from typing import Protocol
+from typing import Protocol, cast
 
 import questionary
 from rich import print as rprint
@@ -192,20 +192,24 @@ class RichQuestionaryInteraction:
                 )
             )
 
-        commit_type_choices = []
+        commit_type_choices: list[questionary.Choice] = []
         for commit_type in CommitType:
             name = (
                 f"{commit_type.value} (suggested)"
                 if commit_type == suggested_type
                 else commit_type.value
             )
-            choice = {"name": name, "value": commit_type, "checked": False}
+            choice = questionary.Choice(
+                title=name,
+                value=commit_type.value,
+                checked=False,
+            )
             if commit_type == suggested_type:
                 commit_type_choices.insert(0, choice)
             else:
                 commit_type_choices.append(choice)
 
-        def validate_single(selected: list[CommitType]) -> str | bool:
+        def validate_single(selected: list[str]) -> str | bool:
             if len(selected) != 1:
                 return "Please select exactly one commit type"
             return True
@@ -223,7 +227,7 @@ class RichQuestionaryInteraction:
         elif not selected_types or len(selected_types) != 1:
             raise GitError("No commit type selected.")
 
-        return selected_types[0]
+        return CommitType.from_str(selected_types[0])
 
     def confirm(self, message: str) -> bool:
         """Ask user for confirmation using Rich Confirm.
@@ -267,10 +271,13 @@ class RichQuestionaryInteraction:
         rprint(Panel(content, title=title, border_style=style))
 
     def _prompt_manual_commit_message(self) -> str | None:
-        message = questionary.text(
-            "Enter commit message:",
-            style=questionary.Style(QUESTIONARY_STYLE),
-        ).ask()
+        message = cast(
+            str | None,
+            questionary.text(
+                "Enter commit message:",
+                style=questionary.Style(QUESTIONARY_STYLE),
+            ).ask(),
+        )
         if message and message.strip():
             return message.strip()
         return None
