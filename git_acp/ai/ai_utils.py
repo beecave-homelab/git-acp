@@ -5,7 +5,7 @@ with support for both simple and advanced context-aware generation.
 """
 
 import json
-from typing import Any
+from typing import Any, cast
 
 import questionary
 from rich import print as rprint
@@ -389,11 +389,14 @@ def edit_commit_message(message: str, config: GitConfig) -> str:
         style=questionary.Style(QUESTIONARY_STYLE),
     ).ask():
         # Let user edit the message
-        edited = questionary.text(
-            "Edit commit message:",
-            default=message,
-            style=questionary.Style(QUESTIONARY_STYLE),
-        ).ask()
+        edited = cast(
+            str | None,
+            questionary.text(
+                "Edit commit message:",
+                default=message,
+                style=questionary.Style(QUESTIONARY_STYLE),
+            ).ask(),
+        )
 
         if edited and edited.strip():
             if config and config.verbose:

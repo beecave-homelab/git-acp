@@ -216,7 +216,7 @@ class AIClient:
                 thread = Thread(target=make_request)
                 thread.start()
 
-                elapsed = 0
+                elapsed = 0.0
                 while not response_event.is_set() and elapsed < DEFAULT_AI_TIMEOUT:
                     progress.update(
                         task,
