@@ -9,6 +9,7 @@ import json
 from rich import print as rprint
 from rich.console import Console
 from rich.markup import escape
+from rich.status import Status
 
 from git_acp.config import COLORS, MAX_DEBUG_VALUE_CHARS, TERMINAL_WIDTH
 
@@ -24,7 +25,7 @@ def debug_header(message: str) -> None:
     rprint(f"[{COLORS['debug_header']}]Debug - {message}[/{COLORS['debug_header']}]")
 
 
-def debug_item(label: str, value: str = None) -> None:
+def debug_item(label: str, value: str | None = None) -> None:
     """Print a debug item with an optional value.
 
     Values longer than the configured maximum are truncated with a notice.
@@ -96,7 +97,7 @@ def warning(message: str) -> None:
     rprint(f"[{COLORS['warning']}]Warning: {message}[{COLORS['warning']}]")
 
 
-def status(message: str) -> Console.status:
+def status(message: str) -> Status:
     """Create a status context with styled message.
 
     Args:
