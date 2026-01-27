@@ -58,7 +58,7 @@ None.
 
 ### 📝 Key Commits in v0.23.0
 
-(None yet - pending commit)
+`c81a7a3`, `dc07d1d`
 
 ---
 
