@@ -266,8 +266,8 @@ classDiagram
 
     class GitConfig:::inject {
         +files: str
-        +message: str
-        +branch: str
+        +message: str | None
+        +branch: str | None
         +use_ollama: bool
         +skip_confirmation: bool
         +verbose: bool
@@ -574,7 +574,7 @@ Internal modules ([`core.py`](git_acp/git/core.py), [`staging.py`](git_acp/git/s
 @dataclass
 class GitConfig:
     files: str = "."
-    message: str = "Automated commit"
+    message: str | None = "Automated commit"
     branch: str | None = None
     use_ollama: bool = False
     interactive: bool = False
