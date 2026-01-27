@@ -3,6 +3,9 @@
 from __future__ import annotations
 
 import signal
+from collections.abc import Callable
+from types import FrameType
+from typing import cast
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -596,7 +599,8 @@ class TestSetupSignalHandlers:
         setup_signal_handlers()
 
         handler = signal.getsignal(signal.SIGINT)
-        assert callable(handler)
+        typed_handler = cast(Callable[[int, FrameType | None], None], handler)
+        assert callable(typed_handler)
 
     @patch("git_acp.git.staging.unstage_files")
     @patch("git_acp.git.staging.rprint")
@@ -607,9 +611,10 @@ class TestSetupSignalHandlers:
         setup_signal_handlers()
 
         handler = signal.getsignal(signal.SIGINT)
+        typed_handler = cast(Callable[[int, FrameType | None], None], handler)
 
         with pytest.raises(SystemExit) as exc:
-            handler(signal.SIGINT, None)
+            typed_handler(signal.SIGINT, None)
 
         assert exc.value.code == 1
         mock_unstage.assert_called_once()

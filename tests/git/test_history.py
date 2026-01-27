@@ -338,7 +338,7 @@ class TestAnalyzeCommitPatterns:
         self, mock_config: GitConfig
     ) -> None:
         """Handle messages without conventional commit format."""
-        commits = [
+        commits: list[dict[str, str | None]] = [
             {"message": "Updated the code"},
             {"message": "Random change"},
         ]
@@ -352,9 +352,9 @@ class TestAnalyzeCommitPatterns:
         self, mock_config: GitConfig
     ) -> None:
         """Handle commits with empty messages."""
-        commits = [
+        commits: list[dict[str, str | None]] = [
             {"message": ""},
-            {"message": None},  # type: ignore[typeddict-item]
+            {"message": None},
             {},
         ]
 

@@ -72,7 +72,9 @@ def test_gitconfig_type_annotations() -> None:
     """Test type annotations for GitConfig fields."""
     annotations = GitConfig.__annotations__
     assert annotations["files"] is str
-    assert annotations["message"] is str
+    message_annotation = str(annotations["message"])
+    assert "str" in message_annotation
+    assert "None" in message_annotation or "Optional" in message_annotation
 
     # Accept both old-style (typing.Optional) and new-style (X | None) representations
     branch_annotation = str(annotations["branch"])
