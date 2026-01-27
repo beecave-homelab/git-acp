@@ -288,6 +288,7 @@ Use your project’s conventional commit format.
 - f-strings and modern type syntax (`list[str]`).
 - Remove unused code promptly.
 - Use Pytest fixtures for reusable setup; prefer `tmp_path` for temp files.
+- Import values from other files, environment variables, or constants modules (the single source of truth).
 
 ### DON’T — Anti-patterns
 
@@ -295,6 +296,7 @@ Use your project’s conventional commit format.
 - Use `import *` or deep relative imports.
 - Leave parameters undocumented in public functions.
 - Add broad `noqa`—always keep ignores narrow and justified.
+- Hardcode values that can be imported from other files, environment variables, or constants modules (e.g., version numbers, configuration values, URLs).
 
 ---
 
