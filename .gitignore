@@ -22,9 +22,9 @@
 !scripts/*.py
 !.github/
 !.github/workflows/
-!.github/workflows/*.yaml
+!.github/workflows/**
 # !.github/PULL_REQUEST/
-# !.github/PULL_REQUEST/*.md
+# !.github/PULL_REQUEST/**
 
 # Windsurf workflow
 !.windsurf/
