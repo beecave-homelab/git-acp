@@ -7,6 +7,7 @@ from unittest.mock import MagicMock, patch
 
 from click.testing import CliRunner
 
+from git_acp import __version__
 from git_acp.cli.cli import main
 from git_acp.git import CommitType
 
@@ -122,6 +123,14 @@ class TestCli(unittest.TestCase):
         mock_generate_commit_message.assert_called()
         mock_git_commit.assert_called()
         mock_git_push.assert_called()
+
+    def test_cli_version_flag(self) -> None:
+        """Test that --version flag displays the correct version."""
+        result = self.runner.invoke(main, ["--version"])
+
+        self.assertEqual(result.exit_code, 0)
+        self.assertIn("git-acp, version", result.output)
+        self.assertIn(__version__, result.output)
 
 
 if __name__ == "__main__":
