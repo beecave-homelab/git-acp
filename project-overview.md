@@ -650,6 +650,20 @@ select = ["F", "E", "W", "N", "I", "D", "DOC", "TID", "UP", "FA"]
 convention = "google"
 ```
 
+### Type Checking (mypy)
+
+Configured in [`pyproject.toml`](pyproject.toml):
+
+```toml
+[tool.mypy]
+python_version = "3.10"
+ignore_missing_imports = true
+no_implicit_optional = true
+warn_redundant_casts = true
+warn_return_any = true
+warn_unused_ignores = true
+```
+
 **Key rules enforced:**
 
 - **F** (Pyflakes): No undefined names, unused imports.
@@ -733,6 +747,7 @@ This section is not implemented in the current codebase.
 
 - GitHub Actions workflow: `/blob/aa6be1ba1170e5d45aec681b89314109b22b0a1d/.github/workflows/pr-ci.yaml`
 - Runs Ruff (lint/format) and Pytest (with coverage) on PRs.
+- Local CI script (`scripts/local-ci.sh`) runs Ruff, Pytest, docstring coverage, and mypy.
 
 ## DOCKER
 
