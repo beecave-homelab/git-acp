@@ -6,8 +6,9 @@ workflow using injected dependencies for user interaction.
 
 from __future__ import annotations
 
+from collections.abc import Callable
 from dataclasses import replace
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, cast
 
 from git_acp.ai import generate_commit_message
 from git_acp.config import COLORS
@@ -331,7 +332,8 @@ class GitWorkflow:
         """
         prompt_manual = getattr(self.interaction, "_prompt_manual_commit_message", None)
         if callable(prompt_manual):
-            return prompt_manual()
+            typed_prompt = cast(Callable[[], str | None], prompt_manual)
+            return typed_prompt()
         return None
 
     def _handle_commit_type(self) -> CommitType | None:
@@ -412,7 +414,8 @@ class GitWorkflow:
         Returns:
             Formatted commit message.
         """
-        lines = self.config.message.split("\n")
+        message = self.config.message or ""
+        lines = message.split("\n")
         title = lines[0]
         description = "\n".join(lines[1:])
         return f"{commit_type.value}: {title}\n\n{description}".strip()
@@ -476,9 +479,15 @@ class GitWorkflow:
 
         Returns:
             True if successful, False on error.
+
+        Raises:
+            GitError: If the branch is not set.
         """
         try:
-            git_push(self.config.branch)
+            branch = self.config.branch
+            if branch is None:
+                raise GitError("Branch not set for push operation.")
+            git_push(branch)
             return True
         except GitError as e:
             self.interaction.print_error(

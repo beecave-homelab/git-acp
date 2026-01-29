@@ -36,6 +36,7 @@ This script performs:
   • pdm run test
   • pdm run test-cov
   • pdm run docstring-coverage
+  • pdm run mypy -p git_acp -p tests
 "
 }
 
@@ -53,6 +54,7 @@ main_logic() {
   echo "    • pdm run test"
   echo "    • pdm run test-cov"
   echo "    • pdm run docstring-coverage"
+  echo "    • pdm run mypy -p git_acp -p tests"
   echo ""
 
   local output_file="$1"
@@ -73,6 +75,9 @@ main_logic() {
     echo ""
     echo "[+] Running docstring coverage..."
     pdm run docstring-coverage
+    echo ""
+    echo "[+] Running mypy..."
+    pdm run mypy -p git_acp -p tests
     echo ""
     echo "[+] Local CI check successful. You can commit these changes."
   } | tee "${output_file}"

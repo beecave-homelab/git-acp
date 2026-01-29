@@ -6,6 +6,7 @@ enabling comprehensive testing without external API calls.
 
 from __future__ import annotations
 
+from typing import Any, cast
 from unittest.mock import MagicMock, Mock, patch
 
 import pytest
@@ -653,7 +654,7 @@ class TestInitErrorHandling:
         mock_progress_factory: MagicMock,
     ) -> None:
         """Log response attributes when error has response object."""
-        error = RuntimeError("API error")
+        error = cast(Any, RuntimeError("API error"))
         error.response = MagicMock()
         error.response.status_code = 500
         error.response.text = "Internal Server Error"

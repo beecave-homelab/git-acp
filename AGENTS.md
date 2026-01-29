@@ -1,17 +1,11 @@
 # AGENTS.md — Coding Rules (Ruff + Pytest + SOLID)
 
-This repository uses **Ruff** as the single source of truth for linting/formatting and **Pytest** (with **pytest-cov**) for tests & coverage. CI fails when these rules are violated.
+This repository uses **Ruff** as the single source of truth for linting/formatting, **Pytest** (with **pytest-cov**) for tests & coverage, and **mypy** for type checking. (Local) CI fails when these rules are violated.
 
-Run locally before committing:
+Run after code changes:
 
 ```bash
-# Lint & format (Ruff)
-pdm run ruff check --fix .
-pdm run ruff format .
-
-# Tests & coverage (adjust --cov target if needed)
-pdm run pytest --maxfail=1 -q
-pdm run pytest --cov=. --cov-report=term-missing:skip-covered --cov-report=xml
+scripts/local-ci.sh
 ```
 
 When in doubt, prefer **correctness → clarity → consistency → brevity** (in that order).
@@ -32,8 +26,9 @@ When in doubt, prefer **correctness → clarity → consistency → brevity** (i
 - [12) Quick DO / DON’T](#12-quick-do--dont)
 - [13) Pre-commit (recommended)](#13-pre-commit-recommended)
 - [14) CI expectations](#14-ci-expectations)
-- [15) SOLID design principles — Explanation & Integration](#15-solid-design-principles--explanation--integration)
-- [16) Configuration management — environment variables & constants](#16-configuration-management--environment-variables--constants)
+- [15) Type safety & mypy](#15-type-safety--mypy)
+- [16) SOLID design principles — Explanation & Integration](#16-solid-design-principles--explanation--integration)
+- [17) Configuration management — environment variables & constants](#17-configuration-management--environment-variables--constants)
 - [Final note](#final-note)
 
 ---
@@ -288,6 +283,7 @@ Use your project’s conventional commit format.
 - f-strings and modern type syntax (`list[str]`).
 - Remove unused code promptly.
 - Use Pytest fixtures for reusable setup; prefer `tmp_path` for temp files.
+- Import values from other files, environment variables, or constants modules (the single source of truth).
 
 ### DON’T — Anti-patterns
 
@@ -295,6 +291,7 @@ Use your project’s conventional commit format.
 - Use `import *` or deep relative imports.
 - Leave parameters undocumented in public functions.
 - Add broad `noqa`—always keep ignores narrow and justified.
+- Hardcode values that can be imported from other files, environment variables, or constants modules (e.g., version numbers, configuration values, URLs).
 
 ---
 
@@ -334,7 +331,28 @@ Enforce a minimum coverage threshold (example: 85%). Fail the pipeline if below.
 
 ---
 
-## 15) SOLID design principles — Explanation & Integration
+## 15) Type safety & mypy
+
+### Expectations — Type safety
+
+- Keep public APIs fully typed; avoid `Any` unless justified.
+- Do not rely on implicit `Optional` defaults (match `no_implicit_optional = true`).
+- Prefer precise types (`Literal`, `Enum`, `Protocol`) over generic `dict`/`list` where feasible.
+- Keep typing-only imports behind `if TYPE_CHECKING:` when necessary.
+
+### Running — mypy
+
+```bash
+# Type check (package + tests)
+pdm run mypy -p git_acp -p tests
+
+# Local CI wrapper (includes mypy)
+scripts/local-ci.sh
+```
+
+---
+
+## 16) SOLID design principles — Explanation & Integration
 
 The **SOLID** principles help you design maintainable, testable, and extensible Python code. This section explains each principle concisely and shows how it maps to our linting, docs, and tests.
 
@@ -445,31 +463,31 @@ class Uploader:
 
 ---
 
-## 16) Configuration management — environment variables & constants
+## 17) Configuration management — environment variables & constants
 
 These rules standardize how environment variables are loaded and accessed across the codebase. They prevent config sprawl, enable testing, and align with **SRP** and **DIP**.
 
-### 16.1 Single loading point
+### 17.1 Single loading point
 
 - Environment variables are parsed **exactly once** at application start.
 - The loader function is `load_project_env()` located at `<package>/utils/env_loader.py`.
 
-### 16.2 Central import location
+### 17.2 Central import location
 
 - `load_project_env()` **MUST** be invoked **only** inside `<package>/utils/constant.py`.
 - No other file may import `env_loader` or call `load_project_env()` directly.
 
-### 16.3 Constant exposure
+### 17.3 Constant exposure
 
 - After loading, `<package>/utils/constant.py` exposes project-wide configuration constants (e.g., `DEFAULT_CHUNK_LEN_SEC`, `DEFAULT_BATCH_SIZE`).
 - All other modules (e.g., `<package>/app.py`, `<package>/transcribe.py`) **must import from** `<package>.utils.constant` instead of reading `os.environ` or `.env`.
 
-### 16.4 Adding new variables
+### 17.4 Adding new variables
 
 - Define a sensible default in `<package>/utils/constant.py` using `os.getenv("VAR_NAME", "default")` or typed parsing logic.
 - Document every variable in `.env.example` with a short description and default.
 
-### 16.5 Enforcement policy
+### 17.5 Enforcement policy
 
 - Pull requests that add direct `os.environ[...]` access or import `env_loader` outside `utils/constant.py` **must be rejected**.
 - Suggested CI guardrail (example grep check):
@@ -479,7 +497,7 @@ These rules standardize how environment variables are loaded and accessed across
   ! git grep -nE 'os\\.environ\\[|os\\.getenv\\(' -- ':!<package>/utils/constant.py' ':!**/tests/**'
   ```
 
-### 16.6 Example layout (illustrative)
+### 17.6 Example layout (illustrative)
 
 ```python
 # <package>/utils/env_loader.py
@@ -516,7 +534,7 @@ def run() -> None:
     ...
 ```
 
-### 16.7 Testing guidance for configuration
+### 17.7 Testing guidance for configuration
 
 - Unit tests may override constants via monkeypatching the **constants module attributes**, not the environment loader:
 

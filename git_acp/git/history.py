@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 from collections import Counter
+from collections.abc import Mapping, Sequence
 
 from git_acp.config import DEFAULT_NUM_RECENT_COMMITS
 from git_acp.utils import OptionalConfig, debug_header, debug_item, debug_json
@@ -125,7 +126,8 @@ def find_related_commits(
 
 
 def analyze_commit_patterns(
-    commits: list[dict[str, str]], config: OptionalConfig = None
+    commits: Sequence[Mapping[str, str | None]],
+    config: OptionalConfig = None,
 ) -> dict[str, dict[str, int]]:
     """Analyze commit history to find patterns in commit types and scopes.
 
@@ -140,7 +142,7 @@ def analyze_commit_patterns(
         debug_header("Analyzing commit patterns")
         debug_item("Number of commits", str(len(commits)))
 
-    patterns = {
+    patterns: dict[str, Counter[str]] = {
         "types": Counter(),
         "scopes": Counter(),
     }
@@ -171,4 +173,4 @@ def analyze_commit_patterns(
         debug_item("Commit types found", str(dict(patterns["types"])))
         debug_item("Commit scopes found", str(dict(patterns["scopes"])))
 
-    return patterns
+    return {key: dict(counter) for key, counter in patterns.items()}

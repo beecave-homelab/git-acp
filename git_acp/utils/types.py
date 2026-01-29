@@ -15,7 +15,7 @@ class GitConfig:
 
     Attributes:
         files: Files to be added to git staging. Defaults to "." for all files.
-        message: Commit message to use. Defaults to "Automated commit".
+        message: Optional commit message to use. Defaults to "Automated commit".
         branch: Target branch for push operation. If None, uses current branch.
         use_ollama: Whether to use Ollama AI for commit message generation.
         interactive: Whether to allow editing of AI-generated commit messages.
@@ -30,7 +30,7 @@ class GitConfig:
     """
 
     files: str = "."
-    message: str = "Automated commit"
+    message: str | None = "Automated commit"
     branch: str | None = None
     use_ollama: bool = False
     interactive: bool = False

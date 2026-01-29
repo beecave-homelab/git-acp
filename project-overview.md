@@ -11,7 +11,7 @@ updated: 2026-01-13T22:01:27Z
 `git-acp` is a command-line tool that automates the `git add`, `commit`, and `push` workflow. It offers interactive file selection, AI-powered commit message generation via Ollama, and enforces Conventional Commits standards.
 
 ![Language](https://img.shields.io/badge/Python-3.10+-blue)
-[![Version](https://img.shields.io/badge/Version-0.22.0-brightgreen)](#version-summary)
+[![Version](https://img.shields.io/badge/Version-0.23.0-brightgreen)](#version-summary)
 [![CLI](https://img.shields.io/badge/CLI-Click-blue)](#cli)
 [![Coverage](https://img.shields.io/badge/Coverage-97%25-brightgreen)](#tests)
 
@@ -61,6 +61,7 @@ pdm export --pyproject --no-hashes -G lint,test -o requirements.dev.txt
 
 | Version | Date | Type | Key Changes |
 | ------- | ---- | ---- | ----------- |
+| 0.23.0 | 27-01-2026 | ✨ | Add `--version` flag to display current version |
 | 0.22.0 | 13-01-2026 | ✨ | Scoped `-a` filtering with glob/`**/` support for commit messages and `--dry-run` |
 | 0.21.0 | 27-12-2025 | ✨ | Add auto-group mode (`-ag/--auto-group`) for deterministic multi-commit workflow |
 | 0.20.0 | 20-12-2025 | ✨ | Add `--dry-run` flag for testing workflow without committing |
@@ -265,8 +266,8 @@ classDiagram
 
     class GitConfig:::inject {
         +files: str
-        +message: str
-        +branch: str
+        +message: str | None
+        +branch: str | None
         +use_ollama: bool
         +skip_confirmation: bool
         +verbose: bool
@@ -573,7 +574,7 @@ Internal modules ([`core.py`](git_acp/git/core.py), [`staging.py`](git_acp/git/s
 @dataclass
 class GitConfig:
     files: str = "."
-    message: str = "Automated commit"
+    message: str | None = "Automated commit"
     branch: str | None = None
     use_ollama: bool = False
     interactive: bool = False
@@ -649,6 +650,20 @@ select = ["F", "E", "W", "N", "I", "D", "DOC", "TID", "UP", "FA"]
 convention = "google"
 ```
 
+### Type Checking (mypy)
+
+Configured in [`pyproject.toml`](pyproject.toml):
+
+```toml
+[tool.mypy]
+python_version = "3.10"
+ignore_missing_imports = true
+no_implicit_optional = true
+warn_redundant_casts = true
+warn_return_any = true
+warn_unused_ignores = true
+```
+
 **Key rules enforced:**
 
 - **F** (Pyflakes): No undefined names, unused imports.
@@ -718,6 +733,7 @@ The main entry point is `git_acp.cli.cli.main`. It provides a set of options to 
 - `-pt, --prompt-type`: Select AI prompt complexity.
 - `-m, --model`: Override the default AI model.
 - `-ct, --context-window`: Override the AI context window size (num_ctx).
+- `--version`: Show the current version and exit.
 
 ## API
 
@@ -731,6 +747,7 @@ This section is not implemented in the current codebase.
 
 - GitHub Actions workflow: `/blob/aa6be1ba1170e5d45aec681b89314109b22b0a1d/.github/workflows/pr-ci.yaml`
 - Runs Ruff (lint/format) and Pytest (with coverage) on PRs.
+- Local CI script (`scripts/local-ci.sh`) runs Ruff, Pytest, docstring coverage, and mypy.
 
 ## DOCKER
 

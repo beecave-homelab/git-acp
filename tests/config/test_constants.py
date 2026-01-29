@@ -3,6 +3,7 @@
 import os
 
 import pytest
+from pytest import MonkeyPatch
 
 from git_acp.config import constants
 
@@ -35,7 +36,7 @@ class TestConstants:
     )
     def test_environment_overrides(
         self,
-        monkeypatch: object,
+        monkeypatch: MonkeyPatch,
         env_var: str,
         constant: str,
         default: object,
@@ -90,7 +91,7 @@ class TestConstants:
     )
     def test_terminal_width_handling(
         self,
-        monkeypatch: object,
+        monkeypatch: MonkeyPatch,
         width_env: str | None,
         expected: int,
     ) -> None:
