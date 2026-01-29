@@ -51,14 +51,22 @@ class CommitType(Enum):
         Raises:
             GitError: If the type string is invalid
         """
-        try:
-            return cls[type_str.upper()]
-        except KeyError:
-            valid_types = [t.name.lower() for t in cls]
-            raise GitError(
-                f"Invalid commit type: {type_str}. "
-                f"Valid types are: {', '.join(valid_types)}"
-            )
+        normalized = type_str.strip().lower()
+        for commit_type in cls:
+            if normalized == commit_type.name.lower():
+                return commit_type
+            value = commit_type.value.strip().lower()
+            if normalized == value:
+                return commit_type
+            value_prefix = value.split()[0] if value else value
+            if normalized == value_prefix:
+                return commit_type
+
+        valid_types = [t.name.lower() for t in cls]
+        raise GitError(
+            f"Invalid commit type: {type_str}. "
+            f"Valid types are: {', '.join(valid_types)}"
+        )
 
 
 def get_changes() -> str:
