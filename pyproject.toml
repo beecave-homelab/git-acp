@@ -95,6 +95,7 @@ test = [
     "pytest-cov>=7.0.0",
     "interrogate>=1.7.0",
     "mypy>=1.19.0",
+    "pdm>=2.26.6",
 ]
 lint = [
     "ruff>=0.14.0",

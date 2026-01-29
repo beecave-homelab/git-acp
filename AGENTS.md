@@ -8,6 +8,13 @@ Run after code changes:
 scripts/local-ci.sh
 ```
 
+Prerequisites: ensure `pdm` and `tee` are available. On Linux, you can auto-install
+missing dependencies with:
+
+```bash
+scripts/local-ci.sh --install-deps
+```
+
 When in doubt, prefer **correctness → clarity → consistency → brevity** (in that order).
 
 ## Table of Contents
