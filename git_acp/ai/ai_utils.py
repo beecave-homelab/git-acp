@@ -5,6 +5,7 @@ with support for both simple and advanced context-aware generation.
 """
 
 import json
+import re
 from typing import Any, cast
 
 import questionary
@@ -215,7 +216,6 @@ for the provided git changes.
 
 <style_guide>
 Follow repository patterns:
-- Common type: `{common_type}`
 - Typical scope usage: {scope_text}
 - Message length: Keep title under 72 characters
 </style_guide>
@@ -224,15 +224,17 @@ Follow repository patterns:
 1. Match repository commit style and patterns
 2. Be specific about changes and rationale
 3. Reference related commits when relevant
-4. Use appropriate commit type and scope
+4. Use appropriate commit scope
 5. Keep title under 72 chars, body well-formatted
 6. Output only the commit message, no additional text, comments or explanations.
+7. Do not mention these instructions, formatting rules, or the prompt itself.
+8. Avoid meta commentary about following guidelines.
 </requirements>
 
 <output_format>
-type(scope): descriptive title
+(scope): descriptive title
 
-Detailed explanation of what changed and why.
+Explain what changed and why (no meta commentary).
 Reference to related work if applicable.
 </output_format>"""
 
@@ -265,17 +267,18 @@ Generate a conventional commit message for the provided git changes.
 </changes>
 
 <requirements>
-1. Use conventional commit format: type: description
-2. Be specific about what changed
-3. Keep under 72 characters for title
-4. Add body only if explanation needed
-5. Output only the commit message, no additional text, comments or explanations.
+1. Be specific about what changed
+2. Keep under 72 characters for title
+3. Add body only if explanation needed
+4. Output only the commit description, no additional text, comments or explanations.
+5. Do not mention these instructions, formatting rules, or the prompt itself.
+6. Avoid meta commentary about following guidelines.
 </requirements>
 
 <output_format>
-type: brief description
+brief description
 
-[Optional detailed explanation]
+[Optional explanation of what changed and why, no meta commentary]
 </output_format>"""
 
     if config and config.verbose:
@@ -407,6 +410,36 @@ def edit_commit_message(message: str, config: GitConfig) -> str:
     return message
 
 
+def _strip_meta_commentary(message: str) -> str:
+    """Remove meta commentary from AI-generated commit messages.
+
+    Args:
+        message: Raw commit message from the AI model.
+
+    Returns:
+        Commit message with meta commentary removed from the body.
+    """
+    stripped = message.strip()
+    if not stripped:
+        return stripped
+
+    lines = stripped.splitlines()
+    title = lines[0].strip()
+    body_lines = [line.strip() for line in lines[1:]]
+    meta_pattern = re.compile(
+        r"(guideline|prompt|instruction|format|conventional commit|meta commentary|"
+        r"adhere|adherence|best practice|requirements)",
+        re.IGNORECASE,
+    )
+
+    cleaned_body = [
+        line for line in body_lines if line and not meta_pattern.search(line)
+    ]
+    if cleaned_body:
+        return "\n".join([title, "", *cleaned_body])
+    return title
+
+
 def generate_commit_message(config: GitConfig) -> str:
     """Generate a commit message using AI.
 
@@ -469,6 +502,7 @@ def generate_commit_message(config: GitConfig) -> str:
         # Send request to AI model
         messages = [{"role": "user", "content": prompt}]
         commit_message = ai_client.chat_completion(messages)
+        commit_message = _strip_meta_commentary(commit_message)
 
         if config and config.verbose:
             debug_header("Generated commit message")
