@@ -501,8 +501,14 @@ def strip_conventional_prefix(title: str) -> str:
     commit_type_pattern = "|".join(
         commit_type.name.lower() for commit_type in CommitType
     )
+    _emojis = {
+        part for ct in CommitType for part in ct.value.split() if not part.isascii()
+    }
+    emoji_pattern = "|".join(re.escape(e) for e in sorted(_emojis))
     pattern = re.compile(
-        rf"^\s*(?:{commit_type_pattern})\s*(?:\([^)]+\))?(?P<breaking>!?):\s*(?P<body>.+)$",
+        rf"^\s*(?:{commit_type_pattern})(?:\s+(?:{emoji_pattern}))?\s*"
+        rf"(?:\([^)]+\))?(?:\s+(?:{emoji_pattern}))?\s*"
+        r"(?P<breaking>!?):\s*(?P<body>.+)$",
         flags=re.IGNORECASE,
     )
     match = pattern.match(title)
