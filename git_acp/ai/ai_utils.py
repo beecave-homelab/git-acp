@@ -6,6 +6,7 @@ with support for both simple and advanced context-aware generation.
 
 import json
 import re
+from pathlib import Path
 from typing import Any, cast
 
 import questionary
@@ -293,6 +294,38 @@ brief description
     return prompt
 
 
+def _diff_for_untracked_files(file_paths: list[str]) -> str:
+    """Generate diff-like output for untracked files.
+
+    ``git diff`` does not include untracked files.  This helper reads
+    each file and formats its content as a unified diff so the AI can
+    reason about new files just as it does about modifications.
+
+    Args:
+        file_paths: Repository-relative paths to untracked files.
+
+    Returns:
+        A string resembling ``git diff`` output for the given files.
+    """
+    parts: list[str] = []
+    for file_path in file_paths:
+        try:
+            content = Path(file_path).read_text(encoding="utf-8", errors="replace")
+        except OSError:
+            continue
+        lines = content.splitlines()
+        numbered = "".join(f"+{line}\n" for line in lines)
+        parts.append(
+            f"diff --git a/{file_path} b/{file_path}\n"
+            f"new file mode 100644\n"
+            f"--- /dev/null\n"
+            f"+++ b/{file_path}\n"
+            f"@@ -0,0 +1,{len(lines)} @@\n"
+            f"{numbered}"
+        )
+    return "\n".join(parts)
+
+
 def get_commit_context(config: GitConfig) -> dict[str, Any]:
     """Gather git context information for commit message generation.
 
@@ -314,7 +347,27 @@ def get_commit_context(config: GitConfig) -> dict[str, Any]:
         if not staged_changes:
             if config and config.verbose:
                 debug_header("No staged changes, checking working directory")
-            staged_changes = get_diff("unstaged", config)
+            # Scope the unstaged diff to the user's selected files so the AI
+            # only sees changes relevant to the intended commit (important in
+            # dry-run mode where files are never actually staged).
+            selected_files: list[str] | None = None
+            if config and config.files and config.files != ".":
+                import shlex
+
+                selected_files = shlex.split(config.files)
+            staged_changes = get_diff("unstaged", config, files=selected_files)
+
+            # git diff does not show untracked files.  When the diff is
+            # still empty and the user selected specific files, generate
+            # diff-like content for any untracked files among them so the
+            # AI can reason about new files.
+            if not staged_changes and selected_files:
+                from git_acp.git import get_changed_files
+
+                all_changed = get_changed_files(config, staged_only=False)
+                untracked = [f for f in selected_files if f in all_changed]
+                if untracked:
+                    staged_changes = _diff_for_untracked_files(untracked)
 
         if config and config.verbose:
             debug_header("Fetching commit history")
