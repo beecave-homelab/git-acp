@@ -3,7 +3,7 @@
 
 click==8.1.8
 openai==1.59.3
-python-dotenv==1.0.1
+python-dotenv==1.2.2
 questionary>=2.1.1
 rich==13.9.4
 tqdm==4.67.1
