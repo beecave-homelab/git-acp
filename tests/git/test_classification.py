@@ -10,6 +10,7 @@ from git_acp.git.classification import (
     _classify_by_file_paths,
     classify_commit_type,
     get_changes,
+    strip_conventional_prefix,
 )
 from git_acp.git.git_operations import GitError
 
@@ -528,3 +529,38 @@ class TestClassifyCommitTypeEdgeCases:
         assert result == CommitType.TEST
         mock_debug_header.assert_any_call("Commit Classification Result")
         mock_debug_item.assert_any_call("Source", "file_paths")
+
+
+class TestStripConventionalPrefix:
+    """Tests for stripping conventional prefixes from commit titles."""
+
+    def test_strip_conventional_prefix__type_only(self) -> None:
+        """Strip simple ``type:`` prefixes."""
+        assert strip_conventional_prefix("fix: description") == "description"
+
+    def test_strip_conventional_prefix__type_with_scope(self) -> None:
+        """Strip ``type(scope):`` prefixes."""
+        assert strip_conventional_prefix("feat(scope): description") == "description"
+
+    def test_strip_conventional_prefix__type_with_emoji(self) -> None:
+        """Strip ``type emoji:`` prefixes."""
+        assert strip_conventional_prefix("fix 🐛: description") == "description"
+
+    def test_strip_conventional_prefix__type_scope_and_emoji(self) -> None:
+        """Strip ``type(scope) emoji:`` prefixes."""
+        message = "refactor(core) ♻️: description"
+        assert strip_conventional_prefix(message) == "description"
+
+    def test_strip_conventional_prefix__no_prefix(self) -> None:
+        """Leave non-conventional titles unchanged."""
+        message = "add feature: with colon in body"
+        assert strip_conventional_prefix(message) == message
+
+    def test_strip_conventional_prefix__invalid_partial_prefix(self) -> None:
+        """Avoid stripping invalid partial prefixes."""
+        message = "fix update: description"
+        assert strip_conventional_prefix(message) == message
+
+    def test_strip_conventional_prefix__empty(self) -> None:
+        """Return empty input unchanged."""
+        assert strip_conventional_prefix("") == ""

@@ -479,6 +479,38 @@ def _parse_message_prefix(commit_title: str, config) -> CommitType | None:
     return parsed_type
 
 
+def strip_conventional_prefix(title: str) -> str:
+    """Strip a conventional-commit prefix from a title when present.
+
+    Supported prefixes include:
+        - ``type: ...``
+        - ``type(scope): ...``
+        - ``type emoji: ...``
+        - ``type(scope) emoji: ...``
+
+    Args:
+        title: Candidate commit title.
+
+    Returns:
+        Title without the leading conventional prefix, or the original title if
+        no valid conventional prefix is present.
+    """
+    if not title:
+        return title
+
+    commit_type_pattern = "|".join(
+        commit_type.name.lower() for commit_type in CommitType
+    )
+    pattern = re.compile(
+        rf"^\s*(?:{commit_type_pattern})\s*(?:\([^)]+\))?\s*[^A-Za-z0-9_]*:\s*(?P<body>.+)$",
+        flags=re.IGNORECASE,
+    )
+    match = pattern.match(title)
+    if not match:
+        return title
+    return match.group("body").lstrip()
+
+
 def classify_commit_type(config, commit_message: str | None = None) -> CommitType:
     """Classify the commit type based on file paths, message, and diff content.
 

@@ -21,6 +21,7 @@ from git_acp.git import (
     git_add,
     git_commit,
     git_push,
+    strip_conventional_prefix,
     unstage_files,
 )
 from git_acp.utils.file_filter import filter_files_by_scope
@@ -416,7 +417,7 @@ class GitWorkflow:
         """
         message = self.config.message or ""
         lines = message.split("\n")
-        title = lines[0]
+        title = strip_conventional_prefix(lines[0])
         description = "\n".join(lines[1:])
         return f"{commit_type.value}: {title}\n\n{description}".strip()
 

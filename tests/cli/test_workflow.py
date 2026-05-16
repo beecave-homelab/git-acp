@@ -737,3 +737,64 @@ class TestFormatCommitMessage:
 
         assert result.startswith(CommitType.DOCS.value)
         assert result.endswith("update readme")
+
+
+class TestWorkflowFormatMessage:
+    """Tests for GitWorkflow._format_message normalization behavior."""
+
+    def test_format_message__does_not_duplicate_existing_prefix(self) -> None:
+        """Keep a single prefix when AI output already contains one."""
+        from git_acp.cli.interaction import TestInteraction
+        from git_acp.cli.workflow import GitWorkflow
+
+        config = GitConfig(
+            files="test.py",
+            message="fix 🐛: add validation",
+            branch="main",
+            use_ollama=False,
+            interactive=False,
+            skip_confirmation=True,
+            verbose=False,
+            prompt_type="simple",
+        )
+        workflow = GitWorkflow(config, TestInteraction())
+
+        assert workflow._format_message(CommitType.FIX) == "fix 🐛: add validation"
+
+    def test_format_message__replaces_existing_prefix_when_type_changes(self) -> None:
+        """Replace existing prefix and scope with selected classification type."""
+        from git_acp.cli.interaction import TestInteraction
+        from git_acp.cli.workflow import GitWorkflow
+
+        config = GitConfig(
+            files="test.py",
+            message="fix(auth): add validation",
+            branch="main",
+            use_ollama=False,
+            interactive=False,
+            skip_confirmation=True,
+            verbose=False,
+            prompt_type="simple",
+        )
+        workflow = GitWorkflow(config, TestInteraction())
+
+        assert workflow._format_message(CommitType.FEAT) == "feat ✨: add validation"
+
+    def test_format_message__adds_prefix_when_missing(self) -> None:
+        """Add selected prefix when AI output has no conventional prefix."""
+        from git_acp.cli.interaction import TestInteraction
+        from git_acp.cli.workflow import GitWorkflow
+
+        config = GitConfig(
+            files="test.py",
+            message="add new feature",
+            branch="main",
+            use_ollama=False,
+            interactive=False,
+            skip_confirmation=True,
+            verbose=False,
+            prompt_type="simple",
+        )
+        workflow = GitWorkflow(config, TestInteraction())
+
+        assert workflow._format_message(CommitType.FEAT) == "feat ✨: add new feature"

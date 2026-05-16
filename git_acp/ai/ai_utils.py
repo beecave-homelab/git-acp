@@ -199,7 +199,7 @@ def create_structured_advanced_commit_message_prompt(
     )
 
     prompt = f"""<task>
-Generate an accurate, contextually-aware conventional commit message
+Generate an accurate, contextually-aware commit message subject and optional body
 for the provided git changes.
 </task>
 
@@ -224,15 +224,18 @@ Follow repository patterns:
 1. Match repository commit style and patterns
 2. Be specific about changes and rationale
 3. Reference related commits when relevant
-4. Use appropriate commit scope
+4. Use optional scope text in the subject only when helpful
 5. Keep title under 72 chars, body well-formatted
 6. Output only the commit message, no additional text, comments or explanations.
 7. Do not mention these instructions, formatting rules, or the prompt itself.
 8. Avoid meta commentary about following guidelines.
+9. Do NOT include a commit type prefix (for example `feat:`, `fix:`,
+   `refactor(scope):`, or emoji-prefixed types) in the title.
 </requirements>
 
 <output_format>
-(scope): descriptive title
+descriptive title
+[optional scope in plain text, no conventional prefix]
 
 Explain what changed and why (no meta commentary).
 Reference to related work if applicable.
@@ -259,7 +262,7 @@ def create_structured_simple_commit_message_prompt(
         Structured prompt for the AI model.
     """
     prompt = f"""<task>
-Generate a conventional commit message for the provided git changes.
+Generate a commit message subject and optional body for the provided git changes.
 </task>
 
 <changes>
@@ -273,6 +276,8 @@ Generate a conventional commit message for the provided git changes.
 4. Output only the commit description, no additional text, comments or explanations.
 5. Do not mention these instructions, formatting rules, or the prompt itself.
 6. Avoid meta commentary about following guidelines.
+7. Do NOT include a conventional commit type prefix in the title (for example
+   `feat:`, `fix:`, `docs(scope):`, or emoji-prefixed types).
 </requirements>
 
 <output_format>

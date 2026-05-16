@@ -10,6 +10,7 @@ import pytest
 
 from git_acp.ai.ai_utils import (
     AIClient,
+    _strip_meta_commentary,
     calculate_context_budget,
     create_structured_advanced_commit_message_prompt,
     create_structured_simple_commit_message_prompt,
@@ -193,6 +194,7 @@ def test_create_advanced_prompt(mock_context, mock_config):
     assert "<changes>" in prompt
     assert "<requirements>" in prompt
     assert "<output_format>" in prompt
+    assert "Do NOT include a commit type prefix" in prompt
 
 
 def test_create_simple_prompt(mock_context, mock_config):
@@ -204,6 +206,7 @@ def test_create_simple_prompt(mock_context, mock_config):
     assert "<requirements>" in prompt
     assert "<output_format>" in prompt
     assert mock_context["staged_changes"] in prompt
+    assert "Do NOT include a conventional commit type prefix" in prompt
 
 
 # Message Editing Tests
@@ -662,3 +665,25 @@ class TestEditCommitMessageVerbose:
         result = edit_commit_message("feat: original", interactive_verbose_config)
 
         assert result == "feat: original"
+
+
+class TestStripMetaCommentary:
+    """Tests for removing meta commentary from AI-generated messages."""
+
+    def test_strip_meta_commentary__preserves_title_and_strips_meta_body(self) -> None:
+        """Keep title unchanged while removing body lines with meta commentary."""
+        message = (
+            "fix 🐛: add validation\n\n"
+            "Follow prompt instructions and best practices.\n"
+            "Add robust validation for edge cases."
+        )
+
+        assert _strip_meta_commentary(message) == (
+            "fix 🐛: add validation\n\nAdd robust validation for edge cases."
+        )
+
+    def test_strip_meta_commentary__keeps_conventional_prefix_in_title(self) -> None:
+        """Do not alter conventional prefixes that appear in the title."""
+        message = "refactor(core) ♻️: simplify parser\n\nimprove readability"
+
+        assert _strip_meta_commentary(message) == message
