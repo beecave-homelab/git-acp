@@ -168,12 +168,14 @@ class TestClassification:
 
     @patch("git_acp.git.classification.get_changed_files")
     @patch("git_acp.git.classification.get_diff")
-    def test_no_changes_error(self, mock_get_diff, mock_get_files, mock_config):
-        """Raise GitError when diff is empty."""
+    def test_no_changes_defaults_to_chore(
+        self, mock_get_diff, mock_get_files, mock_config
+    ):
+        """Default to CHORE when diff is empty and no classification matches."""
         mock_get_files.return_value = set()
         mock_get_diff.return_value = ""
-        with pytest.raises(GitError):
-            classify_commit_type(mock_config)
+        result = classify_commit_type(mock_config)
+        assert result == CommitType.CHORE
 
     @patch("git_acp.git.classification.get_changed_files")
     @patch("git_acp.git.classification.get_diff")
@@ -396,15 +398,14 @@ class TestClassifyCommitTypeEdgeCases:
         mock_get_files,
         verbose_config,
     ):
-        """Log error details in verbose mode when GitError occurs."""
+        """Default to CHORE when get_diff raises GitError (e.g. no diff)."""
         mock_get_files.return_value = set()
         mock_get_diff.side_effect = GitError("no changes")
 
-        with pytest.raises(GitError):
-            classify_commit_type(verbose_config)
-
-        mock_debug_header.assert_any_call("Commit Classification Failed")
-        mock_debug_item.assert_any_call("Error Type", "GitError")
+        result = classify_commit_type(verbose_config)
+        assert result == CommitType.CHORE
+        mock_debug_header.assert_any_call("No Specific Pattern Matched")
+        mock_debug_item.assert_any_call("Default Type", "CHORE")
 
     @patch("git_acp.git.classification.get_changed_files")
     @patch("git_acp.git.classification.get_diff")
