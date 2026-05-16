@@ -502,13 +502,13 @@ def strip_conventional_prefix(title: str) -> str:
         commit_type.name.lower() for commit_type in CommitType
     )
     pattern = re.compile(
-        rf"^\s*(?:{commit_type_pattern})\s*(?:\([^)]+\))?\s*[^A-Za-z0-9_]*:\s*(?P<body>.+)$",
+        rf"^\s*(?:{commit_type_pattern})\s*(?:\([^)]+\))?(?P<breaking>!?):\s*(?P<body>.+)$",
         flags=re.IGNORECASE,
     )
     match = pattern.match(title)
     if not match:
         return title
-    return match.group("body").lstrip()
+    return (match.group("breaking") or "") + match.group("body").lstrip()
 
 
 def classify_commit_type(config, commit_message: str | None = None) -> CommitType:
