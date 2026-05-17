@@ -354,7 +354,10 @@ def get_commit_context(config: GitConfig) -> dict[str, Any]:
             if config and config.files and config.files != ".":
                 import shlex
 
-                selected_files = shlex.split(config.files)
+                try:
+                    selected_files = shlex.split(config.files)
+                except ValueError as e:
+                    raise GitError(f"Malformed config.files value: {e}") from e
             staged_changes = get_diff("unstaged", config, files=selected_files)
 
             # git diff does not show untracked files.  When the diff is
