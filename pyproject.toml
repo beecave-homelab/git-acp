@@ -22,7 +22,7 @@ dependencies = [
     "rich==13.9.4",
     "questionary>=2.1.1",
     "openai==1.59.3",
-    "python-dotenv==1.0.1",
+    "python-dotenv==1.2.2",
 ]
 
 [project.scripts]
