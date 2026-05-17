@@ -780,6 +780,25 @@ class TestWorkflowFormatMessage:
 
         assert workflow._format_message(CommitType.FEAT) == "feat ✨: add validation"
 
+    def test_format_message__strips_breaking_indicator_when_type_changes(self) -> None:
+        """Remove breaking-change "!" indicator when replacing the prefix."""
+        from git_acp.cli.interaction import TestInteraction
+        from git_acp.cli.workflow import GitWorkflow
+
+        config = GitConfig(
+            files="test.py",
+            message="fix!: add validation",
+            branch="main",
+            use_ollama=False,
+            interactive=False,
+            skip_confirmation=True,
+            verbose=False,
+            prompt_type="simple",
+        )
+        workflow = GitWorkflow(config, TestInteraction())
+
+        assert workflow._format_message(CommitType.FEAT) == "feat ✨: add validation"
+
     def test_format_message__adds_prefix_when_missing(self) -> None:
         """Add selected prefix when AI output has no conventional prefix."""
         from git_acp.cli.interaction import TestInteraction

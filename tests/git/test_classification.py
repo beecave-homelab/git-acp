@@ -565,3 +565,12 @@ class TestStripConventionalPrefix:
     def test_strip_conventional_prefix__empty(self) -> None:
         """Return empty input unchanged."""
         assert strip_conventional_prefix("") == ""
+
+    def test_strip_conventional_prefix__breaking_marker(self) -> None:
+        """Strip the breaking-change indicator along with the prefix."""
+        assert strip_conventional_prefix("fix!: breaking API") == "breaking API"
+
+    def test_strip_conventional_prefix__case_insensitive(self) -> None:
+        """Normalize case-insensitive conventional prefixes."""
+        assert strip_conventional_prefix("Fix: description") == "description"
+        assert strip_conventional_prefix("FEAT(scope): description") == "description"
