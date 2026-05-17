@@ -6,6 +6,7 @@ from git_acp.git.classification import (
     CommitType,
     classify_commit_type,
     group_changed_files,
+    strip_conventional_prefix,
 )
 from git_acp.git.history import (
     analyze_commit_patterns,
@@ -41,5 +42,6 @@ __all__ = [
     "CommitType",
     "classify_commit_type",
     "group_changed_files",
+    "strip_conventional_prefix",
     "setup_signal_handlers",
 ]

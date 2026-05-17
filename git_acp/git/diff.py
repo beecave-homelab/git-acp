@@ -89,12 +89,18 @@ def get_changed_files(
     return files
 
 
-def get_diff(diff_type: DiffType = "staged", config: OptionalConfig = None) -> str:
+def get_diff(
+    diff_type: DiffType = "staged",
+    config: OptionalConfig = None,
+    files: list[str] | None = None,
+) -> str:
     """Get the git diff output for staged or unstaged changes.
 
     Args:
         diff_type: Type of diff to retrieve ('staged' or 'unstaged').
         config: Optional configuration for verbose output.
+        files: Optional list of file paths to scope the diff to.
+            When provided, only changes to these files are included.
 
     Returns:
         str: The diff output as a string.
@@ -106,10 +112,14 @@ def get_diff(diff_type: DiffType = "staged", config: OptionalConfig = None) -> s
         if config and config.verbose:
             debug_header(f"Getting {diff_type} diff")
 
-        if diff_type == "staged":
-            stdout, _ = run_git_command(["git", "diff", "--staged"], config)
-        else:
-            stdout, _ = run_git_command(["git", "diff"], config)
+        cmd: list[str] = (
+            ["git", "diff", "--staged"] if diff_type == "staged" else ["git", "diff"]
+        )
+        if files:
+            cmd.append("--")
+            cmd.extend(files)
+
+        stdout, _ = run_git_command(cmd, config)
 
         if config and config.verbose:
             debug_item("Diff length", str(len(stdout)))

@@ -1,7 +1,7 @@
 ---
 repo: https://github.com/beecave-homelab/git-acp.git
-commit: 893e969bfd0c97c23fde2ff6113a945f43c91009
-updated: 2026-01-13T22:01:27Z
+commit: 767c01d
+updated: 2026-05-15T00:00:00Z
 ---
 <!-- markdownlint-disable-file MD033 -->
 <!-- SECTIONS:API,CLI,WEBUI,CI,DOCKER,TESTS -->
@@ -78,6 +78,7 @@ pdm export --pyproject --no-hashes -G lint,test -o requirements.dev.txt
 - Interactive staging of changed files.
 - AI-generated commit messages using Ollama.
 - **Smart commit type classification** using file-path-first heuristics with keyword fallback.
+- **Prefix-safe commit title formatting**: workflow strips AI-provided conventional prefixes before applying the selected commit type, preventing duplicate type prefixes.
 - **Auto-group mode** (`-ag/--auto-group`) to split unstaged changes into multiple focused commits using deterministic file grouping.
 - **Scoped `-a` filtering** that supports glob patterns (including `**/`), ensuring dry-run and file listings match the intended paths.
 - Support for Conventional Commits specification.
@@ -141,6 +142,7 @@ tests/
 - **Modular Design**: Separate packages for AI, CLI, git operations, and configuration.
 - **SOLID Principles**: Single Responsibility (workflow vs CLI), Dependency Inversion (protocols).
 - **Auto-group orchestration**: CLI can iterate deterministic file groups and run multiple workflow instances safely.
+- **AI output normalization**: prompt templates and formatting logic are aligned so AI returns description-first titles while workflow applies a single canonical type prefix.
 
 ### Component Interaction Diagram
 
