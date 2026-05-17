@@ -12,6 +12,7 @@ Classification Priority:
 """
 
 import re
+import shlex
 from collections import defaultdict
 from enum import Enum
 from pathlib import Path
@@ -24,6 +25,7 @@ from git_acp.config import (
 )
 from git_acp.git.git_operations import GitError, get_changed_files, get_diff
 from git_acp.utils import OptionalConfig, debug_header, debug_item
+from git_acp.utils.file_filter import filter_files_by_scope
 
 
 class CommitType(Enum):
@@ -98,8 +100,6 @@ def get_changes(config: OptionalConfig = None) -> str:
                 and config.files
                 and config.files != "."
             ):
-                import shlex
-
                 selected_files = shlex.split(config.files)
             diff = get_diff("unstaged", config, files=selected_files)
 
@@ -532,7 +532,7 @@ def strip_conventional_prefix(title: str) -> str:
     match = pattern.match(title)
     if not match:
         return title
-    return (match.group("breaking") or "") + match.group("body").lstrip()
+    return match.group("body").lstrip()
 
 
 def classify_commit_type(config, commit_message: str | None = None) -> CommitType:
@@ -581,8 +581,6 @@ def classify_commit_type(config, commit_message: str | None = None) -> CommitTyp
                     and config.files
                     and config.files != "."
                 ):
-                    from git_acp.utils.file_filter import filter_files_by_scope
-
                     changed_files = filter_files_by_scope(changed_files, config.files)
         except GitError:
             changed_files = set()
