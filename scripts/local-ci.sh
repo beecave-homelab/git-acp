@@ -28,7 +28,7 @@ Usage: $0 [OPTIONS]
 
 Options:
   -o, --output_file FILE     Write CI logs to file (default: $DEFAULT_OUTPUT_FILE)
-  -i, --install-deps         Install missing dependencies on Linux (pdm via pip, tee via moreutils)
+  -i, --install-deps         Install missing dependencies on Linux (pdm via pip, tee via coreutils)
   -h, --help                 Show help
 
 This script performs:
@@ -78,52 +78,62 @@ install_pdm() {
 
   echo "[+] Installing pdm..."
   ${pip_command} install --user pdm
+
+  local user_base
+  user_base="$(${pip_command% -m pip} -m site --user-base 2>/dev/null)"
+  if [[ -z "${user_base}" ]]; then
+    user_base="${HOME}/.local"
+  fi
+  if [[ ":${PATH}:" != *":${user_base}/bin:"* ]]; then
+    export PATH="${user_base}/bin:${PATH}"
+  fi
+  hash -r
 }
 
-install_moreutils() {
+install_coreutils() {
   local sudo_command=""
   if command -v sudo >/dev/null 2>&1; then
     sudo_command="sudo"
   fi
 
   if command -v apt-get >/dev/null 2>&1; then
-    echo "[+] Installing moreutils via apt-get..."
+    echo "[+] Installing coreutils via apt-get..."
     ${sudo_command} apt-get update
-    ${sudo_command} apt-get install -y moreutils
+    ${sudo_command} apt-get install -y coreutils
     return 0
   fi
 
   if command -v dnf >/dev/null 2>&1; then
-    echo "[+] Installing moreutils via dnf..."
-    ${sudo_command} dnf install -y moreutils
+    echo "[+] Installing coreutils via dnf..."
+    ${sudo_command} dnf install -y coreutils
     return 0
   fi
 
   if command -v yum >/dev/null 2>&1; then
-    echo "[+] Installing moreutils via yum..."
-    ${sudo_command} yum install -y moreutils
+    echo "[+] Installing coreutils via yum..."
+    ${sudo_command} yum install -y coreutils
     return 0
   fi
 
   if command -v pacman >/dev/null 2>&1; then
-    echo "[+] Installing moreutils via pacman..."
-    ${sudo_command} pacman -Sy --noconfirm moreutils
+    echo "[+] Installing coreutils via pacman..."
+    ${sudo_command} pacman -Sy --noconfirm coreutils
     return 0
   fi
 
   if command -v apk >/dev/null 2>&1; then
-    echo "[+] Installing moreutils via apk..."
-    ${sudo_command} apk add --no-cache moreutils
+    echo "[+] Installing coreutils via apk..."
+    ${sudo_command} apk add --no-cache coreutils
     return 0
   fi
 
   if command -v zypper >/dev/null 2>&1; then
-    echo "[+] Installing moreutils via zypper..."
-    ${sudo_command} zypper install -y moreutils
+    echo "[+] Installing coreutils via zypper..."
+    ${sudo_command} zypper install -y coreutils
     return 0
   fi
 
-  error_exit "No supported package manager found to install moreutils. Install it manually."
+  error_exit "No supported package manager found to install coreutils. Install it manually."
 }
 
 install_missing_dependencies() {
@@ -137,7 +147,7 @@ install_missing_dependencies() {
         install_pdm
         ;;
       tee)
-        install_moreutils
+        install_coreutils
         ;;
       *)
         error_exit "Unknown dependency: ${dependency}"
