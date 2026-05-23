@@ -290,6 +290,8 @@ class TestInteraction:
     exercising the workflow logic.
     """
 
+    __test__ = False
+
     def __init__(
         self,
         files_response: str = ".",
