@@ -552,6 +552,12 @@ class TestStripConventionalPrefix:
         message = "refactor(core) ♻️: description"
         assert strip_conventional_prefix(message) == "description"
 
+    def test_strip_conventional_prefix__emoji_leading(self) -> None:
+        """Strip emoji-leading conventional prefixes."""
+        assert strip_conventional_prefix("🐛 fix: description") == "description"
+        message = "♻️ refactor(core): description"
+        assert strip_conventional_prefix(message) == "description"
+
     def test_strip_conventional_prefix__no_prefix(self) -> None:
         """Leave non-conventional titles unchanged."""
         message = "add feature: with colon in body"

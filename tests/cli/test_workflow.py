@@ -10,6 +10,8 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
+from git_acp.cli.interaction import TestInteraction
+from git_acp.cli.workflow import GitWorkflow
 from git_acp.git import CommitType, GitError
 from git_acp.utils import GitConfig
 
@@ -744,9 +746,6 @@ class TestWorkflowFormatMessage:
 
     def test_format_message__does_not_duplicate_existing_prefix(self) -> None:
         """Keep a single prefix when AI output already contains one."""
-        from git_acp.cli.interaction import TestInteraction
-        from git_acp.cli.workflow import GitWorkflow
-
         config = GitConfig(
             files="test.py",
             message="fix 🐛: add validation",
@@ -763,9 +762,6 @@ class TestWorkflowFormatMessage:
 
     def test_format_message__replaces_existing_prefix_when_type_changes(self) -> None:
         """Replace existing prefix and scope with selected classification type."""
-        from git_acp.cli.interaction import TestInteraction
-        from git_acp.cli.workflow import GitWorkflow
-
         config = GitConfig(
             files="test.py",
             message="fix(auth): add validation",
@@ -782,9 +778,6 @@ class TestWorkflowFormatMessage:
 
     def test_format_message__strips_breaking_indicator_when_type_changes(self) -> None:
         """Remove breaking-change "!" indicator when replacing the prefix."""
-        from git_acp.cli.interaction import TestInteraction
-        from git_acp.cli.workflow import GitWorkflow
-
         config = GitConfig(
             files="test.py",
             message="fix!: add validation",
@@ -801,9 +794,6 @@ class TestWorkflowFormatMessage:
 
     def test_format_message__adds_prefix_when_missing(self) -> None:
         """Add selected prefix when AI output has no conventional prefix."""
-        from git_acp.cli.interaction import TestInteraction
-        from git_acp.cli.workflow import GitWorkflow
-
         config = GitConfig(
             files="test.py",
             message="add new feature",
