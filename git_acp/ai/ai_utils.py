@@ -6,6 +6,7 @@ with support for both simple and advanced context-aware generation.
 
 import json
 import re
+import shlex
 from pathlib import Path
 from typing import Any, cast
 
@@ -28,6 +29,7 @@ from git_acp.git import (
     GitError,
     analyze_commit_patterns,
     find_related_commits,
+    get_changed_files,
     get_diff,
     get_recent_commits,
 )
@@ -352,8 +354,6 @@ def get_commit_context(config: GitConfig) -> dict[str, Any]:
             # dry-run mode where files are never actually staged).
             selected_files: list[str] | None = None
             if config and config.files and config.files != ".":
-                import shlex
-
                 try:
                     selected_files = shlex.split(config.files)
                 except ValueError as e:
@@ -365,8 +365,6 @@ def get_commit_context(config: GitConfig) -> dict[str, Any]:
             # diff-like content for any untracked files among them so the
             # AI can reason about new files.
             if not staged_changes and selected_files:
-                from git_acp.git import get_changed_files
-
                 all_changed = get_changed_files(config, staged_only=False)
                 untracked = [f for f in selected_files if f in all_changed]
                 if untracked:
