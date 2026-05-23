@@ -12,6 +12,7 @@ Classification Priority:
 """
 
 import re
+import shlex
 from collections import defaultdict
 from enum import Enum
 from pathlib import Path
@@ -23,7 +24,8 @@ from git_acp.config import (
     FILE_PATH_PATTERNS,
 )
 from git_acp.git.git_operations import GitError, get_changed_files, get_diff
-from git_acp.utils import debug_header, debug_item
+from git_acp.utils import OptionalConfig, debug_header, debug_item
+from git_acp.utils.file_filter import filter_files_by_scope
 
 
 class CommitType(Enum):
@@ -69,8 +71,15 @@ class CommitType(Enum):
         )
 
 
-def get_changes() -> str:
+def get_changes(config: OptionalConfig = None) -> str:
     """Retrieve the staged or unstaged changes in the repository.
+
+    When ``config`` is provided and specifies particular files, the
+    unstaged diff is scoped to those files only so that unrelated
+    working-directory changes do not influence classification.
+
+    Args:
+        config: Optional configuration for scoping and verbose output.
 
     Returns:
         str: The changes as a diff string
@@ -80,10 +89,19 @@ def get_changes() -> str:
     """
     try:
         # First try staged changes
-        diff = get_diff("staged")
+        diff = get_diff("staged", config)
         if not diff:
-            # If no staged changes, get unstaged changes
-            diff = get_diff("unstaged")
+            # If no staged changes, get unstaged changes scoped to
+            # the user's selected files when applicable.
+            selected_files: list[str] | None = None
+            if (
+                config
+                and isinstance(config.files, str)
+                and config.files
+                and config.files != "."
+            ):
+                selected_files = shlex.split(config.files)
+            diff = get_diff("unstaged", config, files=selected_files)
 
         if not diff:
             raise GitError("No changes detected in the repository.")
@@ -479,6 +497,44 @@ def _parse_message_prefix(commit_title: str, config) -> CommitType | None:
     return parsed_type
 
 
+def strip_conventional_prefix(title: str) -> str:
+    """Strip a conventional-commit prefix from a title when present.
+
+    Supported prefixes include:
+        - ``type: ...``
+        - ``type(scope): ...``
+        - ``type emoji: ...``
+        - ``type(scope) emoji: ...``
+
+    Args:
+        title: Candidate commit title.
+
+    Returns:
+        Title without the leading conventional prefix, or the original title if
+        no valid conventional prefix is present.
+    """
+    if not title:
+        return title
+
+    commit_type_pattern = "|".join(
+        commit_type.name.lower() for commit_type in CommitType
+    )
+    _emojis = {
+        part for ct in CommitType for part in ct.value.split() if not part.isascii()
+    }
+    emoji_pattern = "|".join(re.escape(e) for e in sorted(_emojis))
+    pattern = re.compile(
+        rf"^\s*(?:{emoji_pattern})?\s*(?:{commit_type_pattern})(?:\s+(?:{emoji_pattern}))?\s*"
+        rf"(?:\([^)]+\))?(?:\s+(?:{emoji_pattern}))?\s*"
+        r"(?P<breaking>!?):\s*(?P<body>.+)$",
+        flags=re.IGNORECASE,
+    )
+    match = pattern.match(title)
+    if not match:
+        return title
+    return match.group("body").lstrip()
+
+
 def classify_commit_type(config, commit_message: str | None = None) -> CommitType:
     """Classify the commit type based on file paths, message, and diff content.
 
@@ -516,6 +572,16 @@ def classify_commit_type(config, commit_message: str | None = None) -> CommitTyp
             changed_files = get_changed_files(config, staged_only=True)
             if not changed_files:
                 changed_files = get_changed_files(config, staged_only=False)
+                # When specific files were selected (e.g. via interactive
+                # prompt or -a), scope classification to those files only
+                # so unrelated changes don't influence the type.
+                if (
+                    changed_files
+                    and isinstance(config.files, str)
+                    and config.files
+                    and config.files != "."
+                ):
+                    changed_files = filter_files_by_scope(changed_files, config.files)
         except GitError:
             changed_files = set()
 
@@ -552,29 +618,33 @@ def classify_commit_type(config, commit_message: str | None = None) -> CommitTyp
                     raise GitError(msg) from e
 
         # Priority 4: Diff-based keyword matching (fallback)
-        diff = get_changes()
+        try:
+            diff = get_changes(config)
+        except GitError:
+            diff = None
 
-        for commit_type, keywords in COMMIT_TYPE_PATTERNS.items():
-            try:
-                matches = _check_keyword_pattern(
-                    keywords, diff, use_word_boundaries=False, config=config
-                )
-                if matches:
+        if diff:
+            for commit_type, keywords in COMMIT_TYPE_PATTERNS.items():
+                try:
+                    matches = _check_keyword_pattern(
+                        keywords, diff, use_word_boundaries=False, config=config
+                    )
+                    if matches:
+                        if config.verbose:
+                            debug_header("Commit Classification Result")
+                            debug_item("Selected Type", commit_type.upper())
+                            debug_item("Source", "git_diff")
+                        return CommitType[commit_type.upper()]
+                except KeyError as e:
                     if config.verbose:
-                        debug_header("Commit Classification Result")
-                        debug_item("Selected Type", commit_type.upper())
-                        debug_item("Source", "git_diff")
-                    return CommitType[commit_type.upper()]
-            except KeyError as e:
-                if config.verbose:
-                    debug_header("Invalid Commit Type")
-                    debug_item("Type", commit_type)
-                    debug_item("Error", str(e))
-                msg = (
-                    f"Invalid commit type pattern: {commit_type}. "
-                    "Check commit type definitions."
-                )
-                raise GitError(msg) from e
+                        debug_header("Invalid Commit Type")
+                        debug_item("Type", commit_type)
+                        debug_item("Error", str(e))
+                    msg = (
+                        f"Invalid commit type pattern: {commit_type}. "
+                        "Check commit type definitions."
+                    )
+                    raise GitError(msg) from e
 
         # Priority 5: Default to CHORE
         if config.verbose:

@@ -59,6 +59,15 @@ For more usage examples and advanced features, refer to:
 - [`basic_usage.md`](docs/usage/basic_usage.md)
 - [`advanced_usage.md`](docs/usage/advanced_usage.md)
 
+## Local CI
+
+The local CI script requires `pdm` and `tee`. On Linux you can auto-install missing
+dependencies with:
+
+```bash
+./scripts/local-ci.sh --install-deps
+```
+
 ## Configuration
 
 Configure settings by copying the provided example file and adjusting values:

@@ -318,11 +318,16 @@ repos:
 
 ```bash
 # Lint & format
-pdm run ruff check .
-pdm run ruff format --check .
+pdm run lint
+pdm run format
 
 # Tests & coverage
-pdm run pytest --cov=. --cov-report=term-missing:skip-covered --cov-report=xml --maxfail=1
+pdm run test
+pdm run test-cov
+
+# Docstring coverage & typing
+pdm run docstring-coverage
+pdm run mypy -p git_acp -p tests
 ```
 
 ### Policy — CI Coverage
@@ -470,64 +475,62 @@ These rules standardize how environment variables are loaded and accessed across
 ### 17.1 Single loading point
 
 - Environment variables are parsed **exactly once** at application start.
-- The loader function is `load_project_env()` located at `<package>/utils/env_loader.py`.
+- The loader function is `load_env_config()` located at `git_acp/config/env_config.py`.
 
 ### 17.2 Central import location
 
-- `load_project_env()` **MUST** be invoked **only** inside `<package>/utils/constant.py`.
-- No other file may import `env_loader` or call `load_project_env()` directly.
+- `load_env_config()` **MUST** be invoked **only** inside `git_acp/config/constants.py`.
+- No other file may import `env_config` or call `load_env_config()` directly.
 
 ### 17.3 Constant exposure
 
-- After loading, `<package>/utils/constant.py` exposes project-wide configuration constants (e.g., `DEFAULT_CHUNK_LEN_SEC`, `DEFAULT_BATCH_SIZE`).
-- All other modules (e.g., `<package>/app.py`, `<package>/transcribe.py`) **must import from** `<package>.utils.constant` instead of reading `os.environ` or `.env`.
+- After loading, `git_acp/config/constants.py` exposes project-wide configuration constants (e.g., `DEFAULT_AI_MODEL`, `DEFAULT_BRANCH`).
+- All other modules **must import from** `git_acp.config` or `git_acp.config.constants` instead of reading `os.environ` or `.env` directly.
 
 ### 17.4 Adding new variables
 
-- Define a sensible default in `<package>/utils/constant.py` using `os.getenv("VAR_NAME", "default")` or typed parsing logic.
+- Define a sensible default in `git_acp/config/constants.py` using `get_env("VAR_NAME", "default")` or typed parsing logic.
 - Document every variable in `.env.example` with a short description and default.
 
 ### 17.5 Enforcement policy
 
-- Pull requests that add direct `os.environ[...]` access or import `env_loader` outside `utils/constant.py` **must be rejected**.
+- Pull requests that add direct `os.environ[...]`/`os.getenv(...)` access or call `load_env_config()` outside `git_acp/config/constants.py` **must be rejected**.
 - Suggested CI guardrail (example grep check):
 
   ```bash
-  # deny direct env reads outside constants module
-  ! git grep -nE 'os\\.environ\\[|os\\.getenv\\(' -- ':!<package>/utils/constant.py' ':!**/tests/**'
+  # deny direct env reads outside env_config/constants modules
+  ! git grep -nE 'os\.environ\[|os\.getenv\(' -- ':!git_acp/config/env_config.py' ':!git_acp/config/constants.py' ':!**/tests/**'
   ```
 
 ### 17.6 Example layout (illustrative)
 
 ```python
-# <package>/utils/env_loader.py
+# git_acp/config/env_config.py
 from __future__ import annotations
 import os
 
-def load_project_env() -> dict[str, str]:
-    # Parse once: could expand to load .env, validate, coerce types, etc.
-    return dict(os.environ)  # Keep simple; real code may normalize keys/types
+def load_env_config() -> None:
+    # Parse once: load ~/.config/git-acp/.env when not running tests.
+    ...
 ```
 
 ```python
-# <package>/utils/constant.py
+# git_acp/config/constants.py
 from __future__ import annotations
-import os
-from .env_loader import load_project_env
+from git_acp.config.env_config import get_env, load_env_config
 
 # Load once (single source of truth)
-_ENV = load_project_env()
+load_env_config()
 
 # Exposed constants (typed, with sensible defaults)
-DEFAULT_CHUNK_LEN_SEC: int = int(_ENV.get("DEFAULT_CHUNK_LEN_SEC", "30"))
-DEFAULT_BATCH_SIZE: int = int(_ENV.get("DEFAULT_BATCH_SIZE", "8"))
-APP_ENV: str = _ENV.get("APP_ENV", "development")
+DEFAULT_BRANCH: str = get_env("GIT_ACP_DEFAULT_BRANCH", "main")
+DEFAULT_AI_MODEL: str = get_env("GIT_ACP_AI_MODEL", "mevatron/diffsense:1.5b")
 ```
 
 ```python
-# <package>/app.py  (or any other module)
+# Any module using config
 from __future__ import annotations
-from <package>.utils.constant import DEFAULT_BATCH_SIZE
+from git_acp.config import DEFAULT_BRANCH
 
 def run() -> None:
     # Use constants; do not read os.environ here
@@ -540,7 +543,7 @@ def run() -> None:
 
   ```python
   def test_behavior_with_small_batch(monkeypatch):
-      import <package>.utils.constant as C
+      import git_acp.config.constants as C
       monkeypatch.setattr(C, "DEFAULT_BATCH_SIZE", 2, raising=True)
       ...
   ```
@@ -550,7 +553,7 @@ def run() -> None:
   ```python
   import importlib, os
   os.environ["DEFAULT_BATCH_SIZE"] = "4"
-  import <package>.utils.constant as C
+  import git_acp.config.constants as C
   importlib.reload(C)  # if necessary in the same process
   ```
 
