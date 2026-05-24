@@ -34,7 +34,7 @@ SOURCE_ENV_FILE = _project_root / ".env.example"
 
 
 def main() -> None:
-    """Manages the creation/update of the user-specific .env file."""
+    """Manage the creation/update of the user-specific .env file."""
     print(f"🔧 Attempting to set up user configuration at: {USER_ENV_FILE}")
 
     if not SOURCE_ENV_FILE.exists():
