@@ -2,7 +2,8 @@
 
 ## Table of Contents
 
-- [v0.23.0 (Current) - 27-01-2026](#v0230-current---27-01-2026)
+- [v0.24.0 (Current) - 24-05-2026](#v0240-current---24-05-2026)
+- [v0.23.0 - 27-01-2026](#v0230---27-01-2026)
 - [v0.22.0 - 13-01-2026](#v0220---13-01-2026)
 - [v0.20.0 - 20-12-2025](#v0200---20-12-2025)
 - [v0.19.0 - 19-12-2025](#v0190---19-12-2025)
@@ -33,7 +34,85 @@
 - [v0.6.0 - 21-12-2024](#v060---21-12-2024)
 - [v0.5.0 - 20-12-2024](#v050---20-12-2024)
 
-## v0.23.0 (Current) - *27-01-2026*
+## v0.24.0 (Current) - *24-05-2026*
+
+### ✨ Brief Description (v0.24.0)
+
+Feature release adding emoji-aware prefix stripping, scoped file filtering with `Path.match`, auto-group mode, dry-run support, mypy type checking, and numerous bug fixes across AI utilities, classification, and commit message handling.
+
+### ✨ New Features in v0.24.0
+
+- **Added**: Emoji-aware conventional commit prefix stripping with optional leading emoji support.
+- **Added**: Scoped `-a` filtering using `Path.match` with `**/` glob support and relative-path handling.
+- **Added**: Auto-group mode (`-ag/--auto-group`) for deterministic multi-commit workflow.
+- **Added**: `--dry-run` flag for testing the complete workflow without committing or pushing.
+- **Added**: Mypy type checking integration in local CI script and `pyproject.toml`.
+- **Added**: Type annotations using union syntax across CLI, AI, and config modules.
+- **Added**: CodeRabbit configuration file for automated code review.
+- **Added**: Dependency installation and auto-install support in local CI script.
+- **Added**: PR validation workflow for CI.
+- **Added**: Configurable fallback Ollama server.
+- **Added**: Local CI script for CI pipeline.
+- **Added**: `--version` flag to display the current version and exit.
+- **Added**: Context management functions for AI prompt optimization including token estimation and context budget calculation.
+
+### 🐛 Bug Fixes in v0.24.0
+
+- **Fixed**: Move `shlex` and `get_changed_files` imports to top of module.
+- **Fixed**: Add error handling for malformed `config.files` value.
+- **Fixed**: Include untracked file diffs in AI commit context.
+- **Fixed**: Enhanced commit type validation with case-insensitive and prefix matching support.
+- **Fixed**: Add regex support to `ai_utils.py` for cleaning AI-generated commit messages.
+- **Fixed**: Update file filter logic to handle special characters correctly.
+- **Fixed**: Fix file filter normalization in `file_filter.py`.
+- **Fixed**: Add scoped file filtering and scope-aware commit context.
+- **Fixed**: Scope file selection and skip staging in dry run.
+- **Fixed**: Remove spacy dependency group from PR CI workflow.
+- **Fixed**: Update `--dry-run` flag syntax in `VERSIONS.md` and `workflow.py`.
+- **Fixed**: Enhance `exa-codebase-tree.sh` with error handling and default target path.
+- **Fixed**: Update Ollama model pull command in `AIClient` and add verbose note in `GitWorkflow`.
+- **Fixed**: Refine commit classification logic for majority files match.
+- **Fixed**: Enhance file path pattern matching in `classification.py`.
+- **Fixed**: Enhance `.env` file exclusion in `diff.py` and update `types.py`.
+- **Fixed**: Add manual commit message prompt to interaction.
+- **Fixed**: Update commit message formatting and context.
+- **Fixed**: Normalize git error message patterns for case-insensitive matching.
+- **Fixed**: Update AI client connection message and enhance git operations compatibility.
+
+### 🔧 Improvements in v0.24.0
+
+- **Refactored**: Clean up imports and simplify prefix stripping logic.
+- **Refactored**: Update CLI to remove scoped groups logic.
+- **Refactored**: Enhance commit message generation with context management and token estimation.
+- **Refactored**: Refactor manual commit message prompt in `GitWorkflow`.
+- **Refactored**: Refactor file selection logic in interaction and workflow.
+- **Refactored**: Enhance `AIClient` with dependency injection support and test coverage.
+- **Refactored**: Enhance `GitWorkflow` and add test cases for better error handling.
+- **Refactored**: Flatten git operations package structure.
+- **Refactored**: Apply review fixes to AI and git helpers.
+- **Refactored**: Refactor AI client and update dependencies.
+- **Improved**: Code formatting and line length compliance across AI utilities.
+- **Improved**: Configuration system with context ratio settings for different prompt types.
+
+### 🧪 Testing improvements in v0.24.0
+
+- **Added**: Test for emoji-leading prefixes in prefix stripping.
+- **Added**: Test to prevent pytest from collecting `TestInteraction` class.
+- **Added**: Test case for `--version` flag in CLI.
+- **Added**: Test case for dry-run with verbose logging in git add.
+- **Added**: Tests for auto-grouping behavior and commit message semantics.
+- **Added**: Tests for dry-run behavior and file filtering.
+- **Added**: Type annotations and casts to fix mypy type checking errors in tests.
+- **Added**: Commit type classification mocks across multiple test files.
+- **Enhanced**: Test coverage for AI utilities, CLI, configuration, git operations, and commit analysis.
+
+### 📝 Key Commits in v0.24.0
+
+`34aae78`, `6771a13`, `2993717`, `99ac59c`, `8703bce`, `7ed58a1`, `53618ca`, `dc8dc10`, `c81a7a3`, `009204d`
+
+---
+
+## v0.23.0 - *27-01-2026*
 
 ### ✨ Brief Description (v0.23.0)
 

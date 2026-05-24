@@ -11,7 +11,7 @@ updated: 2026-05-15T00:00:00Z
 `git-acp` is a command-line tool that automates the `git add`, `commit`, and `push` workflow. It offers interactive file selection, AI-powered commit message generation via Ollama, and enforces Conventional Commits standards.
 
 ![Language](https://img.shields.io/badge/Python-3.10+-blue)
-[![Version](https://img.shields.io/badge/Version-0.23.0-brightgreen)](#version-summary)
+[![Version](https://img.shields.io/badge/Version-0.24.0-brightgreen)](#version-summary)
 [![CLI](https://img.shields.io/badge/CLI-Click-blue)](#cli)
 [![Coverage](https://img.shields.io/badge/Coverage-97%25-brightgreen)](#tests)
 
@@ -61,6 +61,7 @@ pdm export --pyproject --no-hashes -G lint,test -o requirements.dev.txt
 
 | Version | Date | Type | Key Changes |
 | ------- | ---- | ---- | ----------- |
+| 0.24.0 | 24-05-2026 | ✨ | Emoji-aware prefix stripping, scoped `-a` filtering, auto-group, dry-run, mypy integration |
 | 0.23.0 | 27-01-2026 | ✨ | Add `--version` flag to display current version |
 | 0.22.0 | 13-01-2026 | ✨ | Scoped `-a` filtering with glob/`**/` support for commit messages and `--dry-run` |
 | 0.21.0 | 27-12-2025 | ✨ | Add auto-group mode (`-ag/--auto-group`) for deterministic multi-commit workflow |
