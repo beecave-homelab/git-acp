@@ -1,5 +1,6 @@
 """Unit tests for formatting utilities."""
 
+from git_acp.config import TERMINAL_WIDTH
 from git_acp.utils import formatting
 
 
@@ -24,7 +25,7 @@ def test_status_context_manager():
 
 def test_terminal_width_enforcement():
     """Test terminal width configuration from constants."""
-    assert formatting.console.width == formatting.TERMINAL_WIDTH
+    assert formatting.console.width == TERMINAL_WIDTH
 
 
 def test_debug_item__with_value(capsys):
