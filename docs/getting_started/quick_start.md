@@ -24,6 +24,14 @@
     pipx install "git+https://github.com/beecave-homelab/git-acp.git"
     ```
 
+3. Run the setup command to create your initial configuration:
+
+    ```bash
+    git-acp --setup
+    ```
+
+   This creates `~/.config/git-acp/.env` with default settings. Edit it to customize your configuration.
+
 ### Alternative: Install with pip
 
 To install the `git_acp` package using pip:

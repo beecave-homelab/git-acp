@@ -143,13 +143,29 @@ git-acp -o --test-ai
 
 ## Configuration
 
-### Create Configuration Directory
+### Quick Setup (Recommended)
+
+After installing, run the built-in setup command to create your configuration file:
+
+```bash
+git-acp --setup
+```
+
+This copies the default configuration template to `~/.config/git-acp/.env`. Edit the file to customize your settings. To overwrite an existing config:
+
+```bash
+git-acp --setup --force
+```
+
+### Manual Setup
+
+#### Create Configuration Directory
 
 ```bash
 mkdir -p ~/.config/git-acp
 ```
 
-### Set Up Environment
+#### Set Up Environment
 
 Create `~/.config/git-acp/.env`:
 
