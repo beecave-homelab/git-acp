@@ -254,6 +254,20 @@ def _process_add_argument(add: str | None) -> tuple[str | None, bool]:
     default=False,
     help="Automatically group related changes into multiple focused commits",
 )
+@click.option(
+    "--setup",
+    "run_setup_flag",
+    is_flag=True,
+    help=(
+        "Run initial configuration setup. Copies .env.example to "
+        "~/.config/git-acp/.env. Use with --force to overwrite existing config."
+    ),
+)
+@click.option(
+    "--force",
+    is_flag=True,
+    help="Used with --setup to overwrite an existing configuration file.",
+)
 def main(
     add: str | None,
     message: str | None,
@@ -269,6 +283,8 @@ def main(
     context_window: int | None,
     dry_run: bool,
     auto_group: bool,
+    run_setup_flag: bool,
+    force: bool,
 ) -> None:
     """Automate git add, commit, and push operations with smart features.
 
@@ -291,6 +307,11 @@ def main(
     - General: Program behavior control (-nc, -v)
     """  # noqa: D301
     setup_signal_handlers()
+
+    if run_setup_flag:
+        from git_acp.config.env_config import run_setup
+
+        sys.exit(run_setup(force=force))
 
     try:
         # Process -a argument (glob expansion)
