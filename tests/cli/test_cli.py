@@ -132,6 +132,20 @@ class TestCli(unittest.TestCase):
         self.assertIn("git-acp, version", result.output)
         self.assertIn(__version__, result.output)
 
+    @patch("git_acp.config.env_config.run_setup", return_value=0)
+    def test_cli_setup_flag(self, mock_setup: MagicMock) -> None:
+        """Should call run_setup when --setup is passed."""
+        result = self.runner.invoke(main, ["--setup"])
+        assert result.exit_code == 0
+        mock_setup.assert_called_once_with(force=False)
+
+    @patch("git_acp.config.env_config.run_setup", return_value=0)
+    def test_cli_setup_with_force(self, mock_setup: MagicMock) -> None:
+        """Should call run_setup with force=True when both flags passed."""
+        result = self.runner.invoke(main, ["--setup", "--force"])
+        assert result.exit_code == 0
+        mock_setup.assert_called_once_with(force=True)
+
 
 if __name__ == "__main__":
     unittest.main()
