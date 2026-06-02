@@ -65,3 +65,55 @@ def get_env(key: str, default: Any = None, type_cast: type | None = None) -> Any
             return default
 
     return value
+
+
+def run_setup(*, force: bool = False) -> int:
+    """Run initial config setup by copying .env.example to user config dir.
+
+    Uses importlib.resources to locate the bundled .env.example from the
+    installed package, making it work regardless of installation method
+    (pipx, pip, pdm, etc.).
+
+    Args:
+        force: If True, overwrite existing config file without prompting.
+
+    Returns:
+        Exit code: 0 on success, 1 on failure.
+    """
+    import importlib.resources as pkg_resources
+
+    config_dir = get_config_dir()
+    env_file = config_dir / ".env"
+
+    # Locate the bundled .env.example
+    try:
+        # Python 3.10+: as_file + files
+        ref = pkg_resources.files("git_acp") / ".env.example"
+        with pkg_resources.as_file(ref) as example_path:
+            if not example_path.exists():
+                print("❌ ERROR: .env.example not found in package installation.")
+                return 1
+            source_content = example_path.read_text(encoding="utf-8")
+    except Exception as e:
+        print(f"❌ ERROR: Could not locate .env.example in package: {e}")
+        return 1
+
+    # Check if user config already exists
+    if env_file.exists() and not force:
+        print(f"⚠️  Configuration file already exists at: {env_file}")
+        print("   Use --setup --force to overwrite, or edit the file directly.")
+        return 0
+
+    # Create config dir and write file
+    try:
+        ensure_config_dir()
+        env_file.write_text(source_content, encoding="utf-8")
+        print(f"✅ Configuration file created at: {env_file}")
+        print("\nEdit this file to customize your settings:")
+        print("  - GIT_ACP_BASE_URL (OpenAI-compatible endpoint)")
+        print("  - GIT_ACP_API_KEY (API key, if required)")
+        print("  - GIT_ACP_AI_MODEL (model name)")
+        return 0
+    except OSError as e:
+        print(f"❌ ERROR: Failed to write configuration: {e}")
+        return 1
