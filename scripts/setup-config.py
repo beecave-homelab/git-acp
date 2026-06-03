@@ -11,7 +11,7 @@ import sys
 def main() -> None:
     """Run setup via the shared config module."""
     try:
-        from git_acp.config.env_config import run_setup
+        from git_acp.config import run_setup
 
         sys.exit(run_setup(force=False))
     except ImportError as e:

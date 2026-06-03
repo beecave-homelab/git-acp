@@ -309,7 +309,7 @@ def main(
     setup_signal_handlers()
 
     if run_setup_flag:
-        from git_acp.config.env_config import run_setup
+        from git_acp.config import run_setup
 
         sys.exit(run_setup(force=force))
 
