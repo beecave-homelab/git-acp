@@ -14,6 +14,7 @@ Classification Priority:
 import re
 import shlex
 from collections import defaultdict
+from dataclasses import dataclass
 from enum import Enum
 from pathlib import Path
 
@@ -39,6 +40,9 @@ class CommitType(Enum):
     TEST = COMMIT_TYPES["TEST"]
     CHORE = COMMIT_TYPES["CHORE"]
     REVERT = COMMIT_TYPES["REVERT"]
+    BUILD = COMMIT_TYPES["BUILD"]
+    CI = COMMIT_TYPES["CI"]
+    PERF = COMMIT_TYPES["PERF"]
 
     @classmethod
     def from_str(cls, type_str: str) -> "CommitType":
@@ -69,6 +73,43 @@ class CommitType(Enum):
             f"Invalid commit type: {type_str}. "
             f"Valid types are: {', '.join(valid_types)}"
         )
+
+
+class FileCategory(Enum):
+    """Classification of file purpose, separate from commit type.
+
+    Used to weight signals in the scoring classifier: production files
+    carry more weight than supporting files (tests, docs).
+    """
+
+    PRODUCTION = "production"
+    TEST = "test"
+    DOCS = "docs"
+    CI = "ci"
+    BUILD = "build"
+    CONFIG = "config"
+    DEPENDENCY = "dependency"
+    GENERATED = "generated"
+    STYLE = "style"
+    UNKNOWN = "unknown"
+
+
+@dataclass(frozen=True)
+class ClassificationResult:
+    """Rich result from the scoring classifier.
+
+    Attributes:
+        commit_type: The winning commit type.
+        confidence: Score margin ratio between winner and runner-up,
+            clamped to [0.0, 1.0].
+        scores: Raw score per commit type for debugging.
+        is_mixed: True when the commit contains unrelated file groups.
+    """
+
+    commit_type: CommitType
+    confidence: float
+    scores: dict[CommitType, float]
+    is_mixed: bool
 
 
 def get_changes(config: OptionalConfig = None) -> str:
