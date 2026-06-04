@@ -7,11 +7,14 @@ import pytest
 from git_acp.config import COMMIT_TYPE_PATTERNS, FILE_PATH_PATTERNS
 from git_acp.git.classification import (
     CommitType,
+    FileCategory,
     _classify_by_file_paths,
     classify_commit_type,
     get_changes,
     strip_conventional_prefix,
 )
+from git_acp.git.diff import extract_added_lines
+from git_acp.git.file_classifier import categorize_changed_files, classify_file_category
 from git_acp.git.git_operations import GitError
 
 
@@ -580,3 +583,214 @@ class TestStripConventionalPrefix:
         """Normalize case-insensitive conventional prefixes."""
         assert strip_conventional_prefix("Fix: description") == "description"
         assert strip_conventional_prefix("FEAT(scope): description") == "description"
+
+
+# ---------------------------------------------------------------------------
+# Phase 2 infrastructure tests
+# ---------------------------------------------------------------------------
+
+class TestExtractAddedLines:
+    """Tests for extract_added_lines in diff.py."""
+
+    def test_extracts_added_lines_only(self) -> None:
+        """Return only lines starting with +, stripping the marker."""
+        diff = (
+            "diff --git a/file.py b/file.py\n"
+            "--- a/file.py\n"
+            "+++ b/file.py\n"
+            "@@ -1,3 +1,4 @@\n"
+            " context line\n"
+            "-removed line\n"
+            "+added line one\n"
+            "+added line two\n"
+        )
+        result = extract_added_lines(diff)
+        assert "added line one" in result
+        assert "added line two" in result
+        assert "context line" not in result
+        assert "removed line" not in result
+
+    def test_empty_diff(self) -> None:
+        """Return empty string for empty input."""
+        assert extract_added_lines("") == ""
+
+    def test_skips_file_headers(self) -> None:
+        """Do not include +++ and --- lines."""
+        diff = "+++ b/new_file.py\n--- a/old_file.py\n+actual change\n"
+        result = extract_added_lines(diff)
+        assert "b/new_file.py" not in result
+        assert "a/old_file.py" not in result
+        assert "actual change" in result
+
+
+class TestFileClassifier:
+    """Tests for file_classifier module."""
+
+    def test_classify_test_file(self) -> None:
+        """Classify test files as TEST category."""
+        assert classify_file_category("tests/test_utils.py") == FileCategory.TEST
+
+    def test_classify_docs_file(self) -> None:
+        """Classify documentation files as DOCS category."""
+        assert classify_file_category("docs/api.md") == FileCategory.DOCS
+
+    def test_classify_ci_file(self) -> None:
+        """Classify CI config files as CI category."""
+        assert classify_file_category(".github/workflows/ci.yaml") == FileCategory.CI
+
+    def test_classify_dependency_file(self) -> None:
+        """Classify lockfiles as DEPENDENCY category."""
+        assert classify_file_category("uv.lock") == FileCategory.DEPENDENCY
+        assert classify_file_category("package-lock.json") == FileCategory.DEPENDENCY
+
+    def test_classify_generated_file(self) -> None:
+        """Classify build artifacts as GENERATED category."""
+        assert classify_file_category("__pycache__/module.cpython-311.pyc") == FileCategory.GENERATED
+
+    def test_classify_style_file(self) -> None:
+        """Linting configs classify as STYLE, not CONFIG."""
+        assert classify_file_category(".flake8") == FileCategory.STYLE
+        assert classify_file_category("ruff.toml") == FileCategory.STYLE
+
+    def test_classify_config_file(self) -> None:
+        """General config files classify as CONFIG."""
+        assert classify_file_category("pyproject.toml") == FileCategory.CONFIG
+        assert classify_file_category(".gitignore") == FileCategory.CONFIG
+
+    def test_classify_build_file(self) -> None:
+        """Build files classify as BUILD."""
+        assert classify_file_category("Dockerfile") == FileCategory.BUILD
+
+    def test_classify_production_file(self) -> None:
+        """Source code files default to PRODUCTION."""
+        assert classify_file_category("src/auth.py") == FileCategory.PRODUCTION
+        assert classify_file_category("git_acp/cli/cli.py") == FileCategory.PRODUCTION
+
+    def test_categorize_changed_files(self) -> None:
+        """Group mixed files into correct categories."""
+        files = {
+            "src/main.py",
+            "tests/test_main.py",
+            "docs/README.md",
+            "uv.lock",
+        }
+        result = categorize_changed_files(files)
+        assert FileCategory.PRODUCTION in result
+        assert FileCategory.TEST in result
+        assert FileCategory.DOCS in result
+        assert FileCategory.DEPENDENCY in result
+        assert "src/main.py" in result[FileCategory.PRODUCTION]
+        assert "tests/test_main.py" in result[FileCategory.TEST]
+
+
+# ---------------------------------------------------------------------------
+# Phase 3: Regression tests for known misclassification patterns
+# ---------------------------------------------------------------------------
+
+class TestProductionWithSupportingFiles:
+    """Test that production changes with supporting test/doc files classify
+    based on production intent, not as test/docs.
+
+    These represent the ~25% misclassification rate the scoring system
+    aims to fix. They run against the *current* classifier to establish
+    a baseline — some may currently fail, which is expected and will be
+    fixed by Phase 4.
+    """
+
+    @pytest.fixture
+    def mock_config(self):
+        """Return a mock config object."""
+        cfg = MagicMock()
+        cfg.verbose = False
+        return cfg
+
+    @patch("git_acp.git.classification.get_changed_files")
+    @patch("git_acp.git.classification.get_diff")
+    def test_production_plus_test_classifies_by_production(
+        self, mock_get_diff, mock_get_files, mock_config
+    ):
+        """src/auth.py + tests/test_auth.py should not classify as TEST."""
+        mock_get_files.return_value = {"src/auth.py", "tests/test_auth.py"}
+        mock_get_diff.return_value = "implement new authentication"
+        result = classify_commit_type(mock_config)
+        # Currently: file paths → TEST (majority rule). This is the bug.
+        # Phase 4 should make this FEAT or REFACTOR (production intent).
+        assert result == CommitType.TEST  # baseline — will change in Phase 4
+
+    @patch("git_acp.git.classification.get_changed_files")
+    @patch("git_acp.git.classification.get_diff")
+    def test_production_plus_docs_classifies_by_production(
+        self, mock_get_diff, mock_get_files, mock_config
+    ):
+        """src/module.py + docs/module.md should not classify as DOCS."""
+        mock_get_files.return_value = {"src/module.py", "docs/module.md"}
+        mock_get_diff.return_value = "refactor module internals"
+        result = classify_commit_type(mock_config)
+        # Currently: file paths → DOCS (majority). Phase 4 will fix.
+        assert result == CommitType.DOCS  # baseline — will change in Phase 4
+
+
+class TestSinglePurposeChanges:
+    """Test that single-purpose changes classify correctly."""
+
+    @pytest.fixture
+    def mock_config(self):
+        cfg = MagicMock()
+        cfg.verbose = False
+        return cfg
+
+    @patch("git_acp.git.classification.get_changed_files")
+    @patch("git_acp.git.classification.get_diff")
+    def test_docs_only_classifies_as_docs(
+        self, mock_get_diff, mock_get_files, mock_config
+    ):
+        """Pure documentation changes classify as DOCS."""
+        mock_get_files.return_value = {"docs/api.md", "README.md"}
+        mock_get_diff.return_value = "update API documentation"
+        result = classify_commit_type(mock_config)
+        assert result == CommitType.DOCS
+
+    @patch("git_acp.git.classification.get_changed_files")
+    @patch("git_acp.git.classification.get_diff")
+    def test_test_only_classifies_as_test(
+        self, mock_get_diff, mock_get_files, mock_config
+    ):
+        """Pure test changes classify as TEST."""
+        mock_get_files.return_value = {"tests/test_utils.py", "tests/conftest.py"}
+        mock_get_diff.return_value = "add unit tests for utils"
+        result = classify_commit_type(mock_config)
+        assert result == CommitType.TEST
+
+    @patch("git_acp.git.classification.get_changed_files")
+    @patch("git_acp.git.classification.get_diff")
+    def test_ci_only_classifies_as_chore(
+        self, mock_get_diff, mock_get_files, mock_config
+    ):
+        """CI-only changes classify as CHORE (current behavior)."""
+        mock_get_files.return_value = {".github/workflows/ci.yaml"}
+        mock_get_diff.return_value = "update CI pipeline"
+        result = classify_commit_type(mock_config)
+        assert result == CommitType.CHORE
+
+
+class TestMixedChangeDetection:
+    """Tests for the is_mixed flag in ClassificationResult.
+
+    These tests will become meaningful after Phase 4 when
+    classify_commit() returns ClassificationResult with is_mixed.
+    For now they test that the category grouping works.
+    """
+
+    def test_mixed_categories_detected(self) -> None:
+        """Unrelated file groups produce multiple categories."""
+        files = {"src/auth.py", "docs/api.md", "pyproject.toml"}
+        cats = categorize_changed_files(files)
+        # PRODUCTION + DOCS + CONFIG = 3 distinct categories
+        assert len(cats) >= 3
+
+    def test_single_purpose_has_one_category(self) -> None:
+        """Single-purpose changes produce a single category."""
+        files = {"tests/test_a.py", "tests/test_b.py", "conftest.py"}
+        cats = categorize_changed_files(files)
+        assert len(cats) == 1
+        assert FileCategory.TEST in cats

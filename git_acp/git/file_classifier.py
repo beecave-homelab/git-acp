@@ -45,7 +45,7 @@ def classify_file_category(path: str) -> FileCategory:
         patterns = FILE_CATEGORY_PATTERNS.get(category_name, [])
         for pattern in patterns:
             if _match_file_path_pattern(path, pattern):
-                return FileCategory(category_name)
+                return FileCategory[category_name]
 
     return FileCategory.PRODUCTION
 
