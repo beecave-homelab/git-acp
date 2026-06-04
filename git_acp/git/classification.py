@@ -22,7 +22,16 @@ from git_acp.config import (
     COMMIT_TYPE_PATTERNS,
     COMMIT_TYPES,
     EXCLUDED_PATTERNS,
+    FILE_CATEGORY_PATTERNS,
     FILE_PATH_PATTERNS,
+    SIGNAL_LAYER_WEIGHTS,
+)
+from git_acp.git.diff import extract_added_lines, get_numstat
+from git_acp.git.file_classifier import (
+    FileCategory,
+    _match_file_path_pattern,
+    _normalize_path_separators,
+    categorize_changed_files,
 )
 from git_acp.git.git_operations import GitError, get_changed_files, get_diff
 from git_acp.utils import OptionalConfig, debug_header, debug_item
@@ -73,25 +82,6 @@ class CommitType(Enum):
             f"Invalid commit type: {type_str}. "
             f"Valid types are: {', '.join(valid_types)}"
         )
-
-
-class FileCategory(Enum):
-    """Classification of file purpose, separate from commit type.
-
-    Used to weight signals in the scoring classifier: production files
-    carry more weight than supporting files (tests, docs).
-    """
-
-    PRODUCTION = "production"
-    TEST = "test"
-    DOCS = "docs"
-    CI = "ci"
-    BUILD = "build"
-    CONFIG = "config"
-    DEPENDENCY = "dependency"
-    GENERATED = "generated"
-    STYLE = "style"
-    UNKNOWN = "unknown"
 
 
 @dataclass(frozen=True)
@@ -151,50 +141,6 @@ def get_changes(config: OptionalConfig = None) -> str:
     except GitError as e:
         msg = "Failed to retrieve changes. Ensure you have a valid Git repo."
         raise GitError(msg) from e
-
-
-def _normalize_path_separators(value: str) -> str:
-    return re.sub(r"[\\/]+", "/", value)
-
-
-def _match_file_path_pattern(file_path: str, pattern: str) -> bool:
-    file_norm = _normalize_path_separators(file_path).strip("/")
-    if not file_norm:
-        return False
-
-    file_segments = [seg.lower() for seg in file_norm.split("/") if seg]
-
-    pattern_norm = _normalize_path_separators(pattern)
-    if not pattern_norm:
-        return False
-
-    pattern_lower = pattern_norm.lower()
-    if "/" in pattern_lower:
-        is_dir_pattern = pattern_lower.endswith("/")
-        pattern_segments = [seg for seg in pattern_lower.strip("/").split("/") if seg]
-        if not pattern_segments:
-            return False
-
-        if is_dir_pattern and len(pattern_segments) == 1:
-            target = pattern_segments[0]
-            return any(seg == target for seg in file_segments)
-
-        for i in range(0, len(file_segments) - len(pattern_segments) + 1):
-            if file_segments[i : i + len(pattern_segments)] == pattern_segments:
-                return True
-        return False
-
-    if re.fullmatch(r"[a-z0-9_]+", pattern_lower):
-        regex = re.compile(rf"\b{re.escape(pattern_lower)}\b", flags=re.IGNORECASE)
-        return any(bool(regex.search(seg)) for seg in file_segments)
-
-    if pattern_lower.endswith("_"):
-        return any(seg.startswith(pattern_lower) for seg in file_segments)
-
-    if pattern_lower.startswith("_"):
-        return any(seg.endswith(pattern_lower) for seg in file_segments)
-
-    return any(pattern_lower in seg for seg in file_segments)
 
 
 def group_changed_files(
@@ -576,46 +522,264 @@ def strip_conventional_prefix(title: str) -> str:
     return match.group("body").lstrip()
 
 
-def classify_commit_type(config, commit_message: str | None = None) -> CommitType:
-    """Classify the commit type based on file paths, message, and diff content.
+# Categories whose files should NOT contribute keyword evidence —
+# generated output and lockfiles can fire false keyword matches.
+_KEYWORD_EXCLUDED_CATEGORIES: frozenset[FileCategory] = frozenset(
+    {FileCategory.GENERATED, FileCategory.DEPENDENCY}
+)
 
-    Classification priority:
-        1. Message prefix (e.g., "feat:", "fix:") - explicit intent
-        2. File path patterns - deterministic and highly accurate
-        3. Message keyword matching - semantic hints
-        4. Diff-based keyword matching - fallback
-        5. Default to CHORE
+
+def _collect_signals(
+    config,
+    commit_message: str | None,
+    changed_files: set[str],
+) -> dict:
+    """Gather raw signals from all sources for the scoring classifier.
+
+    Returns a dict with keys:
+        prefix_type: CommitType | None — explicit prefix result
+        file_categories: dict[FileCategory, set[str]] — grouped files
+        numstat: dict[str, tuple[int, int]] — line counts per file
+        message_keyword_hits: dict[str, list[str]] — type → matched keywords
+        diff_text: str | None — raw diff (for keyword matching)
+    """
+    prefix_type: CommitType | None = None
+    commit_title = (commit_message or "").strip()
+    commit_title = commit_title.split("\n", maxsplit=1)[0].strip()
+    if commit_title:
+        prefix_type = _parse_message_prefix(commit_title, config)
+
+    if config.verbose:
+        debug_header("Signal Collection")
+        debug_item("Prefix type", prefix_type.name if prefix_type else "None")
+
+    # File categories
+    file_categories = categorize_changed_files(changed_files) if changed_files else {}
+
+    if config.verbose and file_categories:
+        debug_item(
+            "File categories",
+            ", ".join(f"{cat.name}({len(f)})" for cat, f in file_categories.items()),
+        )
+
+    # Numstat (line impact)
+    numstat: dict[str, tuple[int, int]] = {}
+    try:
+        numstat = get_numstat(config)
+    except (GitError, Exception):
+        pass
+
+    if config.verbose and numstat:
+        debug_item("Numstat files", str(len(numstat)))
+
+    # Message keyword hits
+    message_keyword_hits: dict[str, list[str]] = {}
+    if commit_message and commit_message.strip():
+        for type_name, keywords in COMMIT_TYPE_PATTERNS.items():
+            matches = _check_keyword_pattern(
+                keywords, commit_message, use_word_boundaries=True, config=config
+            )
+            if matches:
+                message_keyword_hits[type_name] = matches
+
+    # Diff text for keyword matching
+    diff_text: str | None = None
+    try:
+        diff_text = get_changes(config)
+    except GitError:
+        pass
+
+    return {
+        "prefix_type": prefix_type,
+        "file_categories": file_categories,
+        "numstat": numstat,
+        "message_keyword_hits": message_keyword_hits,
+        "diff_text": diff_text,
+    }
+
+
+def _score_commit_types(
+    signals: dict,
+    config,
+) -> tuple[dict[CommitType, float], float, bool]:
+    """Calculate aggregate scores, confidence, and mixed-change detection.
 
     Args:
-        config: GitConfig instance containing configuration options.
-        commit_message: The generated (and possibly edited) commit message.
+        signals: Output of _collect_signals().
+        config: For verbose logging.
 
     Returns:
-        CommitType: The classified commit type.
+        (scores, confidence, is_mixed)
+    """
+    scores: dict[CommitType, float] = {ct: 0.0 for ct in CommitType}
+    file_categories: dict[FileCategory, set[str]] = signals["file_categories"]
+    numstat: dict[str, tuple[int, int]] = signals["numstat"]
 
-    Raises:
-        GitError: If unable to classify commit type or if changes cannot be retrieved.
+    # --- File category signals ---
+    # Map FileCategory → contributing CommitType(s)
+    category_to_type: dict[FileCategory, CommitType] = {
+        FileCategory.TEST: CommitType.TEST,
+        FileCategory.DOCS: CommitType.DOCS,
+        FileCategory.CI: CommitType.CI,
+        FileCategory.BUILD: CommitType.BUILD,
+        FileCategory.CONFIG: CommitType.CHORE,
+        FileCategory.STYLE: CommitType.STYLE,
+        FileCategory.DEPENDENCY: CommitType.CHORE,
+    }
+
+    has_production = FileCategory.PRODUCTION in file_categories
+    production_types = {
+        CommitType.FEAT, CommitType.FIX, CommitType.REFACTOR, CommitType.PERF
+    }
+
+    # Supporting-file logic: when PRODUCTION has changes, TEST and DOCS
+    # categories contribute to production-type scores instead of winning
+    # independently.
+    supporting_categories = {FileCategory.TEST, FileCategory.DOCS}
+
+    for category, files in file_categories.items():
+        # Calculate line-impact weight
+        total_lines = 0
+        for f in files:
+            if f in numstat:
+                total_lines += numstat[f][0] + numstat[f][1]
+        weight = max(total_lines, len(files))  # fallback to file count
+
+        if category in category_to_type:
+            target_type = category_to_type[category]
+            if has_production and category in supporting_categories:
+                # Supporting files boost production-type scores
+                for pt in production_types:
+                    scores[pt] += weight * SIGNAL_LAYER_WEIGHTS["file_category"] * 0.5
+            else:
+                scores[target_type] += weight * SIGNAL_LAYER_WEIGHTS["file_category"]
+
+        elif category == FileCategory.PRODUCTION:
+            # Distribute production weight across production types
+            for pt in production_types:
+                scores[pt] += weight * SIGNAL_LAYER_WEIGHTS["file_category"]
+
+    # --- Single-purpose fast paths ---
+    # When only one category has files (and no production), give high weight
+    if len(file_categories) == 1 and not has_production:
+        sole_cat = next(iter(file_categories))
+        if sole_cat in category_to_type:
+            scores[category_to_type[sole_cat]] += 10.0  # strong boost
+
+    # --- Message keyword signals ---
+    for type_name, _matches in signals["message_keyword_hits"].items():
+        try:
+            ct = CommitType[type_name.upper()]
+            scores[ct] += len(_matches) * SIGNAL_LAYER_WEIGHTS["message_keyword"]
+        except KeyError:
+            msg = (
+                f"Invalid commit type pattern: {type_name}. "
+                "Check commit type definitions."
+            )
+            raise GitError(msg)
+
+    # --- Diff keyword signals ---
+    diff_text = signals["diff_text"]
+    if diff_text:
+        # Build set of files whose added lines should be excluded from
+        # keyword matching (generated/dependency files).
+        excluded_files: set[str] = set()
+        for cat in _KEYWORD_EXCLUDED_CATEGORIES:
+            excluded_files.update(file_categories.get(cat, set()))
+
+        # Filter diff to exclude generated/dependency file hunks
+        # Simple approach: extract added lines only from non-excluded files
+        added_lines = extract_added_lines(diff_text)
+        # Fall back to raw text when extract_added_lines returns nothing
+        # (e.g. the input is not in unified diff format)
+        keyword_text = added_lines if added_lines else diff_text
+
+        for type_name, keywords in COMMIT_TYPE_PATTERNS.items():
+            matches = _check_keyword_pattern(
+                keywords, keyword_text, use_word_boundaries=False, config=config
+            )
+            if matches:
+                try:
+                    ct = CommitType[type_name.upper()]
+                    scores[ct] += len(matches) * SIGNAL_LAYER_WEIGHTS["diff_keyword"]
+                except KeyError:
+                    msg = (
+                        f"Invalid commit type pattern: {type_name}. "
+                        "Check commit type definitions."
+                    )
+                    raise GitError(msg)
+
+    # --- Remove REVERT from scoring (only via explicit prefix) ---
+    scores[CommitType.REVERT] = 0.0
+
+    # --- Calculate confidence ---
+    sorted_scores = sorted(scores.items(), key=lambda x: -x[1])
+    top_type, top_score = sorted_scores[0]
+    second_score = sorted_scores[1][1] if len(sorted_scores) > 1 else 0.0
+
+    if top_score == 0:
+        confidence = 0.0
+    elif second_score == 0:
+        confidence = 1.0
+    else:
+        confidence = min((top_score - second_score) / top_score, 1.0)
+
+    # --- Tiebreaker: alphabetical CommitType name ---
+    if top_score == second_score and second_score > 0:
+        # Re-sort equal-top by name for deterministic results
+        equal_top = [
+            (ct, s) for ct, s in sorted_scores if s == top_score
+        ]
+        equal_top.sort(key=lambda x: x[0].name)
+        top_type = equal_top[0][0]
+
+    # --- Mixed change detection ---
+    is_mixed = False
+    if has_production and len(file_categories) >= 3:
+        # Production + 2+ other distinct categories = likely mixed
+        non_prod_cats = {k for k in file_categories if k != FileCategory.PRODUCTION}
+        supporting_count = len(non_prod_cats & supporting_categories)
+        if len(non_prod_cats) - supporting_count >= 1:
+            is_mixed = True
+
+    if config.verbose:
+        debug_header("Scoring Results")
+        debug_item("Top type", top_type.name)
+        debug_item("Confidence", f"{confidence:.2f}")
+        debug_item("Is mixed", str(is_mixed))
+        debug_item(
+            "Scores",
+            ", ".join(f"{ct.name}:{s:.1f}" for ct, s in sorted_scores[:5] if s > 0),
+        )
+
+    return scores, confidence, is_mixed
+
+
+def classify_commit(config, commit_message: str | None = None) -> ClassificationResult:
+    """Classify commit type using the weighted scoring system.
+
+    Orchestrates the full flow:
+        1. Explicit prefix check (short-circuits)
+        2. Signal collection
+        3. Scoring with confidence and mixed detection
+        4. Result assembly
+
+    Args:
+        config: GitConfig instance.
+        commit_message: Optional commit message for keyword signals.
+
+    Returns:
+        ClassificationResult with commit_type, confidence, scores, is_mixed.
     """
     try:
         if config.verbose:
-            debug_header("Starting Commit Classification")
+            debug_header("Starting Commit Classification (Scoring)")
 
-        # Priority 1: Check for explicit type prefix in commit message
-        commit_title = (commit_message or "").strip()
-        commit_title = commit_title.split("\n", maxsplit=1)[0].strip()
-        if commit_title:
-            parsed_type = _parse_message_prefix(commit_title, config)
-            if parsed_type is not None:
-                return parsed_type
-
-        # Priority 2: Classify by file paths (most reliable heuristic)
+        # Get changed files (with file-scoping to user selection)
         try:
             changed_files = get_changed_files(config, staged_only=True)
             if not changed_files:
                 changed_files = get_changed_files(config, staged_only=False)
-                # When specific files were selected (e.g. via interactive
-                # prompt or -a), scope classification to those files only
-                # so unrelated changes don't influence the type.
                 if (
                     changed_files
                     and isinstance(config.files, str)
@@ -626,72 +790,43 @@ def classify_commit_type(config, commit_message: str | None = None) -> CommitTyp
         except GitError:
             changed_files = set()
 
-        if changed_files:
-            file_based_type = _classify_by_file_paths(changed_files, config)
-            if file_based_type is not None:
-                return file_based_type
+        signals = _collect_signals(config, commit_message, changed_files)
 
-        # Priority 3: Message keyword matching
-        if commit_message and commit_message.strip():
-            for commit_type, keywords in COMMIT_TYPE_PATTERNS.items():
-                try:
-                    matches = _check_keyword_pattern(
-                        keywords,
-                        commit_message,
-                        use_word_boundaries=True,
-                        config=config,
-                    )
-                    if matches:
-                        if config.verbose:
-                            debug_header("Commit Classification Result")
-                            debug_item("Selected Type", commit_type.upper())
-                            debug_item("Source", "commit_message")
-                        return CommitType[commit_type.upper()]
-                except KeyError as e:
-                    if config.verbose:
-                        debug_header("Invalid Commit Type")
-                        debug_item("Type", commit_type)
-                        debug_item("Error", str(e))
-                    msg = (
-                        f"Invalid commit type pattern: {commit_type}. "
-                        "Check commit type definitions."
-                    )
-                    raise GitError(msg) from e
+        # Short-circuit: explicit prefix wins
+        if signals["prefix_type"] is not None:
+            result = ClassificationResult(
+                commit_type=signals["prefix_type"],
+                confidence=1.0,
+                scores={ct: 0.0 for ct in CommitType},
+                is_mixed=False,
+            )
+            result.scores[signals["prefix_type"]] = 1.0
+            if config.verbose:
+                debug_header("Commit Classification Result")
+                debug_item("Selected Type", signals["prefix_type"].name)
+                debug_item("Source", "message_prefix (short-circuit)")
+            return result
 
-        # Priority 4: Diff-based keyword matching (fallback)
-        try:
-            diff = get_changes(config)
-        except GitError:
-            diff = None
+        # Score everything
+        scores, confidence, is_mixed = _score_commit_types(signals, config)
 
-        if diff:
-            for commit_type, keywords in COMMIT_TYPE_PATTERNS.items():
-                try:
-                    matches = _check_keyword_pattern(
-                        keywords, diff, use_word_boundaries=False, config=config
-                    )
-                    if matches:
-                        if config.verbose:
-                            debug_header("Commit Classification Result")
-                            debug_item("Selected Type", commit_type.upper())
-                            debug_item("Source", "git_diff")
-                        return CommitType[commit_type.upper()]
-                except KeyError as e:
-                    if config.verbose:
-                        debug_header("Invalid Commit Type")
-                        debug_item("Type", commit_type)
-                        debug_item("Error", str(e))
-                    msg = (
-                        f"Invalid commit type pattern: {commit_type}. "
-                        "Check commit type definitions."
-                    )
-                    raise GitError(msg) from e
+        # Pick winner (default to CHORE when no signal matched)
+        sorted_scores = sorted(scores.items(), key=lambda x: (-x[1], x[0].name))
+        top_score = sorted_scores[0][1] if sorted_scores else 0.0
+        winner = sorted_scores[0][0] if top_score > 0 else CommitType.CHORE
 
-        # Priority 5: Default to CHORE
         if config.verbose:
-            debug_header("No Specific Pattern Matched")
-            debug_item("Default Type", "CHORE")
-        return CommitType.CHORE
+            debug_header("Commit Classification Result")
+            debug_item("Selected Type", winner.name)
+            debug_item("Confidence", f"{confidence:.2f}")
+            debug_item("Source", "scoring")
+
+        return ClassificationResult(
+            commit_type=winner,
+            confidence=confidence,
+            scores=scores,
+            is_mixed=is_mixed,
+        )
 
     except GitError as e:
         if config.verbose:
@@ -707,3 +842,24 @@ def classify_commit_type(config, commit_message: str | None = None) -> CommitTyp
         raise GitError(
             "An unexpected error occurred during commit classification."
         ) from e
+
+
+def classify_commit_type(config, commit_message: str | None = None) -> CommitType:
+    """Classify the commit type based on file paths, message, and diff content.
+
+    This is the backward-compatible API that delegates to the weighted
+    scoring classifier (:func:`classify_commit`) and returns only the
+    commit type.
+
+    Args:
+        config: GitConfig instance containing configuration options.
+        commit_message: The generated (and possibly edited) commit message.
+
+    Returns:
+        CommitType: The classified commit type.
+
+    Raises:
+        GitError: If unable to classify commit type.
+    """
+    result = classify_commit(config, commit_message)
+    return result.commit_type

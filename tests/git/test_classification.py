@@ -192,7 +192,7 @@ class TestClassification:
             classify_commit_type(mock_config)
 
             debug_calls = [
-                call("Starting Commit Classification"),
+                call("Starting Commit Classification (Scoring)"),
                 call("Commit Classification Result"),
             ]
             mock_debug.assert_has_calls(debug_calls, any_order=True)
@@ -218,16 +218,22 @@ class TestClassification:
             result = classify_commit_type(mock_config)
             assert result.name.lower() == type_name
 
+    @patch("git_acp.git.classification.get_numstat")
     @patch("git_acp.git.classification.get_changed_files")
-    def test_file_path_takes_priority_over_diff(self, mock_get_files, mock_config):
+    @patch("git_acp.git.classification.get_diff")
+    def test_file_path_takes_priority_over_diff(self, mock_get_diff, mock_get_files, mock_get_numstat, mock_config):
         """File path classification takes priority over diff keywords."""
         mock_get_files.return_value = {"tests/test_module.py"}
+        mock_get_diff.return_value = ""
+        mock_get_numstat.return_value = {}
         # Even though message says "fix", file path should win
         result = classify_commit_type(mock_config, commit_message="fix something")
         assert result == CommitType.TEST
 
+    @patch("git_acp.git.classification.get_numstat")
     @patch("git_acp.git.classification.get_changed_files")
-    def test_message_prefix_takes_highest_priority(self, mock_get_files, mock_config):
+    @patch("git_acp.git.classification.get_diff")
+    def test_message_prefix_takes_highest_priority(self, mock_get_diff, mock_get_files, mock_get_numstat, mock_config):
         """Explicit message prefix takes highest priority."""
         mock_get_files.return_value = {"tests/test_module.py"}
         # Explicit prefix should override file path
@@ -386,8 +392,8 @@ class TestClassifyCommitTypeEdgeCases:
         result = classify_commit_type(verbose_config)
 
         assert result == CommitType.CHORE
-        mock_debug_header.assert_any_call("No Specific Pattern Matched")
-        mock_debug_item.assert_any_call("Default Type", "CHORE")
+        mock_debug_header.assert_any_call("Scoring Results")
+        mock_debug_item.assert_any_call("Selected Type", "CHORE")
 
     @patch("git_acp.git.classification.get_changed_files")
     @patch("git_acp.git.classification.get_diff")
@@ -407,8 +413,8 @@ class TestClassifyCommitTypeEdgeCases:
 
         result = classify_commit_type(verbose_config)
         assert result == CommitType.CHORE
-        mock_debug_header.assert_any_call("No Specific Pattern Matched")
-        mock_debug_item.assert_any_call("Default Type", "CHORE")
+        mock_debug_header.assert_any_call("Scoring Results")
+        mock_debug_item.assert_any_call("Selected Type", "CHORE")
 
     @patch("git_acp.git.classification.get_changed_files")
     @patch("git_acp.git.classification.get_diff")
@@ -488,7 +494,7 @@ class TestClassifyCommitTypeEdgeCases:
         with pytest.raises(GitError):
             classify_commit_type(verbose_config)
 
-        mock_debug_header.assert_any_call("Invalid Commit Type")
+        mock_debug_header.assert_any_call("Commit Classification Failed")
 
     @patch("git_acp.git.classification.get_changed_files")
     @patch("git_acp.git.classification.get_diff")
@@ -532,7 +538,7 @@ class TestClassifyCommitTypeEdgeCases:
 
         assert result == CommitType.TEST
         mock_debug_header.assert_any_call("Commit Classification Result")
-        mock_debug_item.assert_any_call("Source", "file_paths")
+        mock_debug_item.assert_any_call("Source", "scoring")
 
 
 class TestStripConventionalPrefix:
@@ -713,9 +719,8 @@ class TestProductionWithSupportingFiles:
         mock_get_files.return_value = {"src/auth.py", "tests/test_auth.py"}
         mock_get_diff.return_value = "implement new authentication"
         result = classify_commit_type(mock_config)
-        # Currently: file paths → TEST (majority rule). This is the bug.
-        # Phase 4 should make this FEAT or REFACTOR (production intent).
-        assert result == CommitType.TEST  # baseline — will change in Phase 4
+        # Scoring classifier: production file + supporting test → FEAT
+        assert result == CommitType.FEAT
 
     @patch("git_acp.git.classification.get_changed_files")
     @patch("git_acp.git.classification.get_diff")
@@ -726,8 +731,8 @@ class TestProductionWithSupportingFiles:
         mock_get_files.return_value = {"src/module.py", "docs/module.md"}
         mock_get_diff.return_value = "refactor module internals"
         result = classify_commit_type(mock_config)
-        # Currently: file paths → DOCS (majority). Phase 4 will fix.
-        assert result == CommitType.DOCS  # baseline — will change in Phase 4
+        # Scoring classifier: production file + supporting docs, "refactor" keyword → REFACTOR
+        assert result == CommitType.REFACTOR
 
 
 class TestSinglePurposeChanges:
@@ -763,14 +768,15 @@ class TestSinglePurposeChanges:
 
     @patch("git_acp.git.classification.get_changed_files")
     @patch("git_acp.git.classification.get_diff")
-    def test_ci_only_classifies_as_chore(
+    def test_ci_only_classifies_as_ci(
         self, mock_get_diff, mock_get_files, mock_config
     ):
-        """CI-only changes classify as CHORE (current behavior)."""
+        """CI-only changes classify as CI."""
         mock_get_files.return_value = {".github/workflows/ci.yaml"}
         mock_get_diff.return_value = "update CI pipeline"
         result = classify_commit_type(mock_config)
-        assert result == CommitType.CHORE
+        # Scoring classifier: CI files → CommitType.CI
+        assert result == CommitType.CI
 
 
 class TestMixedChangeDetection:

@@ -7,8 +7,73 @@ phase of the scoring classifier.
 
 from __future__ import annotations
 
+import re
+from enum import Enum
+
 from git_acp.config import FILE_CATEGORY_PATTERNS
-from git_acp.git.classification import FileCategory, _match_file_path_pattern
+
+
+class FileCategory(Enum):
+    """Classification of file purpose, separate from commit type.
+
+    Used to weight signals in the scoring classifier: production files
+    carry more weight than supporting files (tests, docs).
+    """
+
+    PRODUCTION = "production"
+    TEST = "test"
+    DOCS = "docs"
+    CI = "ci"
+    BUILD = "build"
+    CONFIG = "config"
+    DEPENDENCY = "dependency"
+    GENERATED = "generated"
+    STYLE = "style"
+    UNKNOWN = "unknown"
+
+
+def _normalize_path_separators(value: str) -> str:
+    return re.sub(r"[\\/]+", "/", value)
+
+
+def _match_file_path_pattern(file_path: str, pattern: str) -> bool:
+    file_norm = _normalize_path_separators(file_path).strip("/")
+    if not file_norm:
+        return False
+
+    file_segments = [seg.lower() for seg in file_norm.split("/") if seg]
+
+    pattern_norm = _normalize_path_separators(pattern)
+    if not pattern_norm:
+        return False
+
+    pattern_lower = pattern_norm.lower()
+    if "/" in pattern_lower:
+        is_dir_pattern = pattern_lower.endswith("/")
+        pattern_segments = [seg for seg in pattern_lower.strip("/").split("/") if seg]
+        if not pattern_segments:
+            return False
+
+        if is_dir_pattern and len(pattern_segments) == 1:
+            target = pattern_segments[0]
+            return any(seg == target for seg in file_segments)
+
+        for i in range(0, len(file_segments) - len(pattern_segments) + 1):
+            if file_segments[i : i + len(pattern_segments)] == pattern_segments:
+                return True
+        return False
+
+    if re.fullmatch(r"[a-z0-9_]+", pattern_lower):
+        regex = re.compile(rf"\b{re.escape(pattern_lower)}\b", flags=re.IGNORECASE)
+        return any(bool(regex.search(seg)) for seg in file_segments)
+
+    if pattern_lower.endswith("_"):
+        return any(seg.startswith(pattern_lower) for seg in file_segments)
+
+    if pattern_lower.startswith("_"):
+        return any(seg.endswith(pattern_lower) for seg in file_segments)
+
+    return any(pattern_lower in seg for seg in file_segments)
 
 
 def classify_file_category(path: str) -> FileCategory:
