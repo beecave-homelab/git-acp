@@ -28,7 +28,7 @@ from git_acp.config.constants import (
     USER_CONFIG_DIR,
     USER_ENV_FILE,
 )
-from git_acp.config.env_config import get_env, load_env_config
+from git_acp.config.env_config import get_env, load_env_config, run_setup
 
 __all__ = [
     "ADVANCED_PROMPT_CONTEXT_RATIO",
@@ -59,4 +59,5 @@ __all__ = [
     "USER_ENV_FILE",
     "get_env",
     "load_env_config",
+    "run_setup",
 ]
