@@ -2,7 +2,8 @@
 
 ## Table of Contents
 
-- [v0.24.0 (Current) - 24-05-2026](#v0240-current---24-05-2026)
+- [v0.25.0 (Current) - 04-06-2026](#v0250-current---04-06-2026)
+- [v0.24.0 - 24-05-2026](#v0240---24-05-2026)
 - [v0.23.0 - 27-01-2026](#v0230---27-01-2026)
 - [v0.22.0 - 13-01-2026](#v0220---13-01-2026)
 - [v0.20.0 - 20-12-2025](#v0200---20-12-2025)
@@ -34,7 +35,38 @@
 - [v0.6.0 - 21-12-2024](#v060---21-12-2024)
 - [v0.5.0 - 20-12-2024](#v050---20-12-2024)
 
-## v0.24.0 (Current) - *24-05-2026*
+## v0.25.0 (Current) - *04-06-2026*
+
+### ✨ **Add --setup flag to automate initial config creation**
+
+### ✨ New Features in v0.25.0
+
+- **Added**: `--setup` flag to the CLI to automate initial `.env` configuration creation.
+- **Added**: `--force` flag alongside `--setup` to overwrite an existing `.env` file.
+- **Added**: `run_setup()` function in `env_config.py` to programmatically generate `.env` files from a template.
+- **Added**: `git_acp/.env.example` as a comprehensive template for all supported environment variables.
+
+### 🔧 Improvements in v0.25.0
+
+- **Refactored**: `scripts/setup-config.py` simplified to a thin wrapper around `run_setup()`.
+- **Updated**: `git_acp/config/__init__.py` to re-export `run_setup` for public access.
+
+### 🐛 Bug Fixes in v0.25.0
+
+- **Fixed**: Synchronized `.env.example` content with `env_config.py` defaults after CodeRabbit review.
+
+### 🧪 Testing improvements in v0.25.0
+
+- **Added**: CLI tests for `--setup` and `--force` flag behavior.
+- **Added**: Unit tests for `run_setup()` including overwrite logic and template rendering.
+
+### 📝 Key Commits in v0.25.0
+
+`cc46eb9`, `db2ac21`, `55de509`, `5a74d2c`, `ec96931`, `e4bbac6`, `8e343ab`
+
+---
+
+## v0.24.0 - *24-05-2026*
 
 ### ✨ Brief Description (v0.24.0)
 
