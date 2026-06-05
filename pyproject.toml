@@ -1,6 +1,6 @@
 [project]
 name = "git-acp"
-version = "0.24.0"
+version = "0.25.0"
 authors = [
     { name = "elvee" },
 ]
