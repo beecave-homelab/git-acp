@@ -221,7 +221,13 @@ class TestClassification:
     @patch("git_acp.git.classification.get_numstat")
     @patch("git_acp.git.classification.get_changed_files")
     @patch("git_acp.git.classification.get_diff")
-    def test_file_path_takes_priority_over_diff(self, mock_get_diff, mock_get_files, mock_get_numstat, mock_config):
+    def test_file_path_takes_priority_over_diff(
+        self,
+        mock_get_diff,
+        mock_get_files,
+        mock_get_numstat,
+        mock_config,
+    ):
         """File path classification takes priority over diff keywords."""
         mock_get_files.return_value = {"tests/test_module.py"}
         mock_get_diff.return_value = ""
@@ -233,7 +239,13 @@ class TestClassification:
     @patch("git_acp.git.classification.get_numstat")
     @patch("git_acp.git.classification.get_changed_files")
     @patch("git_acp.git.classification.get_diff")
-    def test_message_prefix_takes_highest_priority(self, mock_get_diff, mock_get_files, mock_get_numstat, mock_config):
+    def test_message_prefix_takes_highest_priority(
+        self,
+        mock_get_diff,
+        mock_get_files,
+        mock_get_numstat,
+        mock_config,
+    ):
         """Explicit message prefix takes highest priority."""
         mock_get_files.return_value = {"tests/test_module.py"}
         # Explicit prefix should override file path
@@ -595,6 +607,7 @@ class TestStripConventionalPrefix:
 # Phase 2 infrastructure tests
 # ---------------------------------------------------------------------------
 
+
 class TestExtractAddedLines:
     """Tests for extract_added_lines in diff.py."""
 
@@ -651,7 +664,10 @@ class TestFileClassifier:
 
     def test_classify_generated_file(self) -> None:
         """Classify build artifacts as GENERATED category."""
-        assert classify_file_category("__pycache__/module.cpython-311.pyc") == FileCategory.GENERATED
+        assert (
+            classify_file_category("__pycache__/module.cpython-311.pyc")
+            == FileCategory.GENERATED
+        )
 
     def test_classify_style_file(self) -> None:
         """Linting configs classify as STYLE, not CONFIG."""
@@ -693,8 +709,11 @@ class TestFileClassifier:
 # Phase 3: Regression tests for known misclassification patterns
 # ---------------------------------------------------------------------------
 
+
 class TestProductionWithSupportingFiles:
-    """Test that production changes with supporting test/doc files classify
+    """Test production changes with supporting files classification.
+
+    Test that production changes with supporting test/doc files classify
     based on production intent, not as test/docs.
 
     These represent the ~25% misclassification rate the scoring system
@@ -731,7 +750,8 @@ class TestProductionWithSupportingFiles:
         mock_get_files.return_value = {"src/module.py", "docs/module.md"}
         mock_get_diff.return_value = "refactor module internals"
         result = classify_commit_type(mock_config)
-        # Scoring classifier: production file + supporting docs, "refactor" keyword → REFACTOR
+        # Scoring classifier: production + supporting docs,
+        # "refactor" keyword → REFACTOR
         assert result == CommitType.REFACTOR
 
 
@@ -740,6 +760,7 @@ class TestSinglePurposeChanges:
 
     @pytest.fixture
     def mock_config(self):
+        """Return a mock config object."""
         cfg = MagicMock()
         cfg.verbose = False
         return cfg
@@ -768,9 +789,7 @@ class TestSinglePurposeChanges:
 
     @patch("git_acp.git.classification.get_changed_files")
     @patch("git_acp.git.classification.get_diff")
-    def test_ci_only_classifies_as_ci(
-        self, mock_get_diff, mock_get_files, mock_config
-    ):
+    def test_ci_only_classifies_as_ci(self, mock_get_diff, mock_get_files, mock_config):
         """CI-only changes classify as CI."""
         mock_get_files.return_value = {".github/workflows/ci.yaml"}
         mock_get_diff.return_value = "update CI pipeline"

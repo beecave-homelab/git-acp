@@ -22,7 +22,6 @@ from git_acp.config import (
     COMMIT_TYPE_PATTERNS,
     COMMIT_TYPES,
     EXCLUDED_PATTERNS,
-    FILE_CATEGORY_PATTERNS,
     FILE_PATH_PATTERNS,
     SIGNAL_LAYER_WEIGHTS,
 )
@@ -524,9 +523,10 @@ def strip_conventional_prefix(title: str) -> str:
 
 # Categories whose files should NOT contribute keyword evidence —
 # generated output and lockfiles can fire false keyword matches.
-_KEYWORD_EXCLUDED_CATEGORIES: frozenset[FileCategory] = frozenset(
-    {FileCategory.GENERATED, FileCategory.DEPENDENCY}
-)
+_KEYWORD_EXCLUDED_CATEGORIES: frozenset[FileCategory] = frozenset({
+    FileCategory.GENERATED,
+    FileCategory.DEPENDENCY,
+})
 
 
 def _collect_signals(
@@ -536,12 +536,13 @@ def _collect_signals(
 ) -> dict:
     """Gather raw signals from all sources for the scoring classifier.
 
-    Returns a dict with keys:
-        prefix_type: CommitType | None — explicit prefix result
-        file_categories: dict[FileCategory, set[str]] — grouped files
-        numstat: dict[str, tuple[int, int]] — line counts per file
-        message_keyword_hits: dict[str, list[str]] — type → matched keywords
-        diff_text: str | None — raw diff (for keyword matching)
+    Returns:
+        A dict with keys:
+            prefix_type: CommitType | None — explicit prefix result
+            file_categories: dict[FileCategory, set[str]] — grouped files
+            numstat: dict[str, tuple[int, int]] — line counts per file
+            message_keyword_hits: dict[str, list[str]] — type → matched keywords
+            diff_text: str | None — raw diff (for keyword matching)
     """
     prefix_type: CommitType | None = None
     commit_title = (commit_message or "").strip()
@@ -610,6 +611,9 @@ def _score_commit_types(
 
     Returns:
         (scores, confidence, is_mixed)
+
+    Raises:
+        GitError: If an invalid commit type pattern is encountered.
     """
     scores: dict[CommitType, float] = {ct: 0.0 for ct in CommitType}
     file_categories: dict[FileCategory, set[str]] = signals["file_categories"]
@@ -629,7 +633,10 @@ def _score_commit_types(
 
     has_production = FileCategory.PRODUCTION in file_categories
     production_types = {
-        CommitType.FEAT, CommitType.FIX, CommitType.REFACTOR, CommitType.PERF
+        CommitType.FEAT,
+        CommitType.FIX,
+        CommitType.REFACTOR,
+        CommitType.PERF,
     }
 
     # Supporting-file logic: when PRODUCTION has changes, TEST and DOCS
@@ -727,9 +734,7 @@ def _score_commit_types(
     # --- Tiebreaker: alphabetical CommitType name ---
     if top_score == second_score and second_score > 0:
         # Re-sort equal-top by name for deterministic results
-        equal_top = [
-            (ct, s) for ct, s in sorted_scores if s == top_score
-        ]
+        equal_top = [(ct, s) for ct, s in sorted_scores if s == top_score]
         equal_top.sort(key=lambda x: x[0].name)
         top_type = equal_top[0][0]
 
@@ -770,6 +775,9 @@ def classify_commit(config, commit_message: str | None = None) -> Classification
 
     Returns:
         ClassificationResult with commit_type, confidence, scores, is_mixed.
+
+    Raises:
+        GitError: If an unexpected error occurs during classification.
     """
     try:
         if config.verbose:
@@ -857,9 +865,6 @@ def classify_commit_type(config, commit_message: str | None = None) -> CommitTyp
 
     Returns:
         CommitType: The classified commit type.
-
-    Raises:
-        GitError: If unable to classify commit type.
     """
     result = classify_commit(config, commit_message)
     return result.commit_type
