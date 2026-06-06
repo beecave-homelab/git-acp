@@ -155,10 +155,26 @@ def _process_add_argument(add: str | None) -> tuple[str | None, bool]:
     "--type",
     "commit_type",
     type=click.Choice(
-        ["feat", "fix", "docs", "style", "refactor", "test", "chore", "revert"],
+        [
+            "feat",
+            "fix",
+            "docs",
+            "style",
+            "refactor",
+            "test",
+            "chore",
+            "revert",
+            "build",
+            "ci",
+            "perf",
+        ],
         case_sensitive=False,
     ),
-    help="Manually specify the commit type instead of using automatic detection.",
+    help=(
+        "Manually specify the commit type instead of using automatic detection. "
+        "Supported types: feat, fix, docs, style, refactor, test, chore, revert, "
+        "build, ci, perf."
+    ),
     metavar="<type>",
 )
 # AI Features Group

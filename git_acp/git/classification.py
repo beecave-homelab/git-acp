@@ -182,7 +182,7 @@ def group_changed_files(
         ``FILE_PATH_PATTERNS`` and ``EXCLUDED_PATTERNS`` come from
         ``git_acp.config.constants``.
     """
-    commit_type_priority = ["docs", "test", "style", "chore"]
+    commit_type_priority = ["docs", "test", "style", "build", "ci", "chore"]
 
     def is_excluded(file_path: str) -> bool:
         for pattern in EXCLUDED_PATTERNS:
