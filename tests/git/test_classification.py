@@ -915,7 +915,10 @@ class TestBuildCiPerfAutoDetection:
         """A commit with optimize keywords should classify as PERF."""
         mock_get_files.return_value = set()
         mock_get_diff.return_value = "optimize database query performance"
-        result = classify_commit_type(mock_config, commit_message="optimize database query performance")
+        result = classify_commit_type(
+            mock_config,
+            commit_message="optimize database query performance",
+        )
         assert result == CommitType.PERF
 
     @patch("git_acp.git.classification.get_changed_files")
@@ -926,7 +929,10 @@ class TestBuildCiPerfAutoDetection:
         """A commit describing speed improvements should classify as PERF."""
         mock_get_files.return_value = set()
         mock_get_diff.return_value = "improve speed of data processing"
-        result = classify_commit_type(mock_config, commit_message="improve speed of data processing")
+        result = classify_commit_type(
+            mock_config,
+            commit_message="improve speed of data processing",
+        )
         assert result == CommitType.PERF
 
     @patch("git_acp.git.classification.get_changed_files")
@@ -937,7 +943,10 @@ class TestBuildCiPerfAutoDetection:
         """A commit reducing latency should classify as PERF."""
         mock_get_files.return_value = set()
         mock_get_diff.return_value = "reduce API latency by caching responses"
-        result = classify_commit_type(mock_config, commit_message="reduce API latency by caching responses")
+        result = classify_commit_type(
+            mock_config,
+            commit_message="reduce API latency by caching responses",
+        )
         assert result == CommitType.PERF
 
     # --- Keyword detection for build and ci ---
@@ -950,7 +959,10 @@ class TestBuildCiPerfAutoDetection:
         """A commit with docker keyword should classify as BUILD."""
         mock_get_files.return_value = set()
         mock_get_diff.return_value = "update docker container configuration"
-        result = classify_commit_type(mock_config, commit_message="update docker container configuration")
+        result = classify_commit_type(
+            mock_config,
+            commit_message="update docker container configuration",
+        )
         assert result == CommitType.BUILD
 
     @patch("git_acp.git.classification.get_changed_files")
@@ -961,7 +973,10 @@ class TestBuildCiPerfAutoDetection:
         """A commit with pipeline keyword should classify as CI."""
         mock_get_files.return_value = set()
         mock_get_diff.return_value = "fix deployment pipeline"
-        result = classify_commit_type(mock_config, commit_message="fix deployment pipeline")
+        result = classify_commit_type(
+            mock_config,
+            commit_message="fix deployment pipeline",
+        )
         assert result == CommitType.CI
 
     # --- File path pattern coverage ---
