@@ -140,11 +140,37 @@ class TestCli(unittest.TestCase):
         mock_setup.assert_called_once_with(force=False)
 
     @patch("git_acp.config.run_setup", return_value=0)
-    def test_cli_setup_with_force(self, mock_setup: MagicMock) -> None:
+    def test_cli_setup_with_force(self, mock_setup: MagicMock):
         """Should call run_setup with force=True when both flags passed."""
         result = self.runner.invoke(main, ["--setup", "--force"])
         assert result.exit_code == 0
         mock_setup.assert_called_once_with(force=True)
+
+    def test_cli_type_accepts_build(self) -> None:
+        """The -t flag should accept 'build' as a valid commit type."""
+        result = self.runner.invoke(main, ["-t", "build", "--dry-run"])
+        # Click.Choice validation fails with exit code 2; we expect it to
+        # proceed past argument parsing (any non-2 exit is fine here).
+        self.assertNotEqual(result.exit_code, 2)
+        self.assertNotIn("Invalid value", result.output)
+
+    def test_cli_type_accepts_ci(self) -> None:
+        """The -t flag should accept 'ci' as a valid commit type."""
+        result = self.runner.invoke(main, ["-t", "ci", "--dry-run"])
+        self.assertNotEqual(result.exit_code, 2)
+        self.assertNotIn("Invalid value", result.output)
+
+    def test_cli_type_accepts_perf(self) -> None:
+        """The -t flag should accept 'perf' as a valid commit type."""
+        result = self.runner.invoke(main, ["-t", "perf", "--dry-run"])
+        self.assertNotEqual(result.exit_code, 2)
+        self.assertNotIn("Invalid value", result.output)
+
+    def test_cli_type_rejects_invalid(self) -> None:
+        """The -t flag should reject invalid commit types."""
+        result = self.runner.invoke(main, ["-t", "invalid_type", "--dry-run"])
+        self.assertEqual(result.exit_code, 2)
+        self.assertIn("Invalid value", result.output)
 
 
 if __name__ == "__main__":

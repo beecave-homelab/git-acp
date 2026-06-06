@@ -67,10 +67,10 @@ class TestFilePathClassification:
         assert result is None
 
     def test_classify_chore_files(self, mock_config):
-        """Classify commits with config/build files as CHORE."""
+        """Classify commits with config files as CHORE."""
         chore_files = {
-            ".github/workflows/ci.yaml",
             "pyproject.toml",
+            ".gitignore",
         }
         result = _classify_by_file_paths(chore_files, mock_config)
         assert result == CommitType.CHORE
@@ -819,3 +819,177 @@ class TestMixedChangeDetection:
         cats = categorize_changed_files(files)
         assert len(cats) == 1
         assert FileCategory.TEST in cats
+
+
+class TestBuildCiPerfAutoDetection:
+    """Tests for automatic detection of build, ci, and perf commit types.
+
+    These ensure the scoring classifier correctly identifies commits that
+    only touch build/CI/perf files or use build/CI/perf keywords.
+    """
+
+    @pytest.fixture
+    def mock_config(self):
+        """Return a mock config object."""
+        cfg = MagicMock()
+        cfg.verbose = False
+        return cfg
+
+    # --- BUILD detection via file paths ---
+
+    @patch("git_acp.git.classification.get_changed_files")
+    @patch("git_acp.git.classification.get_diff")
+    def test_build_only__dockerfile_classifies_as_build(
+        self, mock_get_diff, mock_get_files, mock_config
+    ):
+        """A commit touching only a Dockerfile should classify as BUILD."""
+        mock_get_files.return_value = {"Dockerfile"}
+        mock_get_diff.return_value = "update base image"
+        result = classify_commit_type(mock_config)
+        assert result == CommitType.BUILD
+
+    @patch("git_acp.git.classification.get_changed_files")
+    @patch("git_acp.git.classification.get_diff")
+    def test_build_only__docker_compose_classifies_as_build(
+        self, mock_get_diff, mock_get_files, mock_config
+    ):
+        """A commit touching docker-compose files should classify as BUILD."""
+        mock_get_files.return_value = {"docker-compose.yml", "docker-compose.prod.yml"}
+        mock_get_diff.return_value = "add production compose override"
+        result = classify_commit_type(mock_config)
+        assert result == CommitType.BUILD
+
+    @patch("git_acp.git.classification.get_changed_files")
+    @patch("git_acp.git.classification.get_diff")
+    def test_build_only__makefile_classifies_as_build(
+        self, mock_get_diff, mock_get_files, mock_config
+    ):
+        """A commit touching a Makefile should classify as BUILD."""
+        mock_get_files.return_value = {"Makefile"}
+        mock_get_diff.return_value = "add lint target"
+        result = classify_commit_type(mock_config)
+        assert result == CommitType.BUILD
+
+    # --- CI detection via file paths ---
+
+    @patch("git_acp.git.classification.get_changed_files")
+    @patch("git_acp.git.classification.get_diff")
+    def test_ci_only__github_workflows_classifies_as_ci(
+        self, mock_get_diff, mock_get_files, mock_config
+    ):
+        """A commit touching .github/workflows/*.yml should classify as CI."""
+        mock_get_files.return_value = {".github/workflows/ci.yaml"}
+        mock_get_diff.return_value = "update CI pipeline"
+        result = classify_commit_type(mock_config)
+        assert result == CommitType.CI
+
+    @patch("git_acp.git.classification.get_changed_files")
+    @patch("git_acp.git.classification.get_diff")
+    def test_ci_only__gitlab_ci_classifies_as_ci(
+        self, mock_get_diff, mock_get_files, mock_config
+    ):
+        """A commit touching .gitlab-ci.yml should classify as CI."""
+        mock_get_files.return_value = {".gitlab-ci.yml"}
+        mock_get_diff.return_value = "fix deploy stage"
+        result = classify_commit_type(mock_config)
+        assert result == CommitType.CI
+
+    @patch("git_acp.git.classification.get_changed_files")
+    @patch("git_acp.git.classification.get_diff")
+    def test_ci_only__jenkinsfile_classifies_as_ci(
+        self, mock_get_diff, mock_get_files, mock_config
+    ):
+        """A commit touching a Jenkinsfile should classify as CI."""
+        mock_get_files.return_value = {"Jenkinsfile"}
+        mock_get_diff.return_value = "add build stage"
+        result = classify_commit_type(mock_config)
+        assert result == CommitType.CI
+
+    # --- PERF detection via keywords ---
+
+    @patch("git_acp.git.classification.get_changed_files")
+    @patch("git_acp.git.classification.get_diff")
+    def test_perf_keyword_optimizes_classifies_as_perf(
+        self, mock_get_diff, mock_get_files, mock_config
+    ):
+        """A commit with optimize keywords should classify as PERF."""
+        mock_get_files.return_value = set()
+        mock_get_diff.return_value = "optimize database query performance"
+        result = classify_commit_type(mock_config, commit_message="optimize database query performance")
+        assert result == CommitType.PERF
+
+    @patch("git_acp.git.classification.get_changed_files")
+    @patch("git_acp.git.classification.get_diff")
+    def test_perf_keyword_speed_classifies_as_perf(
+        self, mock_get_diff, mock_get_files, mock_config
+    ):
+        """A commit describing speed improvements should classify as PERF."""
+        mock_get_files.return_value = set()
+        mock_get_diff.return_value = "improve speed of data processing"
+        result = classify_commit_type(mock_config, commit_message="improve speed of data processing")
+        assert result == CommitType.PERF
+
+    @patch("git_acp.git.classification.get_changed_files")
+    @patch("git_acp.git.classification.get_diff")
+    def test_perf_keyword_latency_classifies_as_perf(
+        self, mock_get_diff, mock_get_files, mock_config
+    ):
+        """A commit reducing latency should classify as PERF."""
+        mock_get_files.return_value = set()
+        mock_get_diff.return_value = "reduce API latency by caching responses"
+        result = classify_commit_type(mock_config, commit_message="reduce API latency by caching responses")
+        assert result == CommitType.PERF
+
+    # --- Keyword detection for build and ci ---
+
+    @patch("git_acp.git.classification.get_changed_files")
+    @patch("git_acp.git.classification.get_diff")
+    def test_build_keyword_docker_classifies_as_build(
+        self, mock_get_diff, mock_get_files, mock_config
+    ):
+        """A commit with docker keyword should classify as BUILD."""
+        mock_get_files.return_value = set()
+        mock_get_diff.return_value = "update docker container configuration"
+        result = classify_commit_type(mock_config, commit_message="update docker container configuration")
+        assert result == CommitType.BUILD
+
+    @patch("git_acp.git.classification.get_changed_files")
+    @patch("git_acp.git.classification.get_diff")
+    def test_ci_keyword_pipeline_classifies_as_ci(
+        self, mock_get_diff, mock_get_files, mock_config
+    ):
+        """A commit with pipeline keyword should classify as CI."""
+        mock_get_files.return_value = set()
+        mock_get_diff.return_value = "fix deployment pipeline"
+        result = classify_commit_type(mock_config, commit_message="fix deployment pipeline")
+        assert result == CommitType.CI
+
+    # --- File path pattern coverage ---
+
+    def test_file_path_patterns_include_build(self) -> None:
+        """Verify FILE_PATH_PATTERNS contains build entries."""
+        assert "build" in FILE_PATH_PATTERNS
+        assert any("Dockerfile" in p for p in FILE_PATH_PATTERNS["build"])
+
+    def test_file_path_patterns_include_ci(self) -> None:
+        """Verify FILE_PATH_PATTERNS contains ci entries."""
+        assert "ci" in FILE_PATH_PATTERNS
+        assert any("workflows" in p for p in FILE_PATH_PATTERNS["ci"])
+
+    def test_file_path_patterns_include_perf(self) -> None:
+        """Verify FILE_PATH_PATTERNS contains perf entries."""
+        assert "perf" in FILE_PATH_PATTERNS
+
+    # --- CommitType.from_str for new types ---
+
+    def test_from_str_build(self) -> None:
+        """Parse 'build' as CommitType.BUILD."""
+        assert CommitType.from_str("build") == CommitType.BUILD
+
+    def test_from_str_ci(self) -> None:
+        """Parse 'ci' as CommitType.CI."""
+        assert CommitType.from_str("ci") == CommitType.CI
+
+    def test_from_str_perf(self) -> None:
+        """Parse 'perf' as CommitType.PERF."""
+        assert CommitType.from_str("perf") == CommitType.PERF
