@@ -9,6 +9,10 @@ from git_acp.utils import DiffType, OptionalConfig, debug_header, debug_item
 
 from .core import GitError, run_git_command
 
+# Default line count assigned to binary files in numstat output
+# (shown as "-" in git diff --numstat).
+_BINARY_LINE_COUNT: int = 10
+
 
 def get_changed_files(
     config: OptionalConfig = None, staged_only: bool = False
@@ -128,3 +132,91 @@ def get_diff(
 
     except GitError as e:
         raise GitError(f"Failed to get {diff_type} diff: {str(e)}") from e
+
+
+def get_numstat(config: OptionalConfig = None) -> dict[str, tuple[int, int]]:
+    """Get line-level change statistics per file via ``git diff --numstat``.
+
+    Tries staged changes first, falls back to unstaged if no output.
+
+    Args:
+        config: Optional configuration for verbose output.
+
+    Returns:
+        Dict mapping file paths to ``(added, removed)`` line counts.
+        Binary files receive ``(_BINARY_LINE_COUNT, 0)``.
+        Files matching ``EXCLUDED_PATTERNS`` are filtered out.
+    """
+    stdout: str | None = None
+    for flag in ("--staged", None):
+        cmd = ["git", "diff"]
+        if flag:
+            cmd.append(flag)
+        cmd.append("--numstat")
+        try:
+            out, _ = run_git_command(cmd, config)
+            if out.strip():
+                stdout = out
+                break
+        except GitError:
+            continue
+
+    if not stdout or not stdout.strip():
+        return {}
+
+    if config and config.verbose:
+        debug_header("Parsing numstat output")
+
+    result: dict[str, tuple[int, int]] = {}
+    for line in stdout.splitlines():
+        if not line.strip():
+            continue
+        parts = line.split("\t")
+        if len(parts) != 3:
+            continue
+
+        added_str, removed_str, filepath = parts
+        added = _BINARY_LINE_COUNT if added_str == "-" else int(added_str)
+        removed = 0 if removed_str == "-" else int(removed_str)
+
+        # Apply exclusion filter
+        excluded = False
+        for pattern in EXCLUDED_PATTERNS:
+            if pattern == "/.env$" and Path(filepath).name == ".env":
+                excluded = True
+                break
+            if pattern in filepath:
+                excluded = True
+                break
+        if excluded:
+            continue
+
+        result[filepath] = (added, removed)
+
+    if config and config.verbose:
+        debug_item("Numstat entries", str(len(result)))
+
+    return result
+
+
+def extract_added_lines(diff: str) -> str:
+    """Extract only added lines from a unified diff.
+
+    Strips the leading ``+`` from each added line. Skips ``+++`` file
+    headers and hunk metadata (lines starting with ``@@``).
+
+    Args:
+        diff: Raw unified diff output.
+
+    Returns:
+        Concatenated added lines as a single string.
+    """
+    added: list[str] = []
+    for line in diff.splitlines():
+        if line.startswith("+++") or line.startswith("---"):
+            continue
+        if line.startswith("@@"):
+            continue
+        if line.startswith("+"):
+            added.append(line[1:])
+    return "\n".join(added)

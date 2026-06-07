@@ -3,11 +3,15 @@
 from __future__ import annotations
 
 from git_acp.git.classification import (
+    ClassificationResult,
     CommitType,
+    FileCategory,
+    classify_commit,
     classify_commit_type,
     group_changed_files,
     strip_conventional_prefix,
 )
+from git_acp.git.file_classifier import categorize_changed_files, classify_file_category
 from git_acp.git.history import (
     analyze_commit_patterns,
     find_related_commits,
@@ -39,8 +43,13 @@ __all__ = [
     "get_recent_commits",
     "find_related_commits",
     "analyze_commit_patterns",
+    "ClassificationResult",
     "CommitType",
+    "FileCategory",
+    "classify_commit",
     "classify_commit_type",
+    "classify_file_category",
+    "categorize_changed_files",
     "group_changed_files",
     "strip_conventional_prefix",
     "setup_signal_handlers",
