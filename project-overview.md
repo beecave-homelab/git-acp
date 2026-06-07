@@ -1,7 +1,7 @@
 ---
 repo: https://github.com/beecave-homelab/git-acp.git
-commit: 767c01d
-updated: 2026-05-15T00:00:00Z
+commit: 60cb407
+updated: 2026-06-07T00:00:00Z
 ---
 <!-- markdownlint-disable-file MD033 -->
 <!-- SECTIONS:API,CLI,WEBUI,CI,DOCKER,TESTS -->
@@ -80,7 +80,7 @@ pdm export --pyproject --no-hashes -G lint,test -o requirements.dev.txt
 
 - Interactive staging of changed files.
 - AI-generated commit messages using Ollama.
-- **Smart commit type classification** using file-path-first heuristics with keyword fallback.
+- **Smart commit type classification** using explicit prefixes, weighted file-category signals, message keywords, diff keywords, confidence scoring, and mixed-change detection.
 - **Prefix-safe commit title formatting**: workflow strips AI-provided conventional prefixes before applying the selected commit type, preventing duplicate type prefixes.
 - **Auto-group mode** (`-ag/--auto-group`) to split unstaged changes into multiple focused commits using deterministic file grouping.
 - **Scoped `-a` filtering** that supports glob patterns (including `**/`), ensuring dry-run and file listings match the intended paths.
@@ -113,9 +113,10 @@ git_acp/
 │   └── env_config.py       # Manages loading of environment variables.
 ├── git/
 │   ├── __init__.py         # Exposes all public Git operation functions (facade).
-│   ├── classification.py   # File-path-first commit type classification.
+│   ├── classification.py   # Weighted scoring commit type classification.
 │   ├── core.py             # Core git utilities and error handling.
 │   ├── diff.py             # Diff generation and formatting.
+│   ├── file_classifier.py  # File-purpose categorization for scoring signals.
 │   ├── git_operations.py   # Compatibility layer for testable git helpers.
 │   ├── history.py          # Commit history and analysis utilities.
 │   ├── management.py       # Branch and repository management.
@@ -144,7 +145,9 @@ tests/
 - **Dependency Injection**: `AIClient` and `GitWorkflow` accept injected dependencies for testing.
 - **Modular Design**: Separate packages for AI, CLI, git operations, and configuration.
 - **SOLID Principles**: Single Responsibility (workflow vs CLI), Dependency Inversion (protocols).
-- **Auto-group orchestration**: CLI can iterate deterministic file groups and run multiple workflow instances safely.
+- **Scoring classifier**: `classification.py` combines explicit message prefixes, file categories, line impact, message keywords, and diff keyword signals into confidence-ranked commit type recommendations.
+- **File category analysis**: `file_classifier.py` separates file purpose from commit intent so production, test, docs, CI, build, dependency, generated, and style changes can be weighted consistently.
+- **Auto-group orchestration**: CLI can iterate deterministic file groups and defensively unstage between workflow instances.
 - **AI output normalization**: prompt templates and formatting logic are aligned so AI returns description-first titles while workflow applies a single canonical type prefix.
 
 ### Component Interaction Diagram
@@ -277,6 +280,11 @@ classDiagram
         +skip_confirmation: bool
         +verbose: bool
         +prompt_type: str
+        +prompt: str | None
+        +ai_model: str | None
+        +context_window: int | None
+        +dry_run: bool
+        +auto_group: bool
     }
 
     class UserInteraction:::inject {
@@ -299,6 +307,7 @@ classDiagram
 
     class Classification:::part {
         +classify_commit_type()
+        +classify_commit()
     }
 
     GitWorkflow ..> GitConfig : uses
@@ -573,7 +582,7 @@ Internal modules ([`core.py`](git_acp/git/core.py), [`staging.py`](git_acp/git/s
 
 ### Dataclass Configuration
 
-`GitConfig` in [`utils/types.py`](git_acp/utils/types.py) uses `@dataclass` for immutable configuration:
+`GitConfig` in [`utils/types.py`](git_acp/utils/types.py) uses `@dataclass` for workflow configuration:
 
 ```python
 @dataclass
@@ -586,6 +595,11 @@ class GitConfig:
     skip_confirmation: bool = False
     verbose: bool = False
     prompt_type: str = "advanced"
+    prompt: str | None = None
+    ai_model: str | None = None
+    context_window: int | None = None
+    dry_run: bool = False
+    auto_group: bool = False
 ```
 
 ### Enum for Commit Types
@@ -596,6 +610,15 @@ class GitConfig:
 class CommitType(Enum):
     FEAT = "feat"
     FIX = "fix"
+    DOCS = "docs"
+    STYLE = "style"
+    REFACTOR = "refactor"
+    TEST = "test"
+    CHORE = "chore"
+    REVERT = "revert"
+    BUILD = "build"
+    CI = "ci"
+    PERF = "perf"
     # ...
 
     @classmethod
@@ -605,36 +628,31 @@ class CommitType(Enum):
 
 ### Commit Type Classification
 
-The `classify_commit_type()` function uses a priority-based approach:
+The `classify_commit_type()` compatibility function delegates to `classify_commit()`, which returns a rich `ClassificationResult` containing the selected type, confidence, per-type scores, and mixed-change status. Explicit message prefixes still short-circuit with full confidence; otherwise the classifier uses a weighted scoring approach:
 
-| Priority | Source           | Description                                                             |
-| -------- | ---------------- | ----------------------------------------------------------------------- |
-| 1        | Message prefix   | Explicit `feat:`, `feat ✨:`, `fix:`, `fix 🐛:`, etc. in commit message |
-| 2        | File paths       | `tests/` → test, `docs/` → docs, `.github/` → chore                     |
-| 3        | Message keywords | Semantic hints like "implement", "fix", "refactor"                      |
-| 4        | Diff keywords    | Fallback pattern matching in git diff                                   |
-| 5        | Default          | Returns `CHORE` when no patterns match                                  |
+| Signal | Source | Description |
+| ------ | ------ | ----------- |
+| Explicit prefix | Commit message title | `feat:`, `feat ✨:`, `fix(scope):`, etc. short-circuit classification |
+| File categories | Changed file paths and line impact | Production, test, docs, CI, build, config, dependency, generated, and style files contribute weighted scores |
+| Message keywords | Commit message text | Semantic hints like "implement", "fix", "refactor", "optimize", "ci", and "build" |
+| Diff keywords | Added diff lines | Fallback keyword matching against changed content, excluding generated/dependency categories where appropriate |
+| Default | No signal | Returns `CHORE` when no signal matches |
 
 The implementation lives in [`git_acp/git/classification.py`](git_acp/git/classification.py).
-File path patterns are defined in [`git_acp/config/constants.py`](git_acp/config/constants.py) (`FILE_PATH_PATTERNS`).
+File category patterns are defined in [`git_acp/config/constants.py`](git_acp/config/constants.py) (`FILE_CATEGORY_PATTERNS`), while [`git_acp/git/file_classifier.py`](git_acp/git/file_classifier.py) maps paths to `FileCategory` values.
 
 ```mermaid
 flowchart TD
-    A[Start: classify_commit_type] --> B{Commit message has a title line?}
-    B -->|yes| C[Parse prefix<br/>feat:, fix:, feat(scope) ✨: ...]
-    C -->|parsed| R1[Return parsed type]
-    C -->|not parsed| D[Get changed files<br/>(staged then unstaged)]
-    B -->|no| D
-    D --> E{File path patterns match?}
-    E -->|yes (majority)| R2[Return file-based type]
-    E -->|no| F{Commit message provided?}
-    F -->|yes| G[Keyword match in commit message]
-    G -->|matched| R3[Return matched type]
-    G -->|no match| H[Get diff<br/>(staged then unstaged)]
-    F -->|no| H
-    H --> I[Keyword match in diff]
-    I -->|matched| R4[Return matched type]
-    I -->|no match| R5[Return CHORE]
+    A[Start: classify_commit] --> B[Collect changed files<br/>staged then unstaged]
+    B --> C[Collect signals]
+    C --> D{Explicit prefix?}
+    D -->|yes| R1[Return ClassificationResult<br/>confidence 1.0]
+    D -->|no| E[Categorize files with FileCategory]
+    E --> F[Apply weighted file, message,<br/>and diff keyword signals]
+    F --> G[Calculate confidence<br/>and mixed-change status]
+    G --> H{Any positive score?}
+    H -->|yes| R2[Return highest scoring type]
+    H -->|no| R3[Return CHORE]
 ```
 
 ## Coding Standards
