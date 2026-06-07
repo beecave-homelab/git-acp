@@ -4,7 +4,7 @@
 
 - Interactive file selection
 - AI-powered commit message generation
-- Smart commit type classification
+- Weighted scoring commit type classification
 - Conventional commits support
 
 Users can invoke these features via command-line interface (`git_acp.cli`), or programmatically through this package.
@@ -63,6 +63,7 @@ You can install the `git_acp` package by cloning the repository or adding it to 
    │  ├── classification.py
    │  ├── core.py
    │  ├── diff.py
+   │  ├── file_classifier.py
    │  ├── git_operations.py
    │  ├── history.py
    │  ├── management.py
@@ -70,6 +71,7 @@ You can install the `git_acp` package by cloning the repository or adding it to 
    │  └── staging.py
    └── utils
       ├── __init__.py
+      ├── file_filter.py
       ├── formatting.py
       └── types.py
 
@@ -90,7 +92,7 @@ This is the root of the package and defines the package’s version.
 ```python
 import git_acp
 
-print(git_acp.__version__)  # "0.17.0"
+print(git_acp.__version__)  # "0.26.0"
 ```
 
 ---
@@ -159,7 +161,7 @@ Implements the `main` command via Click decorators and subcommands/options.
      Specify a commit message directly.
   3. `-b, --branch <branch>`  
      Specify a branch to push to. Defaults to current branch if not provided.
-  4. `-t, --type [feat|fix|docs|style|refactor|test|chore|revert]`  
+  4. `-t, --type [feat|fix|docs|style|refactor|test|chore|revert|build|ci|perf]`
      Manually specify commit type.
   5. `-o, --ollama`  
      Toggle AI-based commit message generation.
@@ -177,6 +179,14 @@ Implements the `main` command via Click decorators and subcommands/options.
      Skip confirmations.
   12. `-v, --verbose`  
      Print debug info.
+  13. `-dr, --dry-run`
+     Preview what would be committed without committing or pushing.
+  14. `-ag, --auto-group`
+     Automatically split related changes into multiple focused commits.
+  15. `--setup`
+     Create the initial configuration file.
+  16. `--force`
+     Overwrite an existing configuration file when used with `--setup`.
 
 **Primary Workflow**:
 
@@ -202,6 +212,9 @@ Exports commonly used config objects and methods:
 - `QUESTIONARY_STYLE`
 - `COMMIT_TYPES`
 - `COMMIT_TYPE_PATTERNS`
+- `FILE_PATH_PATTERNS`
+- `FILE_CATEGORY_PATTERNS`
+- `SIGNAL_LAYER_WEIGHTS`
 - `EXCLUDED_PATTERNS`
 - `DEFAULT_REMOTE`
 - `DEFAULT_NUM_RECENT_COMMITS`
@@ -213,9 +226,12 @@ Exports commonly used config objects and methods:
 - `DEFAULT_API_KEY`
 - `DEFAULT_PROMPT_TYPE`
 - `DEFAULT_AI_TIMEOUT`
+- `DEFAULT_CONTEXT_WINDOW`
+- `DEFAULT_AUTO_GROUP_MAX_NON_TYPE_GROUPS`
 - `TERMINAL_WIDTH`
 - `get_env`
 - `load_env_config`
+- `run_setup`
 
 ### `git_acp.config.env_config`
 
@@ -230,7 +246,7 @@ Exports commonly used config objects and methods:
 
 ### `git_acp.config.constants`
 
-Defines constants for AI configuration, Git workflow configuration, file-exclusion patterns, commit type patterns, formatting colors, and terminal widths. These are loaded from environment variables where possible, otherwise defaulting to hardcoded fallback values.
+Defines constants for AI configuration, Git workflow configuration, file-exclusion patterns, commit type patterns, file category patterns, scoring weights, formatting colors, and terminal widths. These are loaded from environment variables where possible, otherwise defaulting to fallback values.
 
 ---
 
@@ -243,10 +259,11 @@ Implements direct interaction with Git repositories (add, commit, push, diffs, h
 - `core.py` – defines `GitError` and `run_git_command`.
 - `staging.py` – staging and pushing helpers: `get_current_branch`, `git_add`, `git_commit`, `git_push`, `unstage_files`, `setup_signal_handlers`.
 - `diff.py` – file change detection and diff retrieval: `get_changed_files`, `get_diff`.
+- `file_classifier.py` – file purpose categorization: `FileCategory`, `classify_file_category`, `categorize_changed_files`.
 - `history.py` – commit history utilities: `get_recent_commits`, `find_related_commits`, `analyze_commit_patterns`.
 - `management.py` – branch, remote, tag, and stash management: `create_branch`, `delete_branch`, `merge_branch`, `manage_remote`, `manage_tags`, `manage_stash`.
 - `operations.py` – convenience layer re-exporting the above functions.
-- `classification.py` – commit type helpers: `CommitType`, `classify_commit_type`, `get_changes`.
+- `classification.py` – commit type helpers: `ClassificationResult`, `CommitType`, `FileCategory`, `classify_commit`, `classify_commit_type`, `group_changed_files`, `strip_conventional_prefix`, `get_changes`.
 - `git_operations.py` – backward compatibility shim that re-exports from `operations`.
 
 ### `git_acp.git.__init__.py`
@@ -265,22 +282,36 @@ Re-exports commonly used operations:
 - `get_recent_commits`
 - `find_related_commits`
 - `analyze_commit_patterns`
+- `ClassificationResult`
 - `CommitType`
+- `FileCategory`
+- `classify_commit`
 - `classify_commit_type`
+- `classify_file_category`
+- `categorize_changed_files`
+- `group_changed_files`
+- `strip_conventional_prefix`
 - `setup_signal_handlers`
 
 ### `git_acp.git.classification`
 
-- **Enum**: `CommitType(Enum)` – conventional commit types with emojis. Includes `from_str(type_str: str) -> CommitType`.
+- **Enum**: `CommitType(Enum)` – conventional commit types with emojis, including `feat`, `fix`, `docs`, `style`, `refactor`, `test`, `chore`, `revert`, `build`, `ci`, and `perf`. Includes `from_str(type_str: str) -> CommitType`.
+- **Enum**: `FileCategory(Enum)` – file purpose categories used by scoring, including production, test, docs, CI, build, config, dependency, generated, style, and unknown.
+- **Dataclass**: `ClassificationResult` – rich classifier output containing `commit_type`, `confidence`, raw `scores`, and `is_mixed`.
 - **Functions**:
-  - `classify_commit_type(config) -> CommitType`
-  - `get_changes() -> str`
+  - `classify_commit(config, commit_message: str | None = None) -> ClassificationResult`
+  - `classify_commit_type(config, commit_message: str | None = None) -> CommitType`
+  - `classify_file_category(path: str) -> FileCategory`
+  - `categorize_changed_files(files: set[str]) -> dict[FileCategory, set[str]]`
+  - `group_changed_files(changed_files: set[str], max_non_type_groups: int | None = None) -> list[list[str]]`
+  - `strip_conventional_prefix(message: str) -> str`
+  - `get_changes(config: OptionalConfig = None) -> str`
 
 ---
 
 ## Utilities Subpackage (`git_acp.utils`)
 
-**Location**: `git_acp/utils/__init__.py`, `git_acp/utils/formatting.py`, `git_acp/utils/types.py`
+**Location**: `git_acp/utils/__init__.py`, `git_acp/utils/file_filter.py`, `git_acp/utils/formatting.py`, `git_acp/utils/types.py`
 
 General-purpose helper functions, formatting, and type definitions used throughout the package.
 
@@ -336,7 +367,7 @@ Defines custom data classes and type aliases used throughout `git_acp`.
     @dataclass
     class GitConfig:
         files: str = "."
-        message: str = "Automated commit"
+        message: str | None = "Automated commit"
         branch: str | None = None
         use_ollama: bool = False
         interactive: bool = False
@@ -347,10 +378,11 @@ Defines custom data classes and type aliases used throughout `git_acp`.
         ai_model: str | None = None
         context_window: int | None = None
         dry_run: bool = False
+        auto_group: bool = False
     ```
 
 - **Type Aliases**:
-  - `OptionalConfig = Optional[GitConfig]`
+  - `OptionalConfig = GitConfig | None`
   - `DiffType = Literal["staged", "unstaged"]`
   - `RemoteOperation = Literal["add", "remove", "set-url"]`
   - `TagOperation = Literal["create", "delete", "push"]`
@@ -386,6 +418,9 @@ git-acp --ollama --no-confirm
 
 # Or specify a custom commit message directly:
 git-acp -a "." -mb "Refactor module to improve performance" --type refactor
+
+# Preview changes without committing:
+git-acp -a "." --dry-run -mb "Preview pending changes"
 ```
 
 If you want to incorporate this in a Python script:

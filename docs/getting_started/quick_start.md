@@ -66,9 +66,9 @@ git_commit(commit_message)
 
 ## Key Features
 
-- **Interactive Mode**: Automatically stages files, suggests commit types, and generates commit messages.
+- **Interactive Mode**: Select files, review weighted commit type suggestions, and confirm commit messages.
 - **AI-Powered Commit Messages**: Use Ollama AI to generate descriptive commit messages.
-- **Command-Line Options**: Customize operations with options like `-a` for adding files, `-mb` for commit message bodies, and `-b` for specifying branches.
+- **Command-Line Options**: Customize operations with options like `-a` for adding files, `-mb` for commit message bodies, `-b` for specifying branches, `--dry-run` for previews, and `--auto-group` for grouped commits.
 - **Verbose Output**: Use `-v` for detailed debug information.
 
 This guide provides a basic overview to get you started. For more detailed usage, refer to the advanced usage section.

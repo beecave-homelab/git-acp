@@ -15,7 +15,7 @@ The `git-acp` package is a powerful command-line tool designed to streamline Git
   - Support for both simple and advanced message generation modes
 
 - **Conventional Commits Support**
-  - Automatic commit type classification
+  - Weighted scoring commit type classification with confidence and mixed-change detection
   - Emoji support for commit messages
   - Standardized commit message format
 
@@ -51,7 +51,7 @@ The package is organized into several key components:
 
 ## Prerequisites
 
-- Python 3.6 or higher
+- Python 3.10 or higher
 - Git installed and configured
 - Ollama installed (optional, for AI features)
 - pipx (recommended for installation)
