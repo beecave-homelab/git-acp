@@ -1,0 +1,6 @@
+services:
+  classifier-sample:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    command: python -m classifier_sample

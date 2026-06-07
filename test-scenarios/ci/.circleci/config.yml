@@ -1,0 +1,14 @@
+version: 2.1
+
+jobs:
+  test:
+    docker:
+      - image: cimg/python:3.12
+    steps:
+      - checkout
+      - run: python -m pytest -q
+
+workflows:
+  test:
+    jobs:
+      - test

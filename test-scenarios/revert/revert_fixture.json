@@ -1,0 +1,6 @@
+{
+  "operation": "restore",
+  "previous": "legacy",
+  "replacement": "experimental",
+  "manualValidation": true
+}

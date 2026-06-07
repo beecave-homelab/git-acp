@@ -1,0 +1,2 @@
+Undo the previous sample adjustment and return the payload to its earlier value.
+This text supports manual revert-prefix validation without relying on path rules.

@@ -1,0 +1,8 @@
+stages:
+  - test
+
+test-job:
+  stage: test
+  image: python:3.12
+  script:
+    - python -m pytest -q

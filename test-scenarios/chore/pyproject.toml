@@ -1,0 +1,7 @@
+[project]
+name = "classifier-chore-sample"
+version = "0.0.0"
+description = "Configuration sample for classifier validation"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
