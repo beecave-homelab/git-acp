@@ -580,3 +580,105 @@ class TestStripConventionalPrefix:
         """Normalize case-insensitive conventional prefixes."""
         assert strip_conventional_prefix("Fix: description") == "description"
         assert strip_conventional_prefix("FEAT(scope): description") == "description"
+
+    def test_strip_conventional_prefix__build_type(self) -> None:
+        """Strip ``build:`` prefixes."""
+        assert strip_conventional_prefix("build: update ci") == "update ci"
+
+    def test_strip_conventional_prefix__build_type_with_scope(self) -> None:
+        """Strip ``build(scope):`` prefixes."""
+        assert strip_conventional_prefix("build(deps): bump webpack") == "bump webpack"
+
+    def test_strip_conventional_prefix__perf_type(self) -> None:
+        """Strip ``perf:`` prefixes."""
+        assert strip_conventional_prefix("perf: optimize loop") == "optimize loop"
+
+    def test_strip_conventional_prefix__perf_type_with_scope(self) -> None:
+        """Strip ``perf(scope):`` prefixes."""
+        assert strip_conventional_prefix("perf(core): optimize loop") == "optimize loop"
+
+    def test_strip_conventional_prefix__build_emoji_prefix(self) -> None:
+        """Strip ``build 🏗️:`` prefixes."""
+        assert strip_conventional_prefix("build 🏗️: update ci") == "update ci"
+
+    def test_strip_conventional_prefix__perf_emoji_prefix(self) -> None:
+        """Strip ``perf ⚡:`` prefixes."""
+        assert strip_conventional_prefix("perf ⚡: optimize loop") == "optimize loop"
+
+    def test_strip_conventional_prefix__build_breaking_marker(self) -> None:
+        """Strip ``build!:`` breaking-change prefixes."""
+        result = strip_conventional_prefix("build!: rewrite pipeline")
+        assert result == "rewrite pipeline"
+
+
+class TestBuildPerfClassification:
+    """Tests for BUILD and PERF commit type classification."""
+
+    @pytest.fixture
+    def mock_config(self):
+        """Return a mock config object."""
+        cfg = MagicMock()
+        cfg.verbose = False
+        return cfg
+
+    def test_commit_type_from_str__build(self) -> None:
+        """Parse 'build' into CommitType.BUILD."""
+        assert CommitType.from_str("build") == CommitType.BUILD
+        assert CommitType.from_str("BUILD") == CommitType.BUILD
+
+    def test_commit_type_from_str__perf(self) -> None:
+        """Parse 'perf' into CommitType.PERF."""
+        assert CommitType.from_str("perf") == CommitType.PERF
+        assert CommitType.from_str("PERF") == CommitType.PERF
+
+    def test_build_enum_value(self) -> None:
+        """Verify BUILD enum value contains 'build'."""
+        assert "build" in CommitType.BUILD.value.lower()
+
+    def test_perf_enum_value(self) -> None:
+        """Verify PERF enum value contains 'perf'."""
+        assert "perf" in CommitType.PERF.value.lower()
+
+    def test_file_path_patterns_defined__build(self) -> None:
+        """Verify FILE_PATH_PATTERNS contains 'build' type."""
+        assert "build" in FILE_PATH_PATTERNS
+
+    @patch("git_acp.git.classification.get_changed_files")
+    def test_classify_build_files(self, mock_get_files, mock_config) -> None:
+        """Classify commits with build system files as BUILD."""
+        build_files = {"Dockerfile", "docker-compose.yml"}
+        mock_get_files.return_value = build_files
+        result = classify_commit_type(mock_config)
+        assert result == CommitType.BUILD
+
+    @patch("git_acp.git.classification.get_changed_files")
+    @patch("git_acp.git.classification.get_diff")
+    def test_classify_perf_keyword(self, mock_get_diff, mock_get_files, mock_config):
+        """Classify performance optimization messages as PERF."""
+        mock_get_files.return_value = set()
+        mock_get_diff.return_value = "optimize database query performance"
+        result = classify_commit_type(mock_config)
+        assert result == CommitType.PERF
+
+    @patch("git_acp.git.classification.get_changed_files")
+    @patch("git_acp.git.classification.get_diff")
+    def test_classify_build_keyword(self, mock_get_diff, mock_get_files, mock_config):
+        """Classify build system messages as BUILD."""
+        mock_get_files.return_value = set()
+        mock_get_diff.return_value = "compile and bundle assets with webpack"
+        result = classify_commit_type(mock_config)
+        assert result == CommitType.BUILD
+
+    @patch("git_acp.git.classification.get_changed_files")
+    def test_message_prefix_build(self, mock_get_files, mock_config):
+        """Classify explicit 'build:' prefix as BUILD."""
+        mock_get_files.return_value = set()
+        result = classify_commit_type(mock_config, commit_message="build: update ci")
+        assert result == CommitType.BUILD
+
+    @patch("git_acp.git.classification.get_changed_files")
+    def test_message_prefix_perf(self, mock_get_files, mock_config):
+        """Classify explicit 'perf:' prefix as PERF."""
+        mock_get_files.return_value = set()
+        result = classify_commit_type(mock_config, commit_message="perf: optimize loop")
+        assert result == CommitType.PERF
