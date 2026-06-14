@@ -688,15 +688,12 @@ def _score_commit_types(
     # --- Diff keyword signals ---
     diff_text = signals["diff_text"]
     if diff_text:
-        # Build set of files whose added lines should be excluded from
-        # keyword matching (generated/dependency files).
+        # Exclude generated/dependency file added lines from keyword matching.
         excluded_files: set[str] = set()
         for cat in _KEYWORD_EXCLUDED_CATEGORIES:
             excluded_files.update(file_categories.get(cat, set()))
 
-        # Filter diff to exclude generated/dependency file hunks
-        # Simple approach: extract added lines only from non-excluded files
-        added_lines = extract_added_lines(diff_text)
+        added_lines = extract_added_lines(diff_text, excluded_files)
         # Fall back to raw text when extract_added_lines returns nothing
         # (e.g. the input is not in unified diff format)
         keyword_text = added_lines if added_lines else diff_text
@@ -788,13 +785,13 @@ def classify_commit(config, commit_message: str | None = None) -> Classification
             changed_files = get_changed_files(config, staged_only=True)
             if not changed_files:
                 changed_files = get_changed_files(config, staged_only=False)
-                if (
-                    changed_files
-                    and isinstance(config.files, str)
-                    and config.files
-                    and config.files != "."
-                ):
-                    changed_files = filter_files_by_scope(changed_files, config.files)
+            if (
+                changed_files
+                and isinstance(config.files, str)
+                and config.files
+                and config.files != "."
+            ):
+                changed_files = filter_files_by_scope(changed_files, config.files)
         except GitError:
             changed_files = set()
 

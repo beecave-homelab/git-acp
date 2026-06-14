@@ -199,24 +199,37 @@ def get_numstat(config: OptionalConfig = None) -> dict[str, tuple[int, int]]:
     return result
 
 
-def extract_added_lines(diff: str) -> str:
+def extract_added_lines(
+    diff: str, excluded_files: set[str] | None = None
+) -> str:
     """Extract only added lines from a unified diff.
 
-    Strips the leading ``+`` from each added line. Skips ``+++`` file
-    headers and hunk metadata (lines starting with ``@@``).
+    Strips the leading ``+`` from each added line. Skips ``+++ `` file
+    headers and hunk metadata (lines starting with ``@@``). Lines from
+    files in *excluded_files* are skipped so that generated/dependency
+    content does not pollute keyword matching.
 
     Args:
         diff: Raw unified diff output.
+        excluded_files: Optional set of file paths whose added lines
+            should be skipped. Paths are matched against the ``b/``
+            component of the ``+++ b/path`` header.
 
     Returns:
         Concatenated added lines as a single string.
     """
+    skip = excluded_files or set()
     added: list[str] = []
+    current_file = ""
     for line in diff.splitlines():
-        if line.startswith("+++") or line.startswith("---"):
+        if line.startswith("+++ ") or line.startswith("--- "):
+            if line.startswith("+++ "):
+                path = line[4:].strip()
+                # Strip the leading "b/" that git prepends.
+                current_file = path[2:] if path.startswith("b/") else path
             continue
         if line.startswith("@@"):
             continue
-        if line.startswith("+"):
+        if line.startswith("+") and current_file not in skip:
             added.append(line[1:])
     return "\n".join(added)
