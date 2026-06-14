@@ -434,13 +434,16 @@ from __future__ import annotations
 from typing import Protocol
 import pathlib
 
+
 class Storage(Protocol):
     def write(self, path: pathlib.Path, data: bytes) -> None: ...
+
 
 class FileStorage:
     def write(self, path: pathlib.Path, data: bytes) -> None:
         path.parent.mkdir(parents=True, exist_ok=True)
         path.write_bytes(data)
+
 
 class Uploader:
     """Upload artifacts using an injected Storage (DIP, OCP, ISP).
@@ -448,12 +451,14 @@ class Uploader:
     Args:
         storage: Minimal interface that supports 'write'.
     """
+
     def __init__(self, storage: Storage) -> None:
         self._storage = storage  # DIP
 
     def publish(self, dest: pathlib.Path, payload: bytes) -> None:
         # SRP: only orchestrates publication; no direct filesystem logic here.
         self._storage.write(dest, payload)
+
 
 # LSP test idea: any Storage conformer can be used transparently (FakeStorage, S3Storage, ...).
 ```
@@ -509,6 +514,7 @@ These rules standardize how environment variables are loaded and accessed across
 from __future__ import annotations
 import os
 
+
 def load_env_config() -> None:
     # Parse once: load ~/.config/git-acp/.env when not running tests.
     ...
@@ -532,6 +538,7 @@ DEFAULT_AI_MODEL: str = get_env("GIT_ACP_AI_MODEL", "mevatron/diffsense:1.5b")
 from __future__ import annotations
 from git_acp.config import DEFAULT_BRANCH
 
+
 def run() -> None:
     # Use constants; do not read os.environ here
     ...
@@ -544,6 +551,7 @@ def run() -> None:
   ```python
   def test_behavior_with_small_batch(monkeypatch):
       import git_acp.config.constants as C
+
       monkeypatch.setattr(C, "DEFAULT_BATCH_SIZE", 2, raising=True)
       ...
   ```
@@ -552,8 +560,10 @@ def run() -> None:
 
   ```python
   import importlib, os
+
   os.environ["DEFAULT_BATCH_SIZE"] = "4"
   import git_acp.config.constants as C
+
   importlib.reload(C)  # if necessary in the same process
   ```
 
