@@ -29,7 +29,7 @@ The tool provides several options grouped into three categories:
 - `-a, --add <file>`: Specify files or glob patterns to stage (e.g., `"file1.py *.py folder/"`). Patterns are resolved recursively (e.g., `**/*.py`). Shows interactive selection if omitted.
 - `-mb, --message-body <message>`: Custom commit message (defaults to 'Automated commit' without --ollama)
 - `-b, --branch <branch>`: Target branch for push operation
-- `-t, --type <type>`: Manually specify the commit type (`feat`, `fix`, `docs`, `style`, `refactor`, `test`, `chore`, `revert`)
+- `-t, --type <type>`: Manually specify the commit type (`feat`, `fix`, `docs`, `style`, `refactor`, `test`, `chore`, `revert`, `build`, `ci`, `perf`)
 
 #### AI Features
 
@@ -48,6 +48,10 @@ The tool provides several options grouped into three categories:
 
 - `-nc, --no-confirm`: Skip all confirmation prompts
 - `-v, --verbose`: Enable detailed debug output
+- `-dr, --dry-run`: Preview what would be committed without committing or pushing
+- `-ag, --auto-group`: Automatically split related changes into multiple focused commits
+- `--setup`: Create the initial configuration file
+- `--force`: Overwrite an existing configuration file when used with `--setup`
 
 ### Quick Commit with Message
 
@@ -109,6 +113,21 @@ git-acp -a . -nc -mb "Quick fix"
 
 ```bash
 git-acp -a "*.css" -t style -mb "Update button styles"
+```
+
+### 6. CI, Build, or Performance Changes
+
+```bash
+git-acp -a ".github/workflows/*.yml" -t ci -mb "Update release workflow"
+git-acp -a "Dockerfile pyproject.toml" -t build -mb "Update build configuration"
+git-acp -a "git_acp/**/*.py" -t perf -mb "Optimize diff analysis"
+```
+
+### 7. Preview or Group Changes
+
+```bash
+git-acp -a "." --dry-run -mb "Preview pending changes"
+git-acp -a "." --auto-group -o
 ```
 
 ## File Selection

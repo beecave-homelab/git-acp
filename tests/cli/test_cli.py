@@ -146,6 +146,32 @@ class TestCli(unittest.TestCase):
         assert result.exit_code == 0
         mock_setup.assert_called_once_with(force=True)
 
+    def test_cli_type__accepts_build(self) -> None:
+        """The -t flag should accept 'build' as a valid commit type."""
+        result = self.runner.invoke(main, ["-t", "build", "--dry-run"])
+        # Click.Choice validation fails with exit code 2; we expect it to
+        # proceed past argument parsing (any non-2 exit is fine here).
+        self.assertNotEqual(result.exit_code, 2)
+        self.assertNotIn("Invalid value", result.output)
+
+    def test_cli_type__accepts_ci(self) -> None:
+        """The -t flag should accept 'ci' as a valid commit type."""
+        result = self.runner.invoke(main, ["-t", "ci", "--dry-run"])
+        self.assertNotEqual(result.exit_code, 2)
+        self.assertNotIn("Invalid value", result.output)
+
+    def test_cli_type__accepts_perf(self) -> None:
+        """The -t flag should accept 'perf' as a valid commit type."""
+        result = self.runner.invoke(main, ["-t", "perf", "--dry-run"])
+        self.assertNotEqual(result.exit_code, 2)
+        self.assertNotIn("Invalid value", result.output)
+
+    def test_cli_type__rejects_invalid(self) -> None:
+        """The -t flag should reject invalid commit types."""
+        result = self.runner.invoke(main, ["-t", "invalid_type", "--dry-run"])
+        self.assertEqual(result.exit_code, 2)
+        self.assertIn("Invalid value", result.output)
+
 
 if __name__ == "__main__":
     unittest.main()

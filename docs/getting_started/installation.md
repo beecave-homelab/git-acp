@@ -6,7 +6,7 @@ This guide provides detailed instructions for installing `git-acp` and its depen
 
 ### Required Software
 
-- Python 3.6 or higher
+- Python 3.10 or higher
 - Git
 - pip or pipx
 
@@ -137,8 +137,8 @@ git-acp --help
 ### Verify AI Features
 
 ```bash
-# Test Ollama connection
-git-acp -o --test-ai
+# Generate an AI-assisted commit message in dry-run mode
+git-acp -o --dry-run
 ```
 
 ## Configuration

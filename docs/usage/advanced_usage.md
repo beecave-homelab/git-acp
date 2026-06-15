@@ -231,7 +231,22 @@ GIT_ACP_COMMIT_TYPE_REFACTOR="refactor ♻️"
 GIT_ACP_COMMIT_TYPE_TEST="test 🧪"
 GIT_ACP_COMMIT_TYPE_CHORE="chore 📦"
 GIT_ACP_COMMIT_TYPE_REVERT="revert ⏪"
+GIT_ACP_COMMIT_TYPE_BUILD="build 🏗️"
+GIT_ACP_COMMIT_TYPE_CI="ci 🤖"
+GIT_ACP_COMMIT_TYPE_PERF="perf ⚡"
 ```
+
+### Commit Type Classification Signals
+
+The classifier uses weighted scoring after checking for explicit commit prefixes. It combines changed file categories, line impact, commit message keywords, diff keywords, confidence scoring, and mixed-change detection.
+
+| Signal | Description |
+| ------ | ----------- |
+| Explicit prefix | `feat:`, `fix(scope):`, and emoji-aware prefixes short-circuit classification |
+| File categories | Production, test, docs, CI, build, config, dependency, generated, and style files contribute weighted scores |
+| Message keywords | Words such as "implement", "fix", "optimize", "ci", and "build" influence the result |
+| Diff keywords | Added lines are scanned when stronger signals are unavailable |
+| Default | Falls back to `chore` when no signal matches |
 
 ## Git Operations
 
@@ -287,7 +302,7 @@ git-acp -nc -mb "CI: Update dependencies" -t chore
 #### Version Bumping
 
 ```bash
-git-acp -a "version.txt" -mb "chore(release): bump version to v0.17.0" -t chore
+git-acp -a "pyproject.toml git_acp/__init__.py VERSIONS.md" -mb "chore(release): bump version to v0.26.0" -t chore
 ```
 
 ### Batch Operations
@@ -313,6 +328,8 @@ Exclude patterns (e.g., `!src/vendor/*`) are not supported.
 - Limit recent commits analysis by adjusting `GIT_ACP_NUM_RECENT_COMMITS`
 - Use simple prompt type for faster generation
 - Skip confirmations when appropriate
+- Use `--dry-run` to preview staged files, commit type, and message before mutating the repository
+- Use `--auto-group` for large mixed changes that should become focused commits
 
 ### AI Generation
 

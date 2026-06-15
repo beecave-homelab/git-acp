@@ -301,6 +301,7 @@ class TestGitWorkflow:
         assert exit_code == 1
 
     @patch("git_acp.cli.workflow.classify_commit_type")
+    @patch("git_acp.cli.workflow.unstage_files")
     @patch("git_acp.cli.workflow.git_add")
     @patch("git_acp.cli.workflow.git_commit")
     @patch("git_acp.cli.workflow.git_push")
@@ -309,6 +310,7 @@ class TestGitWorkflow:
         mock_push: MagicMock,
         mock_commit: MagicMock,
         mock_add: MagicMock,
+        mock_unstage: MagicMock,
         mock_classify: MagicMock,
         mock_config: GitConfig,
     ) -> None:
@@ -325,6 +327,7 @@ class TestGitWorkflow:
         exit_code = workflow.run()
 
         assert exit_code == 0
+        mock_unstage.assert_called_once_with()
         mock_commit.assert_not_called()
         mock_push.assert_not_called()
 
@@ -569,10 +572,12 @@ class TestWorkflowErrorPaths:
         assert exit_code == 0
         assert any("No changes" in p[0] for p in interaction.panels)
 
+    @patch("git_acp.cli.workflow.unstage_files")
     @patch("git_acp.cli.workflow.get_changed_files")
     def test_workflow__file_selection_cancelled(
         self,
         mock_get_changed: MagicMock,
+        mock_unstage: MagicMock,
         interactive_config: GitConfig,
     ) -> None:
         """Handle user cancellation during file selection."""
@@ -587,6 +592,7 @@ class TestWorkflowErrorPaths:
         exit_code = workflow.run()
 
         assert exit_code == 0  # Clean exit on cancel
+        mock_unstage.assert_called()
 
     @patch("git_acp.cli.workflow.get_current_branch")
     @patch("git_acp.cli.workflow.git_add")
@@ -612,10 +618,12 @@ class TestWorkflowErrorPaths:
         assert any("Branch Detection" in e[2] for e in interaction.errors)
 
     @patch("git_acp.cli.workflow.classify_commit_type")
+    @patch("git_acp.cli.workflow.unstage_files")
     @patch("git_acp.cli.workflow.git_add")
     def test_workflow__commit_type_classification_failure(
         self,
         mock_add: MagicMock,
+        mock_unstage: MagicMock,
         mock_classify: MagicMock,
         mock_config: GitConfig,
     ) -> None:
@@ -631,13 +639,16 @@ class TestWorkflowErrorPaths:
         exit_code = workflow.run()
 
         assert exit_code == 1
+        mock_unstage.assert_not_called()
         assert any("Commit Type Error" in e[2] for e in interaction.errors)
 
     @patch("git_acp.cli.workflow.generate_commit_message")
+    @patch("git_acp.cli.workflow.unstage_files")
     @patch("git_acp.cli.workflow.git_add")
     def test_workflow__ai_failure_user_declines_manual(
         self,
         mock_add: MagicMock,
+        mock_unstage: MagicMock,
         mock_generate: MagicMock,
         mock_config: GitConfig,
     ) -> None:
@@ -655,11 +666,14 @@ class TestWorkflowErrorPaths:
         exit_code = workflow.run()
 
         assert exit_code == 1
+        mock_unstage.assert_called_once_with()
 
+    @patch("git_acp.cli.workflow.unstage_files")
     @patch("git_acp.cli.workflow.git_add")
     def test_workflow__no_message_provided(
         self,
         mock_add: MagicMock,
+        mock_unstage: MagicMock,
         mock_config: GitConfig,
     ) -> None:
         """Handle missing commit message."""
@@ -675,13 +689,16 @@ class TestWorkflowErrorPaths:
         exit_code = workflow.run()
 
         assert exit_code == 1
+        mock_unstage.assert_called_once_with()
         assert any("Missing Message" in e[2] for e in interaction.errors)
 
     @patch("git_acp.cli.workflow.classify_commit_type")
+    @patch("git_acp.cli.workflow.unstage_files")
     @patch("git_acp.cli.workflow.git_add")
     def test_workflow__commit_type_selection_cancelled(
         self,
         mock_add: MagicMock,
+        mock_unstage: MagicMock,
         mock_classify: MagicMock,
         mock_config: GitConfig,
     ) -> None:
@@ -704,6 +721,7 @@ class TestWorkflowErrorPaths:
         exit_code = workflow.run()
 
         assert exit_code == 1
+        mock_unstage.assert_called_once_with()
 
 
 class TestFormatCommitMessage:
