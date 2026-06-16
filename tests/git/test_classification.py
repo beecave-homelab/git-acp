@@ -14,7 +14,11 @@ from git_acp.git.classification import (
     strip_conventional_prefix,
 )
 from git_acp.git.diff import extract_added_lines
-from git_acp.git.file_classifier import categorize_changed_files, classify_file_category
+from git_acp.git.file_classifier import (
+    categorize_changed_files,
+    classify_file_category,
+    is_file_excluded,
+)
 from git_acp.git.git_operations import GitError
 
 
@@ -552,6 +556,69 @@ class TestClassifyCommitTypeEdgeCases:
         mock_debug_header.assert_any_call("Commit Classification Result")
         mock_debug_item.assert_any_call("Source", "scoring")
 
+    @patch("git_acp.git.classification.get_numstat")
+    @patch("git_acp.git.classification.get_changed_files")
+    @patch("git_acp.git.classification.get_diff")
+    @patch("git_acp.git.classification.debug_item")
+    def test_numstat__unexpected_error_logged_verbose(
+        self,
+        mock_debug_item,
+        mock_get_diff,
+        mock_get_files,
+        mock_get_numstat,
+        verbose_config,
+    ):
+        """Unexpected numstat errors are logged, not silently swallowed."""
+        mock_get_files.return_value = set()
+        mock_get_diff.return_value = "minor change"
+        mock_get_numstat.side_effect = RuntimeError("numstat blew up")
+
+        result = classify_commit_type(verbose_config)
+
+        # Classification should still succeed (CHORE default)
+        assert result == CommitType.CHORE
+        # The unexpected error should have been logged
+        mock_debug_item.assert_any_call(
+            "Numstat unexpected error", "numstat blew up"
+        )
+
+    @patch("git_acp.git.classification.get_numstat")
+    @patch("git_acp.git.classification.get_changed_files")
+    @patch("git_acp.git.classification.get_diff")
+    def test_numstat__unexpected_error_silent_non_verbose(
+        self,
+        mock_get_diff,
+        mock_get_files,
+        mock_get_numstat,
+        mock_config,
+    ):
+        """Unexpected numstat errors are silently absorbed in non-verbose mode."""
+        mock_get_files.return_value = set()
+        mock_get_diff.return_value = "minor change"
+        mock_get_numstat.side_effect = ValueError("corrupt numstat")
+
+        # Should not raise — classification proceeds with empty numstat
+        result = classify_commit_type(mock_config)
+        assert result == CommitType.CHORE
+
+    @patch("git_acp.git.classification.get_numstat")
+    @patch("git_acp.git.classification.get_changed_files")
+    @patch("git_acp.git.classification.get_diff")
+    def test_numstat__git_error_always_silent(
+        self,
+        mock_get_diff,
+        mock_get_files,
+        mock_get_numstat,
+        verbose_config,
+    ):
+        """GitError from numstat is expected (no changes), always silent."""
+        mock_get_files.return_value = set()
+        mock_get_diff.return_value = "minor change"
+        mock_get_numstat.side_effect = GitError("no staged changes")
+
+        result = classify_commit_type(verbose_config)
+        assert result == CommitType.CHORE
+
 
 class TestStripConventionalPrefix:
     """Tests for stripping conventional prefixes from commit titles."""
@@ -703,6 +770,39 @@ class TestFileClassifier:
         assert FileCategory.DEPENDENCY in result
         assert "src/main.py" in result[FileCategory.PRODUCTION]
         assert "tests/test_main.py" in result[FileCategory.TEST]
+
+
+class TestIsFileExcluded:
+    """Tests for is_file_excluded — shared exclusion logic."""
+
+    def test_excludes_env_file(self) -> None:
+        """Exact .env basename is excluded."""
+        assert is_file_excluded(".env")
+        assert is_file_excluded("config/.env")
+
+    def test_does_not_exclude_env_example(self) -> None:
+        """.env.example should not be excluded (only exact .env match)."""
+        assert not is_file_excluded(".env.example")
+        assert not is_file_excluded("config/.env.local")
+
+    def test_excludes_pycache(self) -> None:
+        """__pycache__ paths matching EXCLUDED_PATTERNS are excluded."""
+        assert is_file_excluded("__pycache__/module.cpython-311.pyc")
+
+    def test_excludes_node_modules(self) -> None:
+        """node_modules paths are excluded."""
+        assert is_file_excluded("node_modules/react/index.js")
+
+    def test_does_not_exclude_source_file(self) -> None:
+        """Regular source files are not excluded."""
+        assert not is_file_excluded("src/main.py")
+        assert not is_file_excluded("git_acp/cli/cli.py")
+
+    def test_segment_aware_matching(self) -> None:
+        """Pattern matches on path segments, not arbitrary substrings."""
+        # 'lock' as a substring exists in 'deadlock.py', but segment-aware
+        # matching should not flag it because 'lock' is not a full segment.
+        assert not is_file_excluded("src/deadlock.py")
 
 
 # ---------------------------------------------------------------------------
