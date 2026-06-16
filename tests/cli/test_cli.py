@@ -176,8 +176,8 @@ class TestCli(unittest.TestCase):
         """CLI_COMMIT_TYPE_CHOICES must match CommitType enum members."""
         from git_acp.cli.cli import CLI_COMMIT_TYPE_CHOICES
 
-        enum_types = {ct.name.lower() for ct in CommitType}
-        self.assertEqual(set(CLI_COMMIT_TYPE_CHOICES), enum_types)
+        enum_types = [ct.name.lower() for ct in CommitType]
+        self.assertEqual(list(CLI_COMMIT_TYPE_CHOICES), enum_types)
 
 
 if __name__ == "__main__":

@@ -775,30 +775,30 @@ class TestFileClassifier:
 class TestIsFileExcluded:
     """Tests for is_file_excluded — shared exclusion logic."""
 
-    def test_excludes_env_file(self) -> None:
+    def test_is_file_excluded__excludes_env_file(self) -> None:
         """Exact .env basename is excluded."""
         assert is_file_excluded(".env")
         assert is_file_excluded("config/.env")
 
-    def test_does_not_exclude_env_example(self) -> None:
+    def test_is_file_excluded__does_not_exclude_env_example(self) -> None:
         """.env.example should not be excluded (only exact .env match)."""
         assert not is_file_excluded(".env.example")
         assert not is_file_excluded("config/.env.local")
 
-    def test_excludes_pycache(self) -> None:
+    def test_is_file_excluded__excludes_pycache(self) -> None:
         """__pycache__ paths matching EXCLUDED_PATTERNS are excluded."""
         assert is_file_excluded("__pycache__/module.cpython-311.pyc")
 
-    def test_excludes_node_modules(self) -> None:
+    def test_is_file_excluded__excludes_node_modules(self) -> None:
         """node_modules paths are excluded."""
         assert is_file_excluded("node_modules/react/index.js")
 
-    def test_does_not_exclude_source_file(self) -> None:
+    def test_is_file_excluded__does_not_exclude_source_file(self) -> None:
         """Regular source files are not excluded."""
         assert not is_file_excluded("src/main.py")
         assert not is_file_excluded("git_acp/cli/cli.py")
 
-    def test_segment_aware_matching(self) -> None:
+    def test_is_file_excluded__segment_aware_matching(self) -> None:
         """Pattern matches on path segments, not arbitrary substrings."""
         # 'lock' as a substring exists in 'deadlock.py', but segment-aware
         # matching should not flag it because 'lock' is not a full segment.

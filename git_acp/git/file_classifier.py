@@ -86,6 +86,9 @@ def is_file_excluded(file_path: str) -> bool:
     represents an exact-basename match (``.env`` but not
     ``.env.example``) that cannot be expressed as a literal substring.
 
+    Args:
+        file_path: Repository-relative file path to check.
+
     Returns:
         ``True`` if the file path matches any exclusion pattern.
     """
