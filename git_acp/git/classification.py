@@ -3,6 +3,9 @@
 This module provides functionality for classifying commit types and analyzing
 changes in the repository to suggest appropriate commit types.
 
+Recognized Commit Types:
+    FEAT, FIX, DOCS, STYLE, REFACTOR, TEST, CHORE, REVERT, BUILD, CI, PERF.
+
 Classification Priority:
     1. Message prefix (e.g., "feat:", "fix:") - highest priority
     2. File path patterns - deterministic and highly accurate
@@ -159,7 +162,8 @@ def group_changed_files(
 
     - Files are sorted alphabetically within each returned group.
     - Groups are ordered by:
-        1) Commit-type priority: ``docs``, ``test``, ``style``, ``chore``.
+        1) Commit-type priority: ``docs``, ``test``, ``perf``, ``style``,
+           ``build``, ``ci``, ``chore``.
         2) Directory prefix groups (lexicographic).
         3) Root-level extension groups (lexicographic).
 
@@ -182,7 +186,7 @@ def group_changed_files(
         ``FILE_PATH_PATTERNS`` and ``EXCLUDED_PATTERNS`` come from
         ``git_acp.config.constants``.
     """
-    commit_type_priority = ["docs", "test", "style", "build", "ci", "chore"]
+    commit_type_priority = ["docs", "test", "perf", "style", "build", "ci", "chore"]
 
     remaining = sorted({f for f in files if f and not is_file_excluded(f)})
     if not remaining:

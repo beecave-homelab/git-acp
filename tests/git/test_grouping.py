@@ -15,12 +15,18 @@ class TestGroupChangedFiles:
         assert group_changed_files(set()) == []
 
     def test_commit_type_priority_ordering(self) -> None:
-        """Group commit-types first and respect priority ordering."""
+        """Group commit-types first and respect priority ordering.
+
+        Priority order is docs, test, perf, style, build, ci, chore.
+        """
         files = {
             "tests/test_core.py",
             "docs/intro.md",
+            "benchmarks/bench_core.py",
             "pyproject.toml",
             "ruff.toml",
+            "Dockerfile",
+            ".github/workflows/ci.yml",
         }
 
         groups = group_changed_files(files)
@@ -28,9 +34,34 @@ class TestGroupChangedFiles:
         assert groups == [
             ["docs/intro.md"],
             ["tests/test_core.py"],
+            ["benchmarks/bench_core.py"],
             ["ruff.toml"],
+            ["Dockerfile"],
+            [".github/workflows/ci.yml"],
             ["pyproject.toml"],
         ]
+
+    def test_build_files_grouped_as_build(self) -> None:
+        """Build files form a build type group instead of extension groups."""
+        files = {
+            "Dockerfile",
+            "docker-compose.yml",
+        }
+
+        groups = group_changed_files(files)
+
+        assert groups == [["Dockerfile", "docker-compose.yml"]]
+
+    def test_perf_files_grouped_as_perf(self) -> None:
+        """Benchmark and profiling files form a perf type group."""
+        files = {
+            "benchmarks/bench_core.py",
+            "profiling/trace.py",
+        }
+
+        groups = group_changed_files(files)
+
+        assert groups == [["benchmarks/bench_core.py", "profiling/trace.py"]]
 
     def test_files_sorted_within_each_group(self) -> None:
         """Sort files alphabetically within each group."""
