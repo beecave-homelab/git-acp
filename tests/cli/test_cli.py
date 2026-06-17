@@ -172,6 +172,13 @@ class TestCli(unittest.TestCase):
         self.assertEqual(result.exit_code, 2)
         self.assertIn("Invalid value", result.output)
 
+    def test_cli_type_choices_match_committype_enum(self) -> None:
+        """CLI_COMMIT_TYPE_CHOICES must match CommitType enum members."""
+        from git_acp.cli.cli import CLI_COMMIT_TYPE_CHOICES
+
+        enum_types = [ct.name.lower() for ct in CommitType]
+        self.assertEqual(list(CLI_COMMIT_TYPE_CHOICES), enum_types)
+
 
 if __name__ == "__main__":
     unittest.main()

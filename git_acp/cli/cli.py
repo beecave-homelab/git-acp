@@ -34,6 +34,12 @@ from git_acp.git import (
 from git_acp.utils import GitConfig
 from git_acp.utils.file_filter import filter_files_by_scope
 
+# Single source of truth for the --type CLI option: derived from the
+# CommitType enum so choices and help text can never drift apart.
+CLI_COMMIT_TYPE_CHOICES: tuple[str, ...] = tuple(
+    ct.name.lower() for ct in CommitType
+)
+
 
 def format_commit_message(commit_type: CommitType, message: str) -> str:
     """Format a commit message according to conventional commits specification.
@@ -154,26 +160,10 @@ def _process_add_argument(add: str | None) -> tuple[str | None, bool]:
     "-t",
     "--type",
     "commit_type",
-    type=click.Choice(
-        [
-            "feat",
-            "fix",
-            "docs",
-            "style",
-            "refactor",
-            "test",
-            "chore",
-            "revert",
-            "build",
-            "ci",
-            "perf",
-        ],
-        case_sensitive=False,
-    ),
+    type=click.Choice(CLI_COMMIT_TYPE_CHOICES, case_sensitive=False),
     help=(
         "Manually specify the commit type instead of using automatic detection. "
-        "Supported types: feat, fix, docs, style, refactor, test, chore, revert, "
-        "build, ci, perf."
+        f"Supported types: {', '.join(CLI_COMMIT_TYPE_CHOICES)}."
     ),
     metavar="<type>",
 )
