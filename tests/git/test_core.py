@@ -213,6 +213,25 @@ class TestRunGitCommand:
         assert "Cannot lock ref" in str(exc.value)
 
     @patch("subprocess.Popen")
+    def test_run_git_command__index_lock_error(
+        self, mock_popen: MagicMock, mock_config: GitConfig
+    ) -> None:
+        """Map index.lock failures to a helpful recovery message."""
+        mock_process = MagicMock()
+        mock_process.communicate.return_value = (
+            "",
+            "fatal: Unable to create '.git/index.lock': File exists.",
+        )
+        mock_process.returncode = 128
+        mock_popen.return_value = mock_process
+
+        with pytest.raises(GitError) as exc:
+            run_git_command(["git", "reset", "HEAD"], mock_config)
+
+        assert "Git index is locked" in str(exc.value)
+        assert ".git/index.lock" in str(exc.value)
+
+    @patch("subprocess.Popen")
     def test_run_git_command__unrelated_histories(
         self, mock_popen: MagicMock, mock_config: GitConfig
     ) -> None:

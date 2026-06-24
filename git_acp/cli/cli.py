@@ -22,7 +22,7 @@ from rich.panel import Panel
 
 from git_acp import __version__
 from git_acp.cli.interaction import RichQuestionaryInteraction
-from git_acp.cli.workflow import GitWorkflow
+from git_acp.cli.workflow import EXIT_CODE_CANCELLED, GitWorkflow
 from git_acp.config import COLORS, DEFAULT_AUTO_GROUP_MAX_NON_TYPE_GROUPS
 from git_acp.git import (
     CommitType,
@@ -383,6 +383,7 @@ def main(
 
             success_count = 0
             failure_count = 0
+            cancelled_at_group: int | None = None
 
             for index, group in enumerate(groups, start=1):
                 staged_before = get_changed_files(config, staged_only=True)
@@ -420,6 +421,9 @@ def main(
                     exit_code = workflow.run()
                     if exit_code == 0:
                         success_count += 1
+                    elif exit_code == EXIT_CODE_CANCELLED:
+                        cancelled_at_group = index
+                        break
                     else:
                         failure_count += 1
                 except Exception as e:  # noqa: BLE001
@@ -433,19 +437,31 @@ def main(
                         )
                     )
                 finally:
+                    # Defensive cleanup in case a workflow exits before its
+                    # handler-level cleanup runs.
                     unstage_files(config)
 
-            border = "green" if failure_count == 0 else "yellow"
+            border = "yellow" if cancelled_at_group else "green"
+            if failure_count:
+                border = "yellow"
+            summary = (
+                f"Auto-group cancelled at group {cancelled_at_group}/{len(groups)}. "
+                f"{success_count} group(s) committed successfully."
+                if cancelled_at_group
+                else (
+                    f"Successful groups: {success_count}\n"
+                    f"Failed groups: {failure_count}"
+                )
+            )
             rprint(
                 Panel(
-                    (
-                        f"Successful groups: {success_count}\n"
-                        f"Failed groups: {failure_count}"
-                    ),
+                    summary,
                     title="Auto Group Complete",
                     border_style=border,
                 )
             )
+            if cancelled_at_group:
+                sys.exit(EXIT_CODE_CANCELLED)
             sys.exit(0 if failure_count == 0 else 1)
 
         # Create interaction layer and workflow

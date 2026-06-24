@@ -8,7 +8,7 @@ from __future__ import annotations
 
 from collections.abc import Callable
 from dataclasses import replace
-from typing import TYPE_CHECKING, cast
+from typing import TYPE_CHECKING, Final, Literal, cast
 
 from git_acp.ai import generate_commit_message
 from git_acp.config import COLORS
@@ -29,6 +29,12 @@ from git_acp.utils.file_filter import filter_files_by_scope
 if TYPE_CHECKING:
     from git_acp.cli.interaction import UserInteraction
     from git_acp.utils import GitConfig
+
+
+EXIT_CODE_CANCELLED: Final[int] = 2
+CANCELLED: Final[Literal["cancelled"]] = "cancelled"
+StepResult = bool | Literal["cancelled"]
+CommitTypeResult = CommitType | None | Literal["cancelled"]
 
 
 class GitWorkflow:
@@ -72,7 +78,10 @@ class GitWorkflow:
         """
         try:
             # Handle interactive file selection if needed
-            if not self._handle_file_selection():
+            file_selection = self._handle_file_selection()
+            if file_selection == CANCELLED:
+                return EXIT_CODE_CANCELLED
+            if not file_selection:
                 return 0  # No files to process, clean exit
 
             # Detect branch if not specified
@@ -88,11 +97,16 @@ class GitWorkflow:
                 return 0  # Clean exit, nothing to commit
 
             # Generate or validate commit message
-            if not self._handle_commit_message():
+            commit_message = self._handle_commit_message()
+            if commit_message == CANCELLED:
+                return EXIT_CODE_CANCELLED
+            if not commit_message:
                 return 1
 
             # Classify and select commit type
             selected_type = self._handle_commit_type()
+            if selected_type == CANCELLED:
+                return EXIT_CODE_CANCELLED
             if selected_type is None:
                 return 1
 
@@ -101,7 +115,7 @@ class GitWorkflow:
 
             # Confirm with user (if not skipping)
             if not self._handle_confirmation(formatted_message):
-                return 0  # User cancelled, clean exit
+                return EXIT_CODE_CANCELLED
 
             # Handle dry-run mode
             if self.config.dry_run:
@@ -126,7 +140,7 @@ class GitWorkflow:
             )
             return 1
 
-    def _handle_file_selection(self) -> bool:
+    def _handle_file_selection(self) -> StepResult:
         """Handle file selection phase.
 
         Returns:
@@ -168,6 +182,7 @@ class GitWorkflow:
                     "Cancelled",
                     "yellow",
                 )
+                return CANCELLED
             else:
                 self.interaction.print_error(
                     f"Error during file selection:\n{e}",
@@ -274,7 +289,7 @@ class GitWorkflow:
             return False
         return True
 
-    def _handle_commit_message(self) -> bool:
+    def _handle_commit_message(self) -> StepResult:
         """Generate or validate commit message.
 
         Returns:
@@ -296,8 +311,25 @@ class GitWorkflow:
                     "Would you like to continue with a manual commit message?"
                 ):
                     unstage_files()
+                    return CANCELLED
+                try:
+                    manual_message = self._prompt_manual_message()
+                except GitError as prompt_error:
+                    if "cancelled by user" in str(prompt_error).lower():
+                        unstage_files()
+                        self.interaction.print_panel(
+                            "Operation cancelled by user.",
+                            "Cancelled",
+                            "yellow",
+                        )
+                        return CANCELLED
+                    unstage_files()
+                    self.interaction.print_error(
+                        f"Error reading commit message:\n{prompt_error}",
+                        "Please specify a message with -m or try again.",
+                        "Commit Message Failed",
+                    )
                     return False
-                manual_message = self._prompt_manual_message()
                 if not manual_message:
                     unstage_files()
                     self.interaction.print_error(
@@ -310,7 +342,24 @@ class GitWorkflow:
                 self.config = replace(self.config, message=manual_message)
 
         if not self.config.message:
-            manual_message = self._prompt_manual_message()
+            try:
+                manual_message = self._prompt_manual_message()
+            except GitError as e:
+                if "cancelled by user" in str(e).lower():
+                    unstage_files()
+                    self.interaction.print_panel(
+                        "Operation cancelled by user.",
+                        "Cancelled",
+                        "yellow",
+                    )
+                    return CANCELLED
+                unstage_files()
+                self.interaction.print_error(
+                    f"Error reading commit message:\n{e}",
+                    "Please specify a message with -m or try again.",
+                    "Commit Message Failed",
+                )
+                return False
             if manual_message:
                 self.config = replace(self.config, message=manual_message)
             else:
@@ -337,7 +386,7 @@ class GitWorkflow:
             return typed_prompt()
         return None
 
-    def _handle_commit_type(self) -> CommitType | None:
+    def _handle_commit_type(self) -> CommitTypeResult:
         """Classify and select commit type.
 
         Returns:
@@ -397,13 +446,14 @@ class GitWorkflow:
                     "Cancelled",
                     "yellow",
                 )
+                unstage_files()
+                return CANCELLED
             else:
                 self.interaction.print_error(
                     f"Error selecting commit type:\n{e}",
                     "Try again or specify a commit type with -t.",
                     "Commit Type Selection Failed",
                 )
-            unstage_files()
             return None
 
     def _format_message(self, commit_type: CommitType) -> str:

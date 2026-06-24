@@ -11,7 +11,7 @@ from unittest.mock import MagicMock, patch
 import pytest
 
 from git_acp.cli.interaction import TestInteraction
-from git_acp.cli.workflow import GitWorkflow
+from git_acp.cli.workflow import EXIT_CODE_CANCELLED, GitWorkflow
 from git_acp.git import CommitType, GitError
 from git_acp.utils import GitConfig
 
@@ -314,7 +314,7 @@ class TestGitWorkflow:
         mock_classify: MagicMock,
         mock_config: GitConfig,
     ) -> None:
-        """Return zero exit code when user cancels at confirmation."""
+        """Return cancellation exit code when user cancels at confirmation."""
         from git_acp.cli.interaction import TestInteraction
         from git_acp.cli.workflow import GitWorkflow
 
@@ -326,7 +326,7 @@ class TestGitWorkflow:
 
         exit_code = workflow.run()
 
-        assert exit_code == 0
+        assert exit_code == EXIT_CODE_CANCELLED
         mock_unstage.assert_called_once_with()
         mock_commit.assert_not_called()
         mock_push.assert_not_called()
@@ -580,7 +580,7 @@ class TestWorkflowErrorPaths:
         mock_unstage: MagicMock,
         interactive_config: GitConfig,
     ) -> None:
-        """Handle user cancellation during file selection."""
+        """Return cancellation exit code when file selection is cancelled."""
         from git_acp.cli.interaction import TestInteraction
         from git_acp.cli.workflow import GitWorkflow
 
@@ -591,7 +591,7 @@ class TestWorkflowErrorPaths:
 
         exit_code = workflow.run()
 
-        assert exit_code == 0  # Clean exit on cancel
+        assert exit_code == EXIT_CODE_CANCELLED
         mock_unstage.assert_called()
 
     @patch("git_acp.cli.workflow.get_current_branch")
@@ -665,7 +665,7 @@ class TestWorkflowErrorPaths:
 
         exit_code = workflow.run()
 
-        assert exit_code == 1
+        assert exit_code == EXIT_CODE_CANCELLED
         mock_unstage.assert_called_once_with()
 
     @patch("git_acp.cli.workflow.unstage_files")
@@ -702,7 +702,7 @@ class TestWorkflowErrorPaths:
         mock_classify: MagicMock,
         mock_config: GitConfig,
     ) -> None:
-        """Handle cancellation during commit type selection."""
+        """Return cancellation exit code when commit type selection is cancelled."""
         from git_acp.cli.interaction import TestInteraction
         from git_acp.cli.workflow import GitWorkflow
 
@@ -720,7 +720,58 @@ class TestWorkflowErrorPaths:
 
         exit_code = workflow.run()
 
-        assert exit_code == 1
+        assert exit_code == EXIT_CODE_CANCELLED
+        mock_unstage.assert_called_once_with()
+
+    @patch("git_acp.cli.workflow.unstage_files")
+    @patch("git_acp.cli.workflow.git_add")
+    def test_workflow__manual_message_prompt_cancelled(
+        self,
+        mock_add: MagicMock,
+        mock_unstage: MagicMock,
+        mock_config: GitConfig,
+    ) -> None:
+        """Return cancellation exit code when manual message prompt is cancelled."""
+        mock_config.message = None
+        mock_config.use_ollama = False
+
+        class CancellingInteraction(TestInteraction):
+            def _prompt_manual_commit_message(self) -> str | None:
+                raise GitError("Operation cancelled by user.")
+
+        interaction = CancellingInteraction()
+        workflow = GitWorkflow(mock_config, interaction)
+
+        exit_code = workflow.run()
+
+        assert exit_code == EXIT_CODE_CANCELLED
+        mock_unstage.assert_called_once_with()
+
+    @patch("git_acp.cli.workflow.generate_commit_message")
+    @patch("git_acp.cli.workflow.unstage_files")
+    @patch("git_acp.cli.workflow.git_add")
+    def test_workflow__ai_fallback_manual_message_prompt_cancelled(
+        self,
+        mock_add: MagicMock,
+        mock_unstage: MagicMock,
+        mock_generate: MagicMock,
+        mock_config: GitConfig,
+    ) -> None:
+        """Return cancellation exit code when AI fallback prompt is cancelled."""
+        mock_config.use_ollama = True
+        mock_config.message = None
+        mock_generate.side_effect = GitError("AI unavailable")
+
+        class CancellingInteraction(TestInteraction):
+            def _prompt_manual_commit_message(self) -> str | None:
+                raise GitError("Operation cancelled by user.")
+
+        interaction = CancellingInteraction(confirm_response=True)
+        workflow = GitWorkflow(mock_config, interaction)
+
+        exit_code = workflow.run()
+
+        assert exit_code == EXIT_CODE_CANCELLED
         mock_unstage.assert_called_once_with()
 
 

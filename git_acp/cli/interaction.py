@@ -271,6 +271,14 @@ class RichQuestionaryInteraction:
         rprint(Panel(content, title=title, border_style=style))
 
     def _prompt_manual_commit_message(self) -> str | None:
+        """Prompt for a manual commit message.
+
+        Returns:
+            The stripped message, or ``None`` when the user submits empty input.
+
+        Raises:
+            GitError: If the prompt is cancelled.
+        """
         message = cast(
             str | None,
             questionary.text(
@@ -278,6 +286,8 @@ class RichQuestionaryInteraction:
                 style=questionary.Style(QUESTIONARY_STYLE),
             ).ask(),
         )
+        if message is None:
+            raise GitError("Operation cancelled by user.")
         if message and message.strip():
             return message.strip()
         return None
