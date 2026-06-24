@@ -2,7 +2,8 @@
 
 ## Table of Contents
 
-- [v0.26.0 (Current) - 07-06-2026](#v0260-current---07-06-2026)
+- [v0.27.0 (Current) - 24-06-2026](#v0270-current---24-06-2026)
+- [v0.26.0 - 07-06-2026](#v0260---07-06-2026)
 - [v0.25.0 - 04-06-2026](#v0250---04-06-2026)
 - [v0.24.0 - 24-05-2026](#v0240---24-05-2026)
 - [v0.23.0 - 27-01-2026](#v0230---27-01-2026)
@@ -36,7 +37,40 @@
 - [v0.6.0 - 21-12-2024](#v060---21-12-2024)
 - [v0.5.0 - 20-12-2024](#v050---20-12-2024)
 
-## v0.26.0 (Current) - *07-06-2026*
+## v0.27.0 (Current) - *24-06-2026*
+
+### 🐛 **Harden auto-group cancellation and classification follow-ups**
+
+### 🐛 Bug Fixes in v0.27.0
+
+- **Fixed**: Auto-group mode now stops processing remaining groups when the user cancels a prompt.
+- **Fixed**: Cancellation now unstages files staged for the cancelled group before exiting.
+- **Fixed**: User cancellation uses exit code `130`, avoiding Click usage-error exit code `2`.
+- **Fixed**: Git index-lock failures now produce a targeted recovery message instead of a generic Git command error.
+- **Fixed**: Performance files under `benchmarks/`, `benchmark/`, `profiling/`, and `perf/` now group as `perf` changes.
+
+### 🔧 Improvements in v0.27.0
+
+- **Added**: `CancelledByUserError` for typed cancellation handling instead of message-string matching.
+- **Refactored**: Shared excluded-file matching through `is_file_excluded()` for diff, numstat, grouping, and git operations.
+- **Updated**: CLI `--type` choices derive from the `CommitType` enum to prevent drift.
+- **Updated**: `.gitignore` to keep general build directories ignored while allowing `test-scenarios/**/build/`.
+- **Updated**: Documentation for cancellation exit code semantics.
+
+### 🧪 Testing improvements in v0.27.0
+
+- **Added**: Auto-group tests for immediate cancellation and cancellation after successful groups.
+- **Added**: Workflow tests for cancellation during file selection, manual message prompts, AI fallback prompts, commit type selection, and confirmation.
+- **Added**: Git core test coverage for index-lock error mapping.
+- **Added**: Exclusion and grouping regression tests for `.env`, `node_modules`, build, and performance files.
+
+### 📝 Key Commits in v0.27.0
+
+`a9d255d`, `52cac44`, `f192cd8`, `63ca0ea`, `ff800a3`, `2bda044`, `fdfec91`, `0882051`, `d91c88e`, `80c22eb`, `3d7f34e`
+
+---
+
+## v0.26.0 - *07-06-2026*
 
 ### ✨ **Add weighted scoring classifier and expanded commit type detection**
 
