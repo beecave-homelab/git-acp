@@ -7,6 +7,7 @@ from unittest.mock import ANY, MagicMock, call, patch
 from click.testing import CliRunner
 
 from git_acp.cli.cli import main
+from git_acp.cli.workflow import EXIT_CODE_CANCELLED
 
 
 class TestCliAutoGroup:
@@ -163,3 +164,71 @@ class TestCliAutoGroup:
         assert second_config.files == "tests/cli/test_workflow.py"
 
         assert mock_unstage.call_count == 2
+
+    @patch("git_acp.cli.cli.unstage_files")
+    @patch("git_acp.cli.cli.GitWorkflow")
+    @patch("git_acp.cli.cli.group_changed_files")
+    @patch("git_acp.cli.cli.get_changed_files")
+    def test_auto_group_stops_when_first_group_is_cancelled(
+        self,
+        mock_get_changed_files: MagicMock,
+        mock_group_changed_files: MagicMock,
+        mock_workflow_cls: MagicMock,
+        mock_unstage: MagicMock,
+    ) -> None:
+        """Stop processing groups when the first workflow is cancelled."""
+        mock_get_changed_files.side_effect = [
+            set(),
+            {"a.py", "b.py"},
+            set(),
+        ]
+        mock_group_changed_files.return_value = [["a.py"], ["b.py"]]
+
+        workflow_one = MagicMock()
+        workflow_one.run.return_value = EXIT_CODE_CANCELLED
+        mock_workflow_cls.return_value = workflow_one
+
+        result = self.runner.invoke(main, ["--auto-group", "--no-confirm"])
+
+        assert result.exit_code == EXIT_CODE_CANCELLED
+        assert mock_workflow_cls.call_count == 1
+        assert workflow_one.run.call_count == 1
+        assert mock_unstage.call_args_list == [call(ANY)]
+        assert "Auto-group cancelled at group 1/2" in result.output
+        assert "0 group(s) committed successfully" in result.output
+
+    @patch("git_acp.cli.cli.unstage_files")
+    @patch("git_acp.cli.cli.GitWorkflow")
+    @patch("git_acp.cli.cli.group_changed_files")
+    @patch("git_acp.cli.cli.get_changed_files")
+    def test_auto_group_reports_successes_before_later_cancellation(
+        self,
+        mock_get_changed_files: MagicMock,
+        mock_group_changed_files: MagicMock,
+        mock_workflow_cls: MagicMock,
+        mock_unstage: MagicMock,
+    ) -> None:
+        """Report committed groups when cancellation happens after successes."""
+        mock_get_changed_files.side_effect = [
+            set(),
+            {"a.py", "b.py", "c.py"},
+            set(),
+            set(),
+        ]
+        mock_group_changed_files.return_value = [["a.py"], ["b.py"], ["c.py"]]
+
+        workflow_one = MagicMock()
+        workflow_one.run.return_value = 0
+        workflow_two = MagicMock()
+        workflow_two.run.return_value = EXIT_CODE_CANCELLED
+        mock_workflow_cls.side_effect = [workflow_one, workflow_two]
+
+        result = self.runner.invoke(main, ["--auto-group", "--no-confirm"])
+
+        assert result.exit_code == EXIT_CODE_CANCELLED
+        assert mock_workflow_cls.call_count == 2
+        assert workflow_one.run.call_count == 1
+        assert workflow_two.run.call_count == 1
+        assert mock_unstage.call_args_list == [call(ANY), call(ANY)]
+        assert "Auto-group cancelled at group 2/3" in result.output
+        assert "1 group(s) committed successfully" in result.output

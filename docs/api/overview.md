@@ -92,7 +92,7 @@ This is the root of the package and defines the package’s version.
 ```python
 import git_acp
 
-print(git_acp.__version__)  # "0.26.0"
+print(git_acp.__version__)  # "0.27.0"
 ```
 
 ---

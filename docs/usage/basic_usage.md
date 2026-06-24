@@ -185,6 +185,12 @@ The tool provides clear error messages for common issues:
 - Permission issues
 - Remote access errors
 
+### Exit Codes
+
+- `0`: Workflow completed successfully or there was nothing to commit
+- `1`: Workflow failed
+- `130`: User cancelled an interactive prompt or declined confirmation
+
 ## Getting Help
 
 For command help and options:

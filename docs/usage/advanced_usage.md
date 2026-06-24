@@ -302,7 +302,7 @@ git-acp -nc -mb "CI: Update dependencies" -t chore
 #### Version Bumping
 
 ```bash
-git-acp -a "pyproject.toml git_acp/__init__.py VERSIONS.md" -mb "chore(release): bump version to v0.26.0" -t chore
+git-acp -a "pyproject.toml git_acp/__init__.py VERSIONS.md" -mb "chore(release): bump version to v0.27.0" -t chore
 ```
 
 ### Batch Operations

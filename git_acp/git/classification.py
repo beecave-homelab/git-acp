@@ -3,6 +3,9 @@
 This module provides functionality for classifying commit types and analyzing
 changes in the repository to suggest appropriate commit types.
 
+Recognized Commit Types:
+    FEAT, FIX, DOCS, STYLE, REFACTOR, TEST, CHORE, REVERT, BUILD, CI, PERF.
+
 Classification Priority:
     1. Message prefix (e.g., "feat:", "fix:") - highest priority
     2. File path patterns - deterministic and highly accurate
@@ -21,7 +24,6 @@ from pathlib import Path
 from git_acp.config import (
     COMMIT_TYPE_PATTERNS,
     COMMIT_TYPES,
-    EXCLUDED_PATTERNS,
     FILE_PATH_PATTERNS,
     SIGNAL_LAYER_WEIGHTS,
 )
@@ -31,6 +33,7 @@ from git_acp.git.file_classifier import (
     _match_file_path_pattern,
     _normalize_path_separators,
     categorize_changed_files,
+    is_file_excluded,
 )
 from git_acp.git.git_operations import GitError, get_changed_files, get_diff
 from git_acp.utils import OptionalConfig, debug_header, debug_item
@@ -159,7 +162,8 @@ def group_changed_files(
 
     - Files are sorted alphabetically within each returned group.
     - Groups are ordered by:
-        1) Commit-type priority: ``docs``, ``test``, ``style``, ``chore``.
+        1) Commit-type priority: ``docs``, ``test``, ``perf``, ``style``,
+           ``build``, ``ci``, ``chore``.
         2) Directory prefix groups (lexicographic).
         3) Root-level extension groups (lexicographic).
 
@@ -182,21 +186,9 @@ def group_changed_files(
         ``FILE_PATH_PATTERNS`` and ``EXCLUDED_PATTERNS`` come from
         ``git_acp.config.constants``.
     """
-    commit_type_priority = ["docs", "test", "style", "build", "ci", "chore"]
+    commit_type_priority = ["docs", "test", "perf", "style", "build", "ci", "chore"]
 
-    def is_excluded(file_path: str) -> bool:
-        for pattern in EXCLUDED_PATTERNS:
-            # Special case for exact .env matching as defined in EXCLUDED_PATTERNS.
-            # This is hardcoded to match the "/.env$" pattern in constants.py.
-            if pattern == "/.env$":
-                if Path(file_path).name == ".env":
-                    return True
-                continue
-            if pattern in file_path:
-                return True
-        return False
-
-    remaining = sorted({f for f in files if f and not is_excluded(f)})
+    remaining = sorted({f for f in files if f and not is_file_excluded(f)})
     if not remaining:
         return []
 
@@ -567,8 +559,11 @@ def _collect_signals(
     numstat: dict[str, tuple[int, int]] = {}
     try:
         numstat = get_numstat(config)
-    except (GitError, Exception):
-        pass
+    except GitError:
+        pass  # expected: no staged/unstaged changes
+    except Exception as err:
+        if config.verbose:
+            debug_item("Numstat unexpected error", str(err))
 
     if config.verbose and numstat:
         debug_item("Numstat files", str(len(numstat)))
