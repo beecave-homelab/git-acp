@@ -170,9 +170,7 @@ def get_numstat(config: OptionalConfig = None) -> dict[str, tuple[int, int]]:
     return result
 
 
-def extract_added_lines(
-    diff: str, excluded_files: set[str] | None = None
-) -> str:
+def extract_added_lines(diff: str, excluded_files: set[str] | None = None) -> str:
     """Extract only added lines from a unified diff.
 
     Strips the leading ``+`` from each added line. Skips ``+++ `` file

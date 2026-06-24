@@ -578,9 +578,7 @@ class TestClassifyCommitTypeEdgeCases:
         # Classification should still succeed (CHORE default)
         assert result == CommitType.CHORE
         # The unexpected error should have been logged
-        mock_debug_item.assert_any_call(
-            "Numstat unexpected error", "numstat blew up"
-        )
+        mock_debug_item.assert_any_call("Numstat unexpected error", "numstat blew up")
 
     @patch("git_acp.git.classification.get_numstat")
     @patch("git_acp.git.classification.get_changed_files")

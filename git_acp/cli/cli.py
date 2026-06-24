@@ -36,9 +36,7 @@ from git_acp.utils.file_filter import filter_files_by_scope
 
 # Single source of truth for the --type CLI option: derived from the
 # CommitType enum so choices and help text can never drift apart.
-CLI_COMMIT_TYPE_CHOICES: tuple[str, ...] = tuple(
-    ct.name.lower() for ct in CommitType
-)
+CLI_COMMIT_TYPE_CHOICES: tuple[str, ...] = tuple(ct.name.lower() for ct in CommitType)
 
 
 def format_commit_message(commit_type: CommitType, message: str) -> str:
