@@ -10,7 +10,7 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-from git_acp.cli.interaction import TestInteraction
+from git_acp.cli.interaction import CancelledByUserError, TestInteraction
 from git_acp.cli.workflow import EXIT_CODE_CANCELLED, GitWorkflow
 from git_acp.git import CommitType, GitError
 from git_acp.utils import GitConfig
@@ -584,9 +584,18 @@ class TestWorkflowErrorPaths:
         from git_acp.cli.interaction import TestInteraction
         from git_acp.cli.workflow import GitWorkflow
 
-        mock_get_changed.side_effect = GitError("Operation cancelled by user.")
+        mock_get_changed.return_value = {"README.md"}
 
-        interaction = TestInteraction()
+        class CancellingInteraction(TestInteraction):
+            def select_files(self, changed_files: set[str]) -> str:
+                """Raise cancellation from the interactive file picker.
+
+                Raises:
+                    CancelledByUserError: Always raised for this test double.
+                """
+                raise CancelledByUserError("Operation cancelled by user.")
+
+        interaction = CancellingInteraction()
         workflow = GitWorkflow(interactive_config, interaction)
 
         exit_code = workflow.run()
@@ -713,7 +722,7 @@ class TestWorkflowErrorPaths:
             def select_commit_type(
                 self, suggested: CommitType, config: GitConfig, commit_message: str
             ) -> CommitType:
-                raise GitError("Operation cancelled by user.")
+                raise CancelledByUserError("Operation cancelled by user.")
 
         interaction = CancellingInteraction()
         workflow = GitWorkflow(mock_config, interaction)
@@ -737,7 +746,7 @@ class TestWorkflowErrorPaths:
 
         class CancellingInteraction(TestInteraction):
             def _prompt_manual_commit_message(self) -> str | None:
-                raise GitError("Operation cancelled by user.")
+                raise CancelledByUserError("Operation cancelled by user.")
 
         interaction = CancellingInteraction()
         workflow = GitWorkflow(mock_config, interaction)
@@ -764,7 +773,7 @@ class TestWorkflowErrorPaths:
 
         class CancellingInteraction(TestInteraction):
             def _prompt_manual_commit_message(self) -> str | None:
-                raise GitError("Operation cancelled by user.")
+                raise CancelledByUserError("Operation cancelled by user.")
 
         interaction = CancellingInteraction(confirm_response=True)
         workflow = GitWorkflow(mock_config, interaction)

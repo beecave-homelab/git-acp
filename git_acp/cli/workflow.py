@@ -11,6 +11,7 @@ from dataclasses import replace
 from typing import TYPE_CHECKING, Final, Literal, cast
 
 from git_acp.ai import generate_commit_message
+from git_acp.cli.interaction import CancelledByUserError
 from git_acp.config import COLORS
 from git_acp.git import (
     CommitType,
@@ -174,21 +175,20 @@ class GitWorkflow:
             )
             return True
 
+        except CancelledByUserError:
+            unstage_files()
+            self.interaction.print_panel(
+                "Operation cancelled by user.",
+                "Cancelled",
+                "yellow",
+            )
+            return CANCELLED
         except GitError as e:
-            if "cancelled by user" in str(e).lower():
-                unstage_files()
-                self.interaction.print_panel(
-                    "Operation cancelled by user.",
-                    "Cancelled",
-                    "yellow",
-                )
-                return CANCELLED
-            else:
-                self.interaction.print_error(
-                    f"Error during file selection:\n{e}",
-                    "Check file paths and try again.",
-                    "File Selection Failed",
-                )
+            self.interaction.print_error(
+                f"Error during file selection:\n{e}",
+                "Check file paths and try again.",
+                "File Selection Failed",
+            )
             return False
 
     def _handle_branch_detection(self) -> bool:
@@ -314,15 +314,15 @@ class GitWorkflow:
                     return CANCELLED
                 try:
                     manual_message = self._prompt_manual_message()
+                except CancelledByUserError:
+                    unstage_files()
+                    self.interaction.print_panel(
+                        "Operation cancelled by user.",
+                        "Cancelled",
+                        "yellow",
+                    )
+                    return CANCELLED
                 except GitError as prompt_error:
-                    if "cancelled by user" in str(prompt_error).lower():
-                        unstage_files()
-                        self.interaction.print_panel(
-                            "Operation cancelled by user.",
-                            "Cancelled",
-                            "yellow",
-                        )
-                        return CANCELLED
                     unstage_files()
                     self.interaction.print_error(
                         f"Error reading commit message:\n{prompt_error}",
@@ -344,15 +344,15 @@ class GitWorkflow:
         if not self.config.message:
             try:
                 manual_message = self._prompt_manual_message()
+            except CancelledByUserError:
+                unstage_files()
+                self.interaction.print_panel(
+                    "Operation cancelled by user.",
+                    "Cancelled",
+                    "yellow",
+                )
+                return CANCELLED
             except GitError as e:
-                if "cancelled by user" in str(e).lower():
-                    unstage_files()
-                    self.interaction.print_panel(
-                        "Operation cancelled by user.",
-                        "Cancelled",
-                        "yellow",
-                    )
-                    return CANCELLED
                 unstage_files()
                 self.interaction.print_error(
                     f"Error reading commit message:\n{e}",
@@ -439,21 +439,20 @@ class GitWorkflow:
                 f"[{success}]✓ Commit type selected successfully[/{success}]"
             )
             return selected_type
+        except CancelledByUserError:
+            self.interaction.print_panel(
+                "Operation cancelled by user.",
+                "Cancelled",
+                "yellow",
+            )
+            unstage_files()
+            return CANCELLED
         except GitError as e:
-            if "cancelled by user" in str(e).lower():
-                self.interaction.print_panel(
-                    "Operation cancelled by user.",
-                    "Cancelled",
-                    "yellow",
-                )
-                unstage_files()
-                return CANCELLED
-            else:
-                self.interaction.print_error(
-                    f"Error selecting commit type:\n{e}",
-                    "Try again or specify a commit type with -t.",
-                    "Commit Type Selection Failed",
-                )
+            self.interaction.print_error(
+                f"Error selecting commit type:\n{e}",
+                "Try again or specify a commit type with -t.",
+                "Commit Type Selection Failed",
+            )
             return None
 
     def _format_message(self, commit_type: CommitType) -> str:

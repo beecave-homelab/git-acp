@@ -94,7 +94,9 @@
 **/*$py.class
 **/*.so
 **/.Python
-# **/build/
+**/build/
+!test-scenarios/**/build/
+!test-scenarios/**/build/**
 **/develop-eggs/
 **/dist/
 **/downloads/
@@ -127,4 +129,3 @@ ENV/
 # OS specific files
 .DS_Store
 Thumbs.db
-

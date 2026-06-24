@@ -20,6 +20,10 @@ from git_acp.git import CommitType, GitError
 from git_acp.utils import GitConfig
 
 
+class CancelledByUserError(GitError):
+    """Raised when the user cancels an interactive prompt."""
+
+
 class UserInteraction(Protocol):
     """Protocol for user interaction operations.
 
@@ -37,7 +41,8 @@ class UserInteraction(Protocol):
             Space-separated list of selected files.
 
         Raises:
-            GitError: If selection is cancelled or invalid.
+            GitError: If selection is invalid.
+            CancelledByUserError: If selection is cancelled.
         """
         ...
 
@@ -55,7 +60,8 @@ class UserInteraction(Protocol):
             The selected commit type.
 
         Raises:
-            GitError: If selection is cancelled.
+            GitError: If selection is invalid.
+            CancelledByUserError: If selection is cancelled.
         """
         ...
 
@@ -112,7 +118,8 @@ class RichQuestionaryInteraction:
             Space-separated list of selected files, with proper quoting.
 
         Raises:
-            GitError: If no files found, user cancels, or no selection made.
+            GitError: If no files are found or no files are selected.
+            CancelledByUserError: If the user cancels file selection.
         """
         if not changed_files:
             raise GitError("No changed files found to commit.")
@@ -140,7 +147,7 @@ class RichQuestionaryInteraction:
         ).ask()
 
         if selected is None:
-            raise GitError("Operation cancelled by user.")
+            raise CancelledByUserError("Operation cancelled by user.")
         elif not selected:
             raise GitError("No files selected.")
 
@@ -173,6 +180,7 @@ class RichQuestionaryInteraction:
 
         Raises:
             GitError: If no commit type is selected.
+            CancelledByUserError: If the user cancels commit type selection.
         """
         # Auto-select if skip_confirmation
         if config.skip_confirmation:
@@ -223,7 +231,7 @@ class RichQuestionaryInteraction:
         ).ask()
 
         if selected_types is None:
-            raise GitError("Operation cancelled by user.")
+            raise CancelledByUserError("Operation cancelled by user.")
         elif not selected_types or len(selected_types) != 1:
             raise GitError("No commit type selected.")
 
@@ -277,7 +285,7 @@ class RichQuestionaryInteraction:
             The stripped message, or ``None`` when the user submits empty input.
 
         Raises:
-            GitError: If the prompt is cancelled.
+            CancelledByUserError: If the prompt is cancelled.
         """
         message = cast(
             str | None,
@@ -287,7 +295,7 @@ class RichQuestionaryInteraction:
             ).ask(),
         )
         if message is None:
-            raise GitError("Operation cancelled by user.")
+            raise CancelledByUserError("Operation cancelled by user.")
         if message and message.strip():
             return message.strip()
         return None
