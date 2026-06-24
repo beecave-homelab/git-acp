@@ -31,7 +31,7 @@ if TYPE_CHECKING:
     from git_acp.utils import GitConfig
 
 
-EXIT_CODE_CANCELLED: Final[int] = 2
+EXIT_CODE_CANCELLED: Final[int] = 130
 CANCELLED: Final[Literal["cancelled"]] = "cancelled"
 StepResult = bool | Literal["cancelled"]
 CommitTypeResult = CommitType | None | Literal["cancelled"]
