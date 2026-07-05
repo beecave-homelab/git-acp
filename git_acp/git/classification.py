@@ -3,6 +3,15 @@
 This module provides functionality for classifying commit types and analyzing
 changes in the repository to suggest appropriate commit types.
 
+Recognized commit types:
+    FEAT, FIX, DOCS, STYLE, REFACTOR, TEST, CHORE, REVERT, BUILD, CI, PERF.
+
+Two selection mechanisms are used:
+    - Types with file-path grouping (deterministic, via ``FILE_PATH_PATTERNS``):
+      DOCS, TEST, PERF, STYLE, BUILD, CI, CHORE.
+    - Prefix-only types (detected from the conventional commit prefix):
+      FEAT, FIX, REFACTOR, REVERT.
+
 Classification Priority:
     1. Message prefix (e.g., "feat:", "fix:") - highest priority
     2. File path patterns - deterministic and highly accurate
