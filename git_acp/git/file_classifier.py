@@ -9,8 +9,9 @@ from __future__ import annotations
 
 import re
 from enum import Enum
+from pathlib import Path
 
-from git_acp.config import FILE_CATEGORY_PATTERNS
+from git_acp.config import EXCLUDED_PATTERNS, FILE_CATEGORY_PATTERNS
 
 
 class FileCategory(Enum):
@@ -74,6 +75,31 @@ def _match_file_path_pattern(file_path: str, pattern: str) -> bool:
         return any(seg.endswith(pattern_lower) for seg in file_segments)
 
     return any(pattern_lower in seg for seg in file_segments)
+
+
+def is_file_excluded(file_path: str) -> bool:
+    """Check whether *file_path* matches any ``EXCLUDED_PATTERNS`` entry.
+
+    Uses :func:`_match_file_path_pattern` for consistent segment-aware
+    matching, the same matcher used by file-category and commit-type
+    classification. The ``/.env$`` pattern is special-cased because it
+    represents an exact-basename match (``.env`` but not
+    ``.env.example``) that cannot be expressed as a literal substring.
+
+    Args:
+        file_path: Repository-relative file path to check.
+
+    Returns:
+        ``True`` if the file path matches any exclusion pattern.
+    """
+    for pattern in EXCLUDED_PATTERNS:
+        if pattern == "/.env$":
+            if Path(file_path).name == ".env":
+                return True
+            continue
+        if _match_file_path_pattern(file_path, pattern):
+            return True
+    return False
 
 
 def classify_file_category(path: str) -> FileCategory:

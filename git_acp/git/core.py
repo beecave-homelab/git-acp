@@ -43,6 +43,14 @@ def run_git_command(
                 debug_item("Exit Code", str(process.returncode))
                 debug_item("Error Output", stderr.strip())
 
+            stderr_lower = stderr.lower()
+            if "unable to create" in stderr_lower and "index.lock" in stderr_lower:
+                raise GitError(
+                    "Git index is locked. Another git process may be running, "
+                    "or a stale lock file exists. If no other git process is "
+                    "running, try removing '.git/index.lock' manually."
+                )
+
             error_patterns = {
                 "not a git repository": (
                     "Not a git repository. Please run this command in a git repository."
@@ -79,7 +87,7 @@ def run_git_command(
             }
 
             for pattern, message in error_patterns.items():
-                if pattern in stderr.lower():
+                if pattern in stderr_lower:
                     raise GitError(message)
 
             raise GitError(f"Git command failed: {stderr.strip()}")
@@ -105,6 +113,8 @@ def run_git_command(
             "Permission denied while executing git command. "
             "Please check your permissions."
         )
+    except GitError:
+        raise
     except Exception as e:
         if config and config.verbose:
             debug_header("Git Command Error")

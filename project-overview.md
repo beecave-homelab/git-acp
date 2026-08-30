@@ -1,7 +1,7 @@
 ---
 repo: https://github.com/beecave-homelab/git-acp.git
 commit: 60cb407
-updated: 2026-06-07T00:00:00Z
+updated: 2026-06-24T00:00:00Z
 ---
 <!-- markdownlint-disable-file MD033 -->
 <!-- SECTIONS:API,CLI,WEBUI,CI,DOCKER,TESTS -->
@@ -11,7 +11,7 @@ updated: 2026-06-07T00:00:00Z
 `git-acp` is a command-line tool that automates the `git add`, `commit`, and `push` workflow. It offers interactive file selection, AI-powered commit message generation via Ollama, and enforces Conventional Commits standards.
 
 ![Language](https://img.shields.io/badge/Python-3.10+-blue)
-[![Version](https://img.shields.io/badge/Version-0.26.0-brightgreen)](#version-summary)
+[![Version](https://img.shields.io/badge/Version-0.27.0-brightgreen)](#version-summary)
 [![CLI](https://img.shields.io/badge/CLI-Click-blue)](#cli)
 [![Coverage](https://img.shields.io/badge/Coverage-97%25-brightgreen)](#tests)
 
@@ -61,6 +61,7 @@ pdm export --pyproject --no-hashes -G lint,test -o requirements.dev.txt
 
 | Version | Date | Type | Key Changes |
 | ------- | ---- | ---- | ----------- |
+| 0.27.0 | 24-06-2026 | 🐛 | Abort auto-group on cancellation, improve index-lock errors, centralize exclusions, and tighten perf/build grouping |
 | 0.26.0 | 07-06-2026 | ✨ | Add weighted scoring classifier, file analysis infrastructure, and build/ci/perf commit types |
 | 0.25.0 | 04-06-2026 | ✨ | Add `--setup` flag to automate initial `.env` config creation |
 | 0.24.0 | 24-05-2026 | ✨ | Emoji-aware prefix stripping, scoped `-a` filtering, auto-group, dry-run, mypy integration |

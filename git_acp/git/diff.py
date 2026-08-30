@@ -2,12 +2,10 @@
 
 from __future__ import annotations
 
-from pathlib import Path
-
-from git_acp.config import EXCLUDED_PATTERNS
 from git_acp.utils import DiffType, OptionalConfig, debug_header, debug_item
 
 from .core import GitError, run_git_command
+from .file_classifier import is_file_excluded
 
 # Default line count assigned to binary files in numstat output
 # (shown as "-" in git diff --numstat).
@@ -63,28 +61,10 @@ def get_changed_files(
                 files.add(path)
 
     if files:
-        excluded_files = set()
-        for f in files:
-            for pattern in EXCLUDED_PATTERNS:
-                if pattern == "/.env$":
-                    if Path(f).name == ".env":
-                        if config and config.verbose:
-                            debug_item(
-                                "Excluding file based on pattern",
-                                f"Pattern '{pattern}' matched '{f}'",
-                            )
-                        excluded_files.add(f)
-                        break
-                    continue
-
-                if pattern in f:
-                    if config and config.verbose:
-                        debug_item(
-                            "Excluding file based on pattern",
-                            f"Pattern '{pattern}' matched '{f}'",
-                        )
-                    excluded_files.add(f)
-                    break
+        excluded_files = {f for f in files if is_file_excluded(f)}
+        for f in excluded_files:
+            if config and config.verbose:
+                debug_item("Excluding file", f)
         files -= excluded_files
 
     if config and config.verbose:
@@ -179,16 +159,7 @@ def get_numstat(config: OptionalConfig = None) -> dict[str, tuple[int, int]]:
         added = _BINARY_LINE_COUNT if added_str == "-" else int(added_str)
         removed = 0 if removed_str == "-" else int(removed_str)
 
-        # Apply exclusion filter
-        excluded = False
-        for pattern in EXCLUDED_PATTERNS:
-            if pattern == "/.env$" and Path(filepath).name == ".env":
-                excluded = True
-                break
-            if pattern in filepath:
-                excluded = True
-                break
-        if excluded:
+        if is_file_excluded(filepath):
             continue
 
         result[filepath] = (added, removed)
@@ -199,9 +170,7 @@ def get_numstat(config: OptionalConfig = None) -> dict[str, tuple[int, int]]:
     return result
 
 
-def extract_added_lines(
-    diff: str, excluded_files: set[str] | None = None
-) -> str:
+def extract_added_lines(diff: str, excluded_files: set[str] | None = None) -> str:
     """Extract only added lines from a unified diff.
 
     Strips the leading ``+`` from each added line. Skips ``+++ `` file

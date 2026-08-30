@@ -118,9 +118,10 @@ FILE_PATH_PATTERNS: Final[dict[str, list[str]]] = {
         "azure-pipelines.yml",
     ],
     "perf": [
-        "benchmark",
-        "profiling",
-        "performance",
+        "benchmarks/",
+        "benchmark/",
+        "profiling/",
+        "perf/",
     ],
     "chore": [
         ".gitignore",

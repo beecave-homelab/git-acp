@@ -14,6 +14,9 @@
 !project-overview.md
 !refactor-summary.md
 !VERSIONS.md
+!test-scenarios/
+!test-scenarios/**/
+!test-scenarios/**/*
 !to-do/
 !to-do/*.md
 !AGENTS.md
@@ -92,6 +95,8 @@
 **/*.so
 **/.Python
 **/build/
+!test-scenarios/**/build/
+!test-scenarios/**/build/**
 **/develop-eggs/
 **/dist/
 **/downloads/
@@ -124,4 +129,3 @@ ENV/
 # OS specific files
 .DS_Store
 Thumbs.db
-
